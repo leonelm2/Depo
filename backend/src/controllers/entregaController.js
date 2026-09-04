@@ -210,6 +210,74 @@ async function entregarDesdeSede(req, res) {
   }
 }
 
+async function crearEnvioOperadorDirecto(req, res) {
+  try {
+    const result = await entregaService.crearEnvioOperadorDirecto(req.user.sub, req.body);
+    return res.status(201).json({
+      ok: true,
+      ...result,
+      message: "Envío armado directamente por el operador con éxito",
+    });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error("Error al crear envío directo por operador:", err);
+    return res.status(500).json({ error: err.message || "No se pudo crear el envío directo" });
+  }
+}
+
+async function despacharEnvioLote(req, res) {
+  try {
+    const result = await entregaService.despacharEnvioLote(req.params.loteId, req.user.sub, req.body);
+    return res.json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error("Error al despachar lote de envío:", err);
+    return res.status(500).json({ error: err.message || "No se pudo despachar el lote" });
+  }
+}
+
+async function registrarResultadoEntrega(req, res) {
+  try {
+    const result = await entregaService.registrarResultadoEntrega(req.params.loteId, req.user.sub, req.body);
+    return res.json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error("Error al registrar resultado de entrega:", err);
+    return res.status(500).json({ error: err.message || "No se pudo registrar el resultado de la entrega" });
+  }
+}
+
+async function getValeReposicion(req, res) {
+  try {
+    const result = await entregaService.getValeReposicion(req.params.valeId);
+    return res.json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error("Error al obtener vale de reposición:", err);
+    return res.status(500).json({ error: err.message || "No se pudo obtener el vale de reposición" });
+  }
+}
+
+async function getTodosDepartamentos(req, res) {
+  try {
+    const departamentos = await entregaService.getTodosDepartamentos();
+    return res.json({ departamentos });
+  } catch (err) {
+    console.error("Error al obtener departamentos:", err);
+    return res.status(500).json({ error: "No se pudieron obtener los departamentos" });
+  }
+}
+
+async function getEscuelasParaEnvioDirecto(req, res) {
+  try {
+    const result = await entregaService.getEscuelasParaEnvioDirecto(req.query);
+    return res.json(result);
+  } catch (err) {
+    console.error("Error al obtener escuelas para envío directo:", err);
+    return res.status(500).json({ error: "No se pudieron obtener las escuelas" });
+  }
+}
+
 module.exports = {
   listarPedidosDisponibles,
   getProductosDisponiblesRetiro,
@@ -228,5 +296,11 @@ module.exports = {
   retirarPedido,
   getHistorialEntregasPedido,
   listarEnSede,
-  entregarDesdeSede
+  entregarDesdeSede,
+  crearEnvioOperadorDirecto,
+  despacharEnvioLote,
+  registrarResultadoEntrega,
+  getValeReposicion,
+  getTodosDepartamentos,
+  getEscuelasParaEnvioDirecto,
 };

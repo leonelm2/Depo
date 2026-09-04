@@ -514,6 +514,7 @@ async function initDatabaseSchema() {
       await client.query(`
         ALTER TABLE distribucion_lote ADD COLUMN IF NOT EXISTS origen VARCHAR(30) NOT NULL DEFAULT 'distribucion_zonal';
         ALTER TABLE distribucion_lote ADD COLUMN IF NOT EXISTS departamento VARCHAR(120);
+        ALTER TABLE distribucion_lote ADD COLUMN IF NOT EXISTS fecha_despacho_real DATE;
       `);
 
       await client.query(`
@@ -551,6 +552,24 @@ async function initDatabaseSchema() {
           mime_type VARCHAR(80),
           datos TEXT NOT NULL,
           directivo_usuario_id INT,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS vale_reposicion (
+          id SERIAL PRIMARY KEY,
+          codigo_vale VARCHAR(50) UNIQUE NOT NULL,
+          lote_id INT REFERENCES distribucion_lote(id) ON DELETE SET NULL,
+          id_institucion INT REFERENCES institucion(id_institucion),
+          usuario_id INT REFERENCES usuario(id_usuario),
+          motivo TEXT,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS vale_reposicion_item (
+          id SERIAL PRIMARY KEY,
+          vale_id INT NOT NULL REFERENCES vale_reposicion(id) ON DELETE CASCADE,
+          id_producto INT NOT NULL REFERENCES producto(id_producto),
+          cantidad_danada NUMERIC(12,2) NOT NULL,
           created_at TIMESTAMP DEFAULT NOW()
         );
       `);

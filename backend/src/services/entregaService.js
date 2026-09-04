@@ -1271,8 +1271,14 @@ async function getSeguimientoEnvios(query) {
     };
   }
 
-  const clauses = ["l.origen = 'solicitud_envio'", "l.anio = $1"];
+  const origenFilter = String(query.origen || "").trim();
+  const clauses = ["l.anio = $1"];
   const params = [anioValue];
+
+  if (origenFilter) {
+    params.push(origenFilter);
+    clauses.push(`l.origen = $${params.length}`);
+  }
 
   if (departamento) {
     params.push(departamento);
@@ -1287,6 +1293,8 @@ async function getSeguimientoEnvios(query) {
     `SELECT
        l.id AS lote_id,
        l.anio,
+       l.origen,
+       l.fecha_despacho_real,
        COALESCE(NULLIF(TRIM(l.departamento), ''), 'SIN_DEPARTAMENTO') AS departamento,
        COALESCE(NULLIF(TRIM(l.estado), ''), 'en_transito') AS estado_lote,
        l.created_at,
@@ -1329,10 +1337,11 @@ async function getSeguimientoEnvios(query) {
 
   const resumen = {
     total_lotes: rows.length,
-    en_transito: rows.filter((row) => String(row.estado_lote) === "en_transito").length,
-    parcialmente_recibidos: rows.filter((row) => String(row.estado_lote) === "parcialmente_recibido").length,
-    con_reclamos: rows.filter((row) => String(row.estado_lote) === "con_reclamos").length,
-    recibidos_totales: rows.filter((row) => String(row.estado_lote) === "recibido_total").length,
+    armados: rows.filter((row) => String(row.estado_lote) === "armado").length,
+    despachados: rows.filter((row) => String(row.estado_lote) === "despachado" || String(row.estado_lote) === "en_transito").length,
+    entregados: rows.filter((row) => String(row.estado_lote) === "entregado" || String(row.estado_lote) === "recibido_total").length,
+    con_rotura: rows.filter((row) => String(row.estado_lote) === "con_rotura" || String(row.estado_lote) === "con_reclamos").length,
+    retorno_deposito: rows.filter((row) => String(row.estado_lote) === "retorno_deposito" || String(row.estado_lote) === "devuelto").length,
   };
 
   return { anio: anioValue, resumen, lotes: rows };
@@ -1348,6 +1357,8 @@ async function getDetalleSeguimientoLote(loteIdQuery) {
     `SELECT
        l.id AS lote_id,
        l.anio,
+       l.origen,
+       l.fecha_despacho_real,
        COALESCE(NULLIF(TRIM(l.departamento), ''), 'SIN_DEPARTAMENTO') AS departamento,
        COALESCE(NULLIF(TRIM(l.estado), ''), 'en_transito') AS estado_lote,
        l.created_at,
@@ -1359,8 +1370,7 @@ async function getDetalleSeguimientoLote(loteIdQuery) {
      FROM distribucion_lote l
      LEFT JOIN deposito d ON d.id_deposito = l.id_deposito
      LEFT JOIN usuario u ON u.id_usuario = l.usuario_id
-     WHERE l.id = $1
-       AND l.origen = 'solicitud_envio'`,
+     WHERE l.id = $1`,
     [loteId]
   );
 
@@ -2064,6 +2074,629 @@ async function entregarDesdeSede(userId, solicitudId) {
   }
 }
 
+async function getTodosDepartamentos() {
+  const dbDeptos = await all(`
+    SELECT DISTINCT NULLIF(TRIM(departamento), '') AS departamento
+    FROM (
+      SELECT departamento FROM institucion WHERE departamento IS NOT NULL
+      UNION
+      SELECT departamento FROM edificio WHERE departamento IS NOT NULL
+      UNION
+      SELECT departamento FROM direccion WHERE departamento IS NOT NULL
+      UNION
+      SELECT departamento_envio AS departamento FROM solicitud_retiro WHERE departamento_envio IS NOT NULL
+      UNION
+      SELECT departamento FROM distribucion_lote WHERE departamento IS NOT NULL
+    ) sub
+    ORDER BY departamento ASC
+  `);
+
+  const sanJuanDeptos = [
+    "Capital", "Rawson", "Chimbas", "Rivadavia", "Santa Lucía",
+    "Pocito", "Caucete", "Jáchal", "Albardón", "Sarmiento",
+    "25 de Mayo", "San Martín", "Calingasta", "Iglesia",
+    "Valle Fértil", "9 de Julio", "Angaco", "Ullum", "Zonda"
+  ];
+
+  const set = new Set(sanJuanDeptos);
+  for (const d of dbDeptos) {
+    if (d.departamento) set.add(d.departamento);
+  }
+
+  return [...set].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+}
+
+async function getEscuelasParaEnvioDirecto(query) {
+  await ensureEntregasSchema();
+  const anio = Number(query.anio || new Date().getFullYear());
+  const departamento = String(query.departamento || "").trim();
+  const institucionId = parsePositiveInt(query.institucion_id);
+  const search = String(query.search || "").trim();
+
+  const departamentoSql = await getDepartamentoSql("i");
+
+  let instWhere = [];
+  let params = [];
+
+  if (departamento) {
+    params.push(departamento);
+    instWhere.push(`LOWER(COALESCE(NULLIF(TRIM(${departamentoSql.expression}), ''), 'SIN_DEPARTAMENTO')) = LOWER($${params.length})`);
+  }
+
+  if (institucionId) {
+    params.push(institucionId);
+    instWhere.push(`i.id_institucion = $${params.length}`);
+  }
+
+  if (search) {
+    params.push(`%${search}%`);
+    instWhere.push(`(i.nombre ILIKE $${params.length} OR i.cue ILIKE $${params.length})`);
+  }
+
+  const whereStr = instWhere.length > 0 ? `WHERE ${instWhere.join(" AND ")}` : "";
+
+  const instQuery = `
+    SELECT
+      i.id_institucion,
+      i.nombre AS institucion_nombre,
+      i.cue,
+      COALESCE(NULLIF(TRIM(${departamentoSql.expression}), ''), 'SIN_DEPARTAMENTO') AS departamento
+    FROM institucion i
+    ${departamentoSql.joins}
+    ${whereStr}
+    ORDER BY i.nombre ASC
+    LIMIT 100
+  `;
+
+  let escuelasRows = await all(instQuery, params);
+  if (escuelasRows.length === 0 && departamento) {
+    // Fallback: Si el departamento no coincide con tags de BD, buscar escuelas sin filtro estricto de departamento
+    const fallbackQuery = `
+      SELECT
+        i.id_institucion,
+        i.nombre AS institucion_nombre,
+        i.cue,
+        COALESCE(NULLIF(TRIM(${departamentoSql.expression}), ''), 'SIN_DEPARTAMENTO') AS departamento
+      FROM institucion i
+      ${departamentoSql.joins}
+      ${search ? `WHERE (i.nombre ILIKE $1 OR i.cue ILIKE $1)` : ''}
+      ORDER BY i.nombre ASC
+      LIMIT 100
+    `;
+    escuelasRows = await all(fallbackQuery, search ? [`%${search}%`] : []);
+  }
+
+  if (escuelasRows.length === 0) {
+    return { anio, escuelas: [] };
+  }
+
+  const instIds = escuelasRows.map(e => Number(e.id_institucion));
+
+  // 2. Detalle de pedidos anuales aprobados para las instituciones que los tengan
+  const pedRows = await all(`
+    SELECT
+      p.id_pedido,
+      p.id_institucion,
+      dp.id_producto,
+      pr.nombre AS producto_nombre,
+      pr.unidad_medida,
+      dp.cantidad_solicitada AS cantidad_anual,
+      COALESCE(pe.total_entregado, 0) AS cantidad_entregada_total,
+      GREATEST(dp.cantidad_solicitada - COALESCE(pe.total_entregado, 0), 0) AS saldo_disponible
+    FROM pedido p
+    JOIN detalle_pedido dp ON dp.id_pedido = p.id_pedido
+    JOIN producto pr ON pr.id_producto = dp.id_producto
+    LEFT JOIN (
+      SELECT id_pedido, id_producto, SUM(cantidad_entregada) AS total_entregado
+      FROM pedido_entrega
+      GROUP BY id_pedido, id_producto
+    ) pe ON pe.id_pedido = dp.id_pedido AND pe.id_producto = dp.id_producto
+    WHERE p.id_institucion = ANY($1::int[])
+      AND COALESCE(p.tipo, 'anual') = 'anual'
+      AND p.estado IN ('aprobado', 'finalizado')
+  `, [instIds]);
+
+  // 3. Catálogo de productos activos como respaldo
+  const catalogProducts = await all(`
+    SELECT id_producto AS producto_id, nombre AS producto_nombre, unidad_medida
+    FROM producto
+    ORDER BY nombre ASC
+  `);
+
+  const pedMap = new Map();
+  for (const r of pedRows) {
+    const instId = Number(r.id_institucion);
+    if (!pedMap.has(instId)) pedMap.set(instId, { id_pedido: Number(r.id_pedido), items: [] });
+    pedMap.get(instId).items.push({
+      producto_id: Number(r.id_producto),
+      producto_nombre: r.producto_nombre,
+      unidad_medida: r.unidad_medida,
+      cantidad_anual: Number(r.cantidad_anual || 0),
+      cantidad_entregada_total: Number(r.cantidad_entregada_total || 0),
+      saldo_disponible: Number(r.saldo_disponible || 0)
+    });
+  }
+
+  const escuelas = escuelasRows.map(inst => {
+    const instId = Number(inst.id_institucion);
+    const pedInfo = pedMap.get(instId);
+
+    let productos = [];
+    if (pedInfo && pedInfo.items.length > 0) {
+      productos = pedInfo.items;
+    } else {
+      productos = catalogProducts.map(p => ({
+        producto_id: Number(p.producto_id),
+        producto_nombre: p.producto_nombre,
+        unidad_medida: p.unidad_medida,
+        cantidad_anual: 9999,
+        cantidad_entregada_total: 0,
+        saldo_disponible: 9999
+      }));
+    }
+
+    return {
+      id: instId,
+      id_institucion: instId,
+      institucion_nombre: inst.institucion_nombre,
+      cue: inst.cue,
+      departamento: inst.departamento,
+      id_pedido: pedInfo ? pedInfo.id_pedido : null,
+      productos_pedido_anual: productos
+    };
+  });
+
+  return { anio, escuelas };
+}
+
+async function crearEnvioOperadorDirecto(userId, body) {
+  await ensureEntregasSchema();
+  const { anio, id_deposito, departamento, zona_id, observaciones, entregas, fecha_despacho_real } = body || {};
+
+  const anioValue = Number(anio || new Date().getFullYear());
+  const depositoId = parsePositiveInt(id_deposito);
+  const entregasPayload = Array.isArray(entregas) ? entregas : [];
+
+  if (!depositoId || entregasPayload.length === 0) {
+    throw badRequest("Debe seleccionar un depósito de origen y al menos una escuela con cantidades a enviar.");
+  }
+
+  const porInstitucion = new Map();
+  const totalPorProducto = new Map();
+
+  for (const row of entregasPayload) {
+    const instId = parsePositiveInt(row?.id_institucion);
+    const items = Array.isArray(row?.items) ? row.items : [];
+    if (!instId || items.length === 0) continue;
+
+    if (!porInstitucion.has(instId)) porInstitucion.set(instId, []);
+
+    for (const item of items) {
+      const prodId = parsePositiveInt(item?.id_producto);
+      const cant = parsePositiveInt(item?.cantidad);
+      if (!prodId || !cant) continue;
+
+      porInstitucion.get(instId).push({ id_producto: prodId, cantidad: cant });
+      totalPorProducto.set(prodId, (totalPorProducto.get(prodId) || 0) + cant);
+    }
+  }
+
+  if (porInstitucion.size === 0 || totalPorProducto.size === 0) {
+    throw badRequest("No hay cantidades válidas para procesar.");
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Verificar stock disponible en depósito de origen
+    const stockRes = await client.query(
+      `SELECT id_producto, cantidad
+       FROM stock_deposito
+       WHERE id_deposito = $1 AND id_producto = ANY($2::int[])
+       FOR UPDATE`,
+      [depositoId, [...totalPorProducto.keys()]]
+    );
+    const stockMap = new Map(stockRes.rows.map(r => [Number(r.id_producto), Number(r.cantidad || 0)]));
+
+    for (const [prodId, totalReq] of totalPorProducto.entries()) {
+      const disp = stockMap.get(prodId) || 0;
+      if (disp < totalReq) {
+        const prodNameRow = await client.query(`SELECT nombre FROM producto WHERE id_producto = $1`, [prodId]);
+        const pName = prodNameRow.rows[0]?.nombre || `ID #${prodId}`;
+        throw badRequest(`Stock insuficiente para "${pName}". Disponible en depósito: ${disp}, Requerido: ${totalReq}`);
+      }
+    }
+
+    // Validar saldos anuales de cada escuela si posee un pedido registrado
+    for (const [instId, items] of porInstitucion.entries()) {
+      const pedRes = await client.query(
+        `SELECT id_pedido FROM pedido
+         WHERE id_institucion = $1 AND COALESCE(tipo, 'anual') = 'anual'
+           AND estado IN ('aprobado', 'finalizado')
+         LIMIT 1`,
+        [instId]
+      );
+      if (pedRes.rows.length > 0) {
+        const idPedido = Number(pedRes.rows[0].id_pedido);
+
+        for (const item of items) {
+          const limitRes = await client.query(
+            `SELECT
+               dp.cantidad_solicitada AS asignada,
+               COALESCE(pe.entregado, 0) AS entregado
+             FROM detalle_pedido dp
+             LEFT JOIN (
+               SELECT id_pedido, id_producto, SUM(cantidad_entregada) AS entregado
+               FROM pedido_entrega
+               WHERE id_pedido = $1 AND id_producto = $2
+               GROUP BY id_pedido, id_producto
+             ) pe ON true
+             WHERE dp.id_pedido = $1 AND dp.id_producto = $2`,
+            [idPedido, item.id_producto]
+          );
+
+          if (limitRes.rows.length > 0) {
+            const asignada = Number(limitRes.rows[0].asignada || 0);
+            const entregado = Number(limitRes.rows[0].entregado || 0);
+            const saldoDisponible = Math.max(0, asignada - entregado);
+
+            if (item.cantidad > saldoDisponible) {
+              throw badRequest(`La cantidad a enviar (${item.cantidad}) supera el saldo disponible (${saldoDisponible}) de la asignación anual.`);
+            }
+          }
+        }
+      }
+    }
+
+    const fechaDespacho = fecha_despacho_real ? String(fecha_despacho_real).trim() : null;
+
+    // Crear el lote en estado 'armado'
+    const loteResult = await client.query(
+      `INSERT INTO distribucion_lote
+         (anio, zona_id, id_deposito, estado, observaciones, usuario_id, origen, departamento, fecha_despacho_real)
+       VALUES ($1, $2, $3, 'armado', $4, $5, 'operador_directo', $6, $7)
+       RETURNING id`,
+      [
+        anioValue,
+        parsePositiveInt(zona_id) || null,
+        depositoId,
+        observaciones || `Envío armado por operador - ${departamento || 'Sin Departamento'}`,
+        userId,
+        departamento || null,
+        fechaDespacho,
+      ]
+    );
+    const loteId = Number(loteResult.rows[0].id);
+
+    // Insertar ítems del lote y descontar stock
+    for (const [instId, items] of porInstitucion.entries()) {
+      for (const item of items) {
+        await client.query(
+          `INSERT INTO distribucion_lote_item
+             (lote_id, id_institucion, id_producto, cantidad_planificada, cantidad_recibida, estado_recepcion)
+           VALUES ($1, $2, $3, $4, 0, 'pendiente')`,
+          [loteId, instId, item.id_producto, item.cantidad]
+        );
+
+        await client.query(
+          `INSERT INTO movimiento_stock
+             (id_producto, tipo, cantidad, estado_producto, id_institucion, id_usuario, motivo, fecha_movimiento, id_deposito)
+           VALUES ($1, 'egreso', $2, 'nuevo', $3, $4, $5, NOW(), $6)`,
+          [
+            item.id_producto,
+            item.cantidad,
+            instId,
+            userId,
+            `Armado de palet para envío directo por operador (Lote #${loteId})`,
+            depositoId,
+          ]
+        );
+      }
+    }
+
+    // Actualizar stock del depósito
+    for (const [prodId, total] of totalPorProducto.entries()) {
+      await client.query(
+        `UPDATE stock_deposito
+         SET cantidad = cantidad - $1
+         WHERE id_deposito = $2 AND id_producto = $3`,
+        [total, depositoId, prodId]
+      );
+    }
+
+    await client.query("COMMIT");
+    return {
+      lote_id: loteId,
+      estado: 'armado',
+      fecha_despacho_real: fechaDespacho,
+      total_instituciones: porInstitucion.size,
+      total_productos: totalPorProducto.size,
+      total_cantidad: [...totalPorProducto.values()].reduce((a, b) => a + b, 0),
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function despacharEnvioLote(loteIdQuery, userId, body) {
+  await ensureEntregasSchema();
+  const loteId = parsePositiveInt(loteIdQuery);
+  if (!loteId) throw badRequest("ID de lote inválido");
+
+  const lote = await get(`SELECT * FROM distribucion_lote WHERE id = $1`, [loteId]);
+  if (!lote) throw { status: 404, message: "Lote de envío no encontrado" };
+
+  if (String(lote.estado) !== 'armado') {
+    throw badRequest(`El lote #${loteId} no se encuentra en estado 'armado' (Estado actual: ${lote.estado})`);
+  }
+
+  const fechaDespacho = body?.fecha_despacho_real ? String(body.fecha_despacho_real).trim() : new Date().toISOString().split('T')[0];
+  const obsAdicional = body?.observaciones ? ` | ${String(body.observaciones).trim()}` : '';
+
+  await run(
+    `UPDATE distribucion_lote
+     SET estado = 'despachado',
+         fecha_despacho_real = $2,
+         observaciones = COALESCE(observaciones, '') || $3
+     WHERE id = $1`,
+    [loteId, fechaDespacho, `\n[Despachado camión - Fecha real de salida: ${fechaDespacho}]${obsAdicional}`]
+  );
+
+  return { ok: true, lote_id: loteId, estado: 'despachado', fecha_despacho_real: fechaDespacho, message: 'Lote despachado exitosamente (En tránsito)' };
+}
+
+async function registrarResultadoEntrega(loteIdQuery, userId, body) {
+  await ensureEntregasSchema();
+  const loteId = parsePositiveInt(loteIdQuery);
+  if (!loteId) throw badRequest("ID de lote inválido");
+
+  const { resultado, observaciones, items } = body || {};
+  const resType = String(resultado || '').trim().toLowerCase();
+
+  if (!['exitosa', 'rotura', 'retorno_deposito'].includes(resType)) {
+    throw badRequest("El resultado de la entrega debe ser 'exitosa', 'rotura' o 'retorno_deposito'");
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const loteRes = await client.query(`SELECT * FROM distribucion_lote WHERE id = $1 FOR UPDATE`, [loteId]);
+    if (loteRes.rows.length === 0) throw { status: 404, message: "Lote no encontrado" };
+    const lote = loteRes.rows[0];
+
+    const itemsRes = await client.query(
+      `SELECT dli.*, p.nombre AS producto_nombre
+       FROM distribucion_lote_item dli
+       JOIN producto p ON p.id_producto = dli.id_producto
+       WHERE dli.lote_id = $1`,
+      [loteId]
+    );
+    const loteItems = itemsRes.rows;
+
+    let valeCodigo = null;
+    let valeId = null;
+
+    if (resType === 'exitosa') {
+      await client.query(
+        `UPDATE distribucion_lote
+         SET estado = 'entregado',
+             observaciones = COALESCE(observaciones, '') || E'\n[Resultado: Entrega exitosa] ' || $2
+         WHERE id = $1`,
+        [loteId, observaciones || '']
+      );
+
+      for (const item of loteItems) {
+        await client.query(
+          `UPDATE distribucion_lote_item
+           SET cantidad_recibida = cantidad_planificada,
+               estado_recepcion = 'recibido',
+               recibido_at = NOW()
+           WHERE id = $1`,
+          [item.id]
+        );
+
+        const pedRes = await client.query(
+          `SELECT id_pedido FROM pedido WHERE id_institucion = $1 AND COALESCE(tipo, 'anual') = 'anual' AND estado = 'aprobado' LIMIT 1`,
+          [item.id_institucion]
+        );
+        if (pedRes.rows.length > 0) {
+          const idPedido = Number(pedRes.rows[0].id_pedido);
+          await client.query(
+            `INSERT INTO pedido_entrega
+               (id_pedido, id_producto, cantidad_entregada, id_usuario, observaciones)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [idPedido, item.id_producto, item.cantidad_planificada, userId, `Entrega directa confirmada Lote #${loteId}`]
+          );
+        }
+      }
+    } else if (resType === 'rotura') {
+      await client.query(
+        `UPDATE distribucion_lote
+         SET estado = 'con_rotura',
+             observaciones = COALESCE(observaciones, '') || E'\n[Resultado: Con roturas] ' || $2
+         WHERE id = $1`,
+        [loteId, observaciones || '']
+      );
+
+      valeCodigo = `VALE-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+      const instId = loteItems[0]?.id_institucion || null;
+      const valeRes = await client.query(
+        `INSERT INTO vale_reposicion (codigo_vale, lote_id, id_institucion, usuario_id, motivo)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        [valeCodigo, loteId, instId, userId, observaciones || 'Reposición por daños/rotura durante el transporte']
+      );
+      valeId = Number(valeRes.rows[0].id);
+
+      const itemsInputMap = new Map();
+      if (Array.isArray(items)) {
+        for (const it of items) {
+          itemsInputMap.set(`${it.id_institucion}:${it.id_producto}`, it);
+        }
+      }
+
+      for (const item of loteItems) {
+        const inputData = itemsInputMap.get(`${item.id_institucion}:${item.id_producto}`) || {};
+        const rec = Number(inputData.cantidad_recibida ?? item.cantidad_planificada);
+        const dan = Number(inputData.cantidad_danada ?? 0);
+        const motDan = String(inputData.motivo_danio || 'Daño en tránsito');
+
+        await client.query(
+          `UPDATE distribucion_lote_item
+           SET cantidad_recibida = $1,
+               cantidad_danada = $2,
+               estado_recepcion = $3,
+               detalle_danio = $4,
+               recibido_at = NOW()
+           WHERE id = $5`,
+          [rec, dan, dan > 0 ? 'reclamo' : 'recibido', motDan, item.id]
+        );
+
+        if (dan > 0) {
+          await client.query(
+            `INSERT INTO vale_reposicion_item (vale_id, id_producto, cantidad_danada)
+             VALUES ($1, $2, $3)`,
+            [valeId, item.id_producto, dan]
+          );
+
+          await client.query(
+            `INSERT INTO baja_movimientos
+               (id_producto, cantidad, motivo, id_usuario, id_deposito, estado)
+             VALUES ($1, $2, $3, $4, $5, 'aprobado')`,
+            [
+              item.id_producto,
+              dan,
+              `Rotura en tránsito (Lote #${loteId}, Vale #${valeCodigo}): ${motDan}`,
+              userId,
+              lote.id_deposito,
+            ]
+          );
+        }
+
+        if (rec > 0) {
+          const pedRes = await client.query(
+            `SELECT id_pedido FROM pedido WHERE id_institucion = $1 AND COALESCE(tipo, 'anual') = 'anual' AND estado = 'aprobado' LIMIT 1`,
+            [item.id_institucion]
+          );
+          if (pedRes.rows.length > 0) {
+            const idPedido = Number(pedRes.rows[0].id_pedido);
+            await client.query(
+              `INSERT INTO pedido_entrega
+                 (id_pedido, id_producto, cantidad_entregada, id_usuario, observaciones)
+               VALUES ($1, $2, $3, $4, $5)`,
+              [idPedido, item.id_producto, rec, userId, `Entrega parcial confirmada por Lote #${loteId} (${dan} dañados)`]
+            );
+          }
+        }
+      }
+    } else if (resType === 'retorno_deposito') {
+      await client.query(
+        `UPDATE distribucion_lote
+         SET estado = 'retorno_deposito',
+             observaciones = COALESCE(observaciones, '') || E'\n[Resultado: Retorno al depósito (Sin recepción)] ' || $2
+         WHERE id = $1`,
+        [loteId, observaciones || '']
+      );
+
+      for (const item of loteItems) {
+        const qtyToReturn = Number(item.cantidad_planificada || 0);
+
+        await client.query(
+          `UPDATE distribucion_lote_item
+           SET cantidad_recibida = 0,
+               estado_recepcion = 'devuelto',
+               recibido_at = NOW()
+           WHERE id = $1`,
+          [item.id]
+        );
+
+        if (qtyToReturn > 0) {
+          // Reintegrar stock al depósito de origen
+          await client.query(
+            `UPDATE stock_deposito
+             SET cantidad = cantidad + $1
+             WHERE id_deposito = $2 AND id_producto = $3`,
+            [qtyToReturn, lote.id_deposito, item.id_producto]
+          );
+
+          // Registrar movimiento de ingreso por devolución
+          await client.query(
+            `INSERT INTO movimiento_stock
+               (id_producto, tipo, cantidad, estado_producto, id_institucion, id_usuario, motivo, fecha_movimiento, id_deposito)
+             VALUES ($1, 'ingreso', $2, 'nuevo', $3, $4, $5, NOW(), $6)`,
+            [
+              item.id_producto,
+              qtyToReturn,
+              item.id_institucion,
+              userId,
+              `Reintegración por retorno al depósito sin recepción (Lote #${loteId})`,
+              lote.id_deposito,
+            ]
+          );
+        }
+      }
+    }
+
+    await client.query("COMMIT");
+    return {
+      ok: true,
+      lote_id: loteId,
+      resultado: resType,
+      vale_id: valeId,
+      vale_codigo: valeCodigo,
+      message: resType === 'retorno_deposito'
+        ? 'Stock reintegrado al depósito y cuota de la escuela preservada.'
+        : resType === 'rotura'
+        ? `Entrega procesada con roturas. Vale de Reposición emitido (#${valeCodigo}).`
+        : 'Entrega exitosa confirmada.',
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function getValeReposicion(valeIdOrCodigo) {
+  await ensureEntregasSchema();
+
+  const isNumeric = /^\d+$/.test(String(valeIdOrCodigo).trim());
+  const querySql = isNumeric
+    ? `SELECT vr.*, i.nombre AS institucion_nombre, i.cue, u.nombre AS usuario_nombre, u.apellido AS usuario_apellido, dl.departamento, dl.id_deposito, dep.nombre AS deposito_nombre
+       FROM vale_reposicion vr
+       LEFT JOIN institucion i ON i.id_institucion = vr.id_institucion
+       LEFT JOIN usuario u ON u.id_usuario = vr.usuario_id
+       LEFT JOIN distribucion_lote dl ON dl.id = vr.lote_id
+       LEFT JOIN deposito dep ON dep.id_deposito = dl.id_deposito
+       WHERE vr.id = $1`
+    : `SELECT vr.*, i.nombre AS institucion_nombre, i.cue, u.nombre AS usuario_nombre, u.apellido AS usuario_apellido, dl.departamento, dl.id_deposito, dep.nombre AS deposito_nombre
+       FROM vale_reposicion vr
+       LEFT JOIN institucion i ON i.id_institucion = vr.id_institucion
+       LEFT JOIN usuario u ON u.id_usuario = vr.usuario_id
+       LEFT JOIN distribucion_lote dl ON dl.id = vr.lote_id
+       LEFT JOIN deposito dep ON dep.id_deposito = dl.id_deposito
+       WHERE vr.codigo_vale = $1`;
+
+  const vale = await get(querySql, [valeIdOrCodigo]);
+  if (!vale) throw { status: 404, message: "Vale de reposición no encontrado" };
+
+  const items = await all(
+    `SELECT vri.*, p.nombre AS producto_nombre, p.unidad_medida
+     FROM vale_reposicion_item vri
+     JOIN producto p ON p.id_producto = vri.id_producto
+     WHERE vri.vale_id = $1`,
+    [vale.id]
+  );
+
+  return { vale, items };
+}
+
 module.exports = {
   listarPedidosDisponibles,
   getProductosDisponiblesRetiro,
@@ -2082,5 +2715,11 @@ module.exports = {
   getComprobanteRetiro,
   entregarSolicitudRetiro,
   retirarPedido,
-  getHistorialEntregasPedido
+  getHistorialEntregasPedido,
+  crearEnvioOperadorDirecto,
+  despacharEnvioLote,
+  registrarResultadoEntrega,
+  getValeReposicion,
+  getTodosDepartamentos,
+  getEscuelasParaEnvioDirecto,
 };

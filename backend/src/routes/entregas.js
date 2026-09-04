@@ -125,11 +125,46 @@ router.get(
   entregaController.listarEnSede
 );
 
-// POST /api/entregas/sedes/:id/entregar - Entregar finalmente desde la sede a la escuela periférica
+// POST /api/entregas/operador-directo - Crear envio armado directamente por el operador (sin solicitud previa)
 router.post(
-  "/sedes/:id/entregar",
+  "/operador-directo",
   authorizePermissions(PERMISSIONS.MOVIMIENTOS_CREATE),
-  entregaController.entregarDesdeSede
+  entregaController.crearEnvioOperadorDirecto
+);
+
+// PATCH /api/entregas/lote/:loteId/despachar - Cambiar estado de un lote de 'armado' a 'despachado'
+router.patch(
+  "/lote/:loteId/despachar",
+  authorizePermissions(PERMISSIONS.MOVIMIENTOS_CREATE),
+  entregaController.despacharEnvioLote
+);
+
+// POST /api/entregas/lote/:loteId/registrar-resultado - Registrar resultado de entrega en escuela (exitosa, rotura con vale, retorno)
+router.post(
+  "/lote/:loteId/registrar-resultado",
+  authorizePermissions(PERMISSIONS.MOVIMIENTOS_CREATE),
+  entregaController.registrarResultadoEntrega
+);
+
+// GET /api/entregas/departamentos-todos - Obtener lista completa de departamentos
+router.get(
+  "/departamentos-todos",
+  authorizePermissions(PERMISSIONS.PEDIDOS_VIEW),
+  entregaController.getTodosDepartamentos
+);
+
+// GET /api/entregas/escuelas-envio-directo - Obtener escuelas con asignación anual aprobada
+router.get(
+  "/escuelas-envio-directo",
+  authorizePermissions(PERMISSIONS.MOVIMIENTOS_CREATE),
+  entregaController.getEscuelasParaEnvioDirecto
+);
+
+// GET /api/entregas/vales/:valeId - Obtener detalle de vale de reposicion
+router.get(
+  "/vales/:valeId",
+  authorizePermissions(PERMISSIONS.PEDIDOS_VIEW),
+  entregaController.getValeReposicion
 );
 
 module.exports = router;
