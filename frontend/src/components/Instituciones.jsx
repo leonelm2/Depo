@@ -322,7 +322,6 @@ export default function Instituciones({ supervisorMode = false }) {
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-        <span className="badge" style={{background: 'yellow', color: 'black'}}>DEBUG: {instituciones.length} / {filteredInstituciones.length}</span>
         <span className="badge">Instituciones cargadas: {filteredInstituciones.length}</span>
         <span className="badge">Con coordenadas: {validInstituciones.length}</span>
         <span className="badge">Edificios en mapa: {Object.keys(groupedByEdificio).length}</span>
