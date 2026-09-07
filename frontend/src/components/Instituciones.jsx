@@ -47,7 +47,7 @@ export default function Instituciones({ supervisorMode = false }) {
         const response = await apiFetch(supervisorMode ? '/api/supervisor/instituciones' : '/api/instituciones', { token })
         const data = await response.json()
         if (!response.ok) {
-          throw new Error(data.error || 'Error HTTP ' + response.status)
+          throw new Error((data.error || 'Error HTTP ' + response.status) + (data.details ? ' - ' + data.details : ''))
         }
         let list = data.instituciones || []
 

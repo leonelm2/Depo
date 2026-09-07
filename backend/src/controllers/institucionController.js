@@ -34,9 +34,9 @@ async function list(req, res) {
   } catch (err) {
     console.error('Error en consulta instituciones:', err.message);
     if (err?.status) {
-      return res.status(err.status).json({ error: err.message });
+      return res.status(err.status).json({ error: err.message, details: err.message });
     }
-    return res.status(500).json({ error: "No se pudo listar instituciones" });
+    return res.status(500).json({ error: "No se pudo listar instituciones", details: err.message });
   }
 }
 
