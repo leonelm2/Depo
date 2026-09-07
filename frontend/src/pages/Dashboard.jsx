@@ -113,9 +113,9 @@ const TABS = [
   { key: 'asignar-kit', label: 'Asignar Kit', permission: 'pedidos.manage', rolesAllowed: ['supervisor', 'master'], icon: BoxIcon },
   { key: 'mis-escuelas', label: 'Mis Escuelas', permission: 'instituciones.view', rolesAllowed: ['supervisor', 'master'], icon: BuildingIcon },
   { key: 'pedidos', label: 'Pedidos Escolares', permission: 'pedidos.view', rolesAllowed: ['director_area', 'supervisor', 'directivo', 'operador_escolar', 'operador', 'area_compras', 'master'], icon: ClipboardIcon },
-  { key: 'mi-stock', label: 'Mi stock', permission: 'pedidos.view', rolesAllowed: ['directivo', 'operador_escolar'], icon: BoxIcon },
+  { key: 'mi-stock', label: 'Mi Stock y Depósito', permission: 'pedidos.view', rolesAllowed: ['directivo', 'operador_escolar'], icon: BoxIcon },
   { key: 'recepcion-mercaderia', label: 'Recepción de Mercadería', permission: 'pedidos.view', rolesAllowed: ['directivo', 'operador_escolar'], icon: BoxIcon },
-  { key: 'deposito-institucion', label: 'Mi Depósito', permission: 'pedidos.view', rolesAllowed: ['directivo', 'operador_escolar'], icon: BuildingIcon },
+  { key: 'deposito-institucion', label: 'Mi Depósito', permission: 'pedidos.view', rolesAllowed: ['master'], hideForRoles: ['directivo', 'operador_escolar'], icon: BuildingIcon },
   { key: 'mi-cuenta', label: 'Mi cuenta', permission: null, icon: UserIcon },
 ]
 
