@@ -100,6 +100,17 @@ app.use(cors({
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
+// --- Force Migration Endpoint (Temporary) ---
+app.get('/api/migrate-now', async (req, res) => {
+  try {
+    const { pool } = require('./db.pg');
+    await pool.query(`ALTER TABLE institucion ADD COLUMN IF NOT EXISTS kit_cantidad INT;`);
+    res.json({ success: true, message: "kit_cantidad added successfully." });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
+  }
+});
+
 // --- 2.1 URL Normalization for Vercel Serverless ---
 app.use((req, res, next) => {
   const pathOnly = (req.url || '').split('?')[0];
@@ -125,7 +136,8 @@ app.use((req, res, next) => {
     pathOnly.startsWith('/entregas') ||
     pathOnly.startsWith('/depositos') ||
     pathOnly.startsWith('/stock-institucion') ||
-    pathOnly.startsWith('/health')
+    pathOnly.startsWith('/health') ||
+    pathOnly.startsWith('/migrate-now')
   )) {
     req.url = '/api' + req.url;
   }
