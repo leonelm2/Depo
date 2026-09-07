@@ -263,6 +263,7 @@ export default function Productos() {
       unidad_medida: producto.unidad_medida || 'unidad',
       ubicacion_estante: producto.ubicacion_estante || '',
       stock_minimo: producto.stock_minimo ?? 0,
+      stock_actual: producto.stock_total ?? producto.stock_actual ?? 0,
       id_categoria: producto.id_categoria || '',
       descripcion: producto.descripcion || '',
       es_perecedero: Boolean(producto.es_perecedero),
@@ -281,6 +282,7 @@ export default function Productos() {
       unidad_medida: String(editModal.unidad_medida || '').trim() || 'unidad',
       ubicacion_estante: String(editModal.ubicacion_estante || '').trim() || '',
       stock_minimo: parseInt(editModal.stock_minimo, 10) || 0,
+      stock_actual: parseInt(editModal.stock_actual, 10) || 0,
       id_categoria: editModal.id_categoria || null,
       descripcion: String(editModal.descripcion || '').trim() || '',
       es_perecedero: Boolean(editModal.es_perecedero),
@@ -644,6 +646,12 @@ export default function Productos() {
               <label>Unidad de medida</label>
               <input type="text" value={editModal.unidad_medida} onChange={e => setEditModal({ ...editModal, unidad_medida: e.target.value })} placeholder="Ej: unidad, litro, kg, pack" />
             </div>
+            {(user?.role === 'admin' || user?.role === 'master') && (
+              <div>
+                <label>Stock actual</label>
+                <input type="number" value={editModal.stock_actual} onChange={e => setEditModal({ ...editModal, stock_actual: e.target.value })} placeholder="0" min="0" />
+              </div>
+            )}
             <div>
               <label>Stock mínimo (alerta)</label>
               <input type="number" value={editModal.stock_minimo} onChange={e => setEditModal({ ...editModal, stock_minimo: e.target.value })} placeholder="0" min="0" />
