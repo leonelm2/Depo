@@ -562,13 +562,19 @@ export default function Productos() {
               </td>
               
               <td>
-                <div className="inline-actions">
-                  <button onClick={() => loadDetail(p.id)} className="secondary" style={{ padding: '4px 8px', fontSize: '0.78rem' }}>Detalle</button>
+                <div className="inline-actions" style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => loadDetail(p.id)} className="secondary" title="Ver detalle" aria-label="Ver detalle" style={{ width: 'auto', margin: 0, minWidth: 36, padding: '4px 8px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    👁️
+                  </button>
                   {hasPermission('productos.edit') && (
-                    <button onClick={() => handleEdit(p.id)} style={{ padding: '4px 8px', fontSize: '0.78rem' }}>Editar</button>
+                    <button onClick={() => handleEdit(p.id)} title="Editar producto" aria-label="Editar producto" style={{ width: 'auto', margin: 0, minWidth: 36, padding: '4px 8px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      ✏️
+                    </button>
                   )}
                   {canDeleteProductos && (
-                    <button onClick={() => handleDelete(p.id)} className="secondary" style={{ padding: '4px 8px', fontSize: '0.78rem', color: '#dc2626', borderColor: '#fca5a5' }}>Eliminar</button>
+                    <button onClick={() => handleDelete(p.id)} className="secondary" title="Eliminar producto" aria-label="Eliminar producto" style={{ width: 'auto', margin: 0, minWidth: 36, padding: '4px 8px', fontSize: '1.2rem', color: '#dc2626', borderColor: '#fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      🗑️
+                    </button>
                   )}
                 </div>
               </td>
