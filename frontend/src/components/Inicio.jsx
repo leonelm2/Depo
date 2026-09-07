@@ -123,11 +123,7 @@ export default function Inicio({ onNavigate }) {
 
   return (
     <div className="dashboard-stack">
-      <div className="dashboard-page-actions">
-        <PrintButton targetRef={printRef} title="Resumen General - Dashboard" />
-      </div>
-
-      <div ref={printRef} className="dashboard-stack">
+      <div className="dashboard-stack">
         <motion.section 
           className="dashboard-hero"
           initial={{ opacity: 0, y: 15 }}

@@ -21,6 +21,7 @@ export default function Movimientos() {
   const [ingresoModalOpen, setIngresoModalOpen] = useState(false)
   const [egresoModalOpen, setEgresoModalOpen] = useState(false)
   const [retirarPedidoModalOpen, setRetirarPedidoModalOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   // Floating selector modals states
   const [egresoInstModalOpen, setEgresoInstModalOpen] = useState(false)
@@ -215,6 +216,8 @@ export default function Movimientos() {
     setMsg({ text: '', type: '' })
     if (loteEgreso.length === 0) { setMsg({ text: 'Agregue al menos un producto al egreso', type: 'error' }); return }
 
+    setIsLoading(true)
+    try {
     // Si hay deposito seleccionado y NO es un traslado (es para institución), usar la API de depositos
     const destDeposito = depositos.find(d => d.nombre.toLowerCase() === egresoInst.trim().toLowerCase())
 
@@ -321,6 +324,9 @@ export default function Movimientos() {
     setMsg({ text: 'Egreso registrado correctamente', type: 'success' })
     loadMovimientos()
     loadProductos()
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Ingreso handlers
@@ -356,6 +362,8 @@ export default function Movimientos() {
       return
     }
 
+    setIsLoading(true)
+    try {
     for (const item of loteIngreso) {
       const isTransfer = String(item.proveedor_id).startsWith('dep-')
       const targetId = String(item.proveedor_id).split('-')[1]
@@ -407,6 +415,9 @@ export default function Movimientos() {
     loadMovimientos()
     loadProductos()
     return
+    } finally {
+      setIsLoading(false)
+    }
   }
 
 
@@ -549,6 +560,13 @@ const handleTransferSubmit = async (e) => {
 
 return (
   <div>
+    {isLoading && (
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(255,255,255,0.7)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+        <div className="spinner" style={{ width: 40, height: 40, border: '4px solid var(--blue)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        <p style={{ marginTop: 16, fontWeight: 'bold', color: 'var(--blue)' }}>Procesando, por favor espere...</p>
+      </div>
+    )}
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
       <h2 style={{ margin: 0 }}>Registro de Movimientos</h2>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
