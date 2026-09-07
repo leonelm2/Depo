@@ -1467,9 +1467,9 @@ return (
                             onClick={() => printMovimiento(group.items, instituciones)}
                             title="Imprimir movimiento"
                             aria-label="Imprimir movimiento"
-                            style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px' }}
+                            style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            Imprimir
+                            🖨️
                           </button>
                           <button
                             type="button"
@@ -1477,9 +1477,9 @@ return (
                             onClick={() => { setDetalleData({ proveedor: proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : (first.tipo === 'egreso' ? first.institucion_nombre : null), deposito: first.deposito_nombre, institucion: institucionCargo, productos: group.items }); setDetalleModalOpen(true) }}
                             title="Ver detalle"
                             aria-label="Ver detalle"
-                            style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px' }}
+                            style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            Detalle
+                            👁️
                           </button>
                         </div>
                       </td>
