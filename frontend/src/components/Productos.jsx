@@ -18,6 +18,7 @@ export default function Productos() {
   const [editModal, setEditModal] = useState(null)
   const [deleteModal, setDeleteModal] = useState(null)
   const [detailModal, setDetailModal] = useState(null)
+  const [exportModalOpen, setExportModalOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [filterCategoria, setFilterCategoria] = useState('')
   const [filterEstado, setFilterEstado] = useState('')
@@ -251,6 +252,33 @@ export default function Productos() {
     }
   }
 
+  const handleExportExcel = (onlyWithStock) => {
+    let dataToExport = productosVista
+    if (onlyWithStock) {
+      dataToExport = dataToExport.filter(p => (p.stock_total ?? p.stock_actual ?? 0) > 0)
+    }
+
+    const wsData = dataToExport.map(p => ({
+      'SKU / Código': p.codigo_sku || `#${p.id}`,
+      'Nombre': p.nombre,
+      'Marca': p.marca || '',
+      'Categoría': p.categoria_nombre || '',
+      'Ubicación': p.ubicacion_estante || '',
+      'Stock Total': p.stock_total ?? p.stock_actual ?? 0,
+      'Unidad de medida': p.unidad_medida || 'unidad',
+      'Stock Mínimo': p.stock_minimo ?? 0,
+      'Perecedero': p.es_perecedero ? 'Sí' : 'No',
+      'Cápsula': p.requiere_autorizacion ? 'Sí' : 'No',
+      'Descripción': p.descripcion || ''
+    }))
+
+    const ws = XLSX.utils.json_to_sheet(wsData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Productos")
+    XLSX.writeFile(wb, `Inventario_Productos_${onlyWithStock ? 'Con_Stock' : 'Todos'}_${new Date().toISOString().split('T')[0]}.xlsx`)
+    setExportModalOpen(false)
+  }
+
   const handleEdit = (id) => {
     const producto = productos.find(p => p.id === id)
     if (!producto) return
@@ -263,6 +291,7 @@ export default function Productos() {
       unidad_medida: producto.unidad_medida || 'unidad',
       ubicacion_estante: producto.ubicacion_estante || '',
       stock_minimo: producto.stock_minimo ?? 0,
+      stock_actual: producto.stock_total ?? producto.stock_actual ?? 0,
       id_categoria: producto.id_categoria || '',
       descripcion: producto.descripcion || '',
       es_perecedero: Boolean(producto.es_perecedero),
@@ -281,6 +310,7 @@ export default function Productos() {
       unidad_medida: String(editModal.unidad_medida || '').trim() || 'unidad',
       ubicacion_estante: String(editModal.ubicacion_estante || '').trim() || '',
       stock_minimo: parseInt(editModal.stock_minimo, 10) || 0,
+      stock_actual: parseInt(editModal.stock_actual, 10) || 0,
       id_categoria: editModal.id_categoria || null,
       descripcion: String(editModal.descripcion || '').trim() || '',
       es_perecedero: Boolean(editModal.es_perecedero),
@@ -422,6 +452,14 @@ export default function Productos() {
             }}
             activeCount={productoFilterCount}
           />
+          <button
+            type="button"
+            className="secondary"
+            style={{ width: 'auto', margin: 0, padding: '10px 18px', background: '#f8fafc', color: '#0f172a' }}
+            onClick={() => setExportModalOpen(true)}
+          >
+            Exportar a Excel
+          </button>
           <PrintButton targetRef={printRef} title="Inventario de Productos" />
         </div>
       </div>
@@ -644,6 +682,12 @@ export default function Productos() {
               <label>Unidad de medida</label>
               <input type="text" value={editModal.unidad_medida} onChange={e => setEditModal({ ...editModal, unidad_medida: e.target.value })} placeholder="Ej: unidad, litro, kg, pack" />
             </div>
+            {(user?.role === 'admin' || user?.role === 'master') && (
+              <div>
+                <label>Stock actual</label>
+                <input type="number" value={editModal.stock_actual} onChange={e => setEditModal({ ...editModal, stock_actual: e.target.value })} placeholder="0" min="0" />
+              </div>
+            )}
             <div>
               <label>Stock mínimo (alerta)</label>
               <input type="number" value={editModal.stock_minimo} onChange={e => setEditModal({ ...editModal, stock_minimo: e.target.value })} placeholder="0" min="0" />
@@ -817,6 +861,32 @@ export default function Productos() {
           </div>
         </div>
       </Modal>
+
+      <Modal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)} title="Exportar a Excel" maxWidth={500}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <p style={{ margin: 0, color: 'var(--dark)' }}>
+            Selecciona qué productos deseas incluir en el archivo exportado:
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button 
+              type="button" 
+              onClick={() => handleExportExcel(false)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              📄 Exportar Todos los Productos
+            </button>
+            <button 
+              type="button" 
+              className="secondary"
+              onClick={() => handleExportExcel(true)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#f0fdf4', color: '#166534', borderColor: '#bbf7d0' }}
+            >
+              📦 Exportar Solo con Stock Actual (&gt; 0)
+            </button>
+          </div>
+        </div>
+      </Modal>
+
     </div>
   )
 }
