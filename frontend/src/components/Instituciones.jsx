@@ -480,6 +480,7 @@ export default function Instituciones({ supervisorMode = false }) {
             </>
           )}
         </aside>
+      </div>
       )}
 
       <p>Mostrando {Object.keys(groupedByEdificio).length} edificio(s) en mapa con {filteredInstituciones.length} instituciones</p>
