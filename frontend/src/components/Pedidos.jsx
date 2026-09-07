@@ -1018,37 +1018,47 @@ function DirectivoPedidos() {
     
     // Para pedidos de tipo 'refuerzo' no mostramos el paso de Director Área
     const isAnual = (pedido.tipo || 'anual') === 'anual'
-    let steps = isAnual
-      ? [
-          { id: 'pendiente', label: 'Supervisor' },
-          { id: 'pendiente_director', label: 'Director Área' },
-          { id: 'aprobado', label: 'Autorizado' }
-        ]
-      : [
-          { id: 'pendiente', label: 'Supervisor' },
-          { id: 'aprobado', label: 'Autorizado' }
-        ]
+    const tieneLicitacionFormalActiva = isAnual && logistica?.estado_licitacion && ['publicada', 'adjudicada'].includes(logistica.estado_licitacion)
 
-    if (isAnual && pedido.tipo === 'anual' && logistica) {
+    let steps = []
+    if (!isAnual) {
       steps = [
-        ...steps,
+        { id: 'pendiente', label: 'Supervisor' },
+        { id: 'aprobado', label: 'Habilitado Retiro' },
+        { id: 'entregado', label: 'Entregado' }
+      ]
+    } else if (tieneLicitacionFormalActiva) {
+      steps = [
+        { id: 'pendiente', label: 'Supervisor' },
+        { id: 'pendiente_director', label: 'Director Área' },
         { id: 'licitacion', label: 'Licitación' },
         { id: 'en_deposito', label: 'En Depósito' },
+        { id: 'entregado', label: 'Entregado' }
+      ]
+    } else {
+      steps = [
+        { id: 'pendiente', label: 'Supervisor' },
+        { id: 'pendiente_director', label: 'Director Área' },
+        { id: 'aprobado', label: 'Habilitado Retiro' },
         { id: 'entregado', label: 'Entregado' }
       ]
     }
 
     const getStepStatus = (stepId, currentEstado, log) => {
-      const order = isAnual
-        ? ['pendiente', 'pendiente_director', 'aprobado', 'licitacion', 'en_deposito', 'entregado']
-        : ['pendiente', 'aprobado']
+      const order = tieneLicitacionFormalActiva
+        ? ['pendiente', 'pendiente_director', 'licitacion', 'en_deposito', 'entregado']
+        : (isAnual
+            ? ['pendiente', 'pendiente_director', 'aprobado', 'entregado']
+            : ['pendiente', 'aprobado', 'entregado'])
       let logicalEstado = currentEstado
 
-      if (pedido.tipo === 'anual' && log && currentEstado === 'aprobado') {
+      if (isAnual && tieneLicitacionFormalActiva && log && currentEstado === 'aprobado') {
         if (log.porcentaje_entrega >= 100) logicalEstado = 'entregado'
-        else if (log.total_entregada > 0) logicalEstado = 'en_deposito' // Simplificación: si ya entregamos algo, es que ya pasó por depósito
+        else if (log.total_entregada > 0) logicalEstado = 'en_deposito'
         else if (log.estado_licitacion === 'en_deposito') logicalEstado = 'en_deposito'
         else if (log.estado_licitacion === 'adjudicada') logicalEstado = 'licitacion'
+      } else if (currentEstado === 'aprobado') {
+        if (log?.porcentaje_entrega >= 100) logicalEstado = 'entregado'
       }
 
       const currentIndex = order.indexOf(logicalEstado)
@@ -1086,21 +1096,21 @@ function DirectivoPedidos() {
       if (pedido.requiere_licitacion || pedido.estado_abastecimiento === 'requiere_licitacion') {
         return 'Aprobado - Derivado a compra'
       }
-      return 'Aprobado - Stock disponible'
+      return 'Habilitada para retiro'
     }
     
-    if (estado === 'aprobado' && logistica) {
-      if (logistica.porcentaje_entrega >= 100) return 'Entregado (100%)'
-      if (logistica.total_entregada > 0) return `Entrega Parcial (${logistica.porcentaje_entrega}%)`
-      if (logistica.estado_licitacion === 'en_deposito') return 'En Depósito Central'
-      if (logistica.estado_licitacion === 'adjudicada') return 'Licitación Adjudicada'
-      return 'En Proceso de Licitación'
+    if (estado === 'aprobado') {
+      if (logistica?.porcentaje_entrega >= 100) return 'Entregado (100%)'
+      if (logistica?.total_entregada > 0) return `Entrega Parcial (${logistica.porcentaje_entrega}%)`
+      if (logistica?.estado_licitacion === 'en_deposito') return 'En Depósito Central'
+      if (logistica?.estado_licitacion === 'adjudicada') return 'Licitación Adjudicada'
+      if (logistica?.estado_licitacion === 'publicada') return 'En Proceso de Licitación'
+      return 'Habilitada para retiro'
     }
 
-    if (estado === 'aprobado') return 'Aprobado - Listo'
+    if (estado === 'entregado') return 'Entregado'
     if (estado === 'rechazado') return 'Rechazado'
     if (estado === 'cancelado') return 'Cancelado'
-    if (estado === 'entregado') return 'Entregado'
     return 'Pendiente de Supervisor'
   }
 
@@ -1228,18 +1238,41 @@ function DirectivoPedidos() {
       {/* Sección de Pedidos Listos para Retirar */}
       {tab === 'anual' && pedidos.some(p => p.estado === 'aprobado' && (p.tipo || 'anual') === 'anual') && (
         <div className="fade-in" style={{ marginTop: 24, padding: '24px 30px', background: 'var(--surface-gradient)', border: '1px solid #dcfce7', borderRadius: 16, boxShadow: 'var(--shadow-premium)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
             <div>
               <h3 style={{ marginTop: 0, color: '#166534', display: 'flex', alignItems: 'center', gap: 10, fontSize: '1.4rem' }}>
                 <span style={{ fontSize: '1.8rem' }}>🎉</span> ¡Solicitud Anual Aprobada!
               </h3>
               <p style={{ color: '#166534', fontWeight: 500, margin: 0, opacity: 0.8 }}>
-                Tu pedido ha pasado todas las etapas de validación. Ya podés retirar tus insumos.
+                Tu pedido ha sido aprobado por el Director de Área y ya podés retirar tus insumos.
               </p>
             </div>
-            <div style={{ background: '#dcfce7', padding: '12px 20px', borderRadius: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Estado Final</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#166534' }}>LISTO PARA RETIRO</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setTab('retiro')}
+                style={{
+                  background: '#166534',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '10px 18px',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  boxShadow: '0 4px 6px -1px rgba(22, 101, 52, 0.25)',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <span>📦</span> Solicitar Retiro de Mercadería ➔
+              </button>
+              <div style={{ background: '#dcfce7', padding: '10px 18px', borderRadius: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Estado</div>
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#166534' }}>HABILITADA PARA RETIRO</div>
+              </div>
             </div>
           </div>
           

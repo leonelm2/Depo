@@ -196,6 +196,8 @@ async function initDatabaseSchema() {
         ALTER TABLE pedido ADD COLUMN IF NOT EXISTS estado_abastecimiento VARCHAR(40) NOT NULL DEFAULT 'stock_disponible';
         ALTER TABLE pedido ADD COLUMN IF NOT EXISTS aprobado_director_area BOOLEAN DEFAULT FALSE;
         ALTER TABLE pedido ADD COLUMN IF NOT EXISTS codigo_retiro VARCHAR(20);
+        ALTER TABLE pedido ADD COLUMN IF NOT EXISTS habilitado_retiro BOOLEAN DEFAULT FALSE;
+        UPDATE pedido SET habilitado_retiro = TRUE WHERE aprobado_director_area = TRUE AND (habilitado_retiro IS NULL OR habilitado_retiro = FALSE);
       `);
     } catch (err) {
       console.warn("[schemaManager] Warning altering table pedido:", err.message);
