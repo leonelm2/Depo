@@ -130,80 +130,154 @@
 .approval-stepper {
   display: flex;
   justify-content: space-between;
-  margin: 28px 0;
+  margin: 18px 0;
   position: relative;
 }
 
 .approval-stepper::before {
   content: '';
   position: absolute;
-  top: 14px;
+  top: 18px;
   left: 0;
   right: 0;
-  height: 2px;
-  background: var(--border);
+  height: 3px;
+  background: var(--border, #cbd5e1);
   z-index: 1;
 }
 
 .step {
   position: relative;
   z-index: 2;
-  background: var(--surface-1);
+  background: #ffffff;
   padding: 0 10px;
   text-align: center;
 }
 
 .step-circle {
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: var(--border);
-  color: var(--muted);
+  background: #f1f5f9;
+  color: #475569;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 8px;
-  font-weight: 700;
-  font-size: 0.82rem;
+  margin: 0 auto 6px;
+  font-weight: 800;
+  font-size: 0.95rem;
   transition: all var(--transition-base);
-  border: 2px solid var(--border);
+  border: 2px solid #cbd5e1;
 }
 
 .step.active .step-circle {
-  background: var(--orange);
-  border-color: var(--orange);
+  background: var(--orange, #ea580c);
+  border-color: var(--orange, #ea580c);
   color: #ffffff;
-  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.18);
+  box-shadow: 0 0 0 5px rgba(234, 88, 12, 0.2);
   animation: pulseOrange 2s infinite;
 }
 
 .step.completed .step-circle {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--green, #16a34a);
+  border-color: var(--green, #16a34a);
   color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
 }
 
 .step-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
   white-space: nowrap;
 }
 
-.step.active .step-label { color: var(--dark); font-weight: 700; }
-.step.completed .step-label { color: var(--green); }
+.step.active .step-label { color: #0f172a; font-weight: 800; }
+.step.completed .step-label { color: #166534; font-weight: 700; }
+
+/* ── Large Stepper for Hero Cards ── */
+.approval-stepper-hero {
+  display: flex;
+  justify-content: space-between;
+  margin: 24px 0 16px;
+  position: relative;
+}
+
+.approval-stepper-hero::before {
+  content: '';
+  position: absolute;
+  top: 22px;
+  left: 30px;
+  right: 30px;
+  height: 4px;
+  background: #e2e8f0;
+  z-index: 1;
+}
+
+.step-hero {
+  position: relative;
+  z-index: 2;
+  background: #ffffff;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.step-hero-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 8px;
+  font-weight: 800;
+  font-size: 1.15rem;
+  border: 3px solid #cbd5e1;
+  transition: all 0.2s ease;
+}
+
+.step-hero.active .step-hero-circle {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #ffffff;
+  box-shadow: 0 0 0 6px rgba(234, 88, 12, 0.22);
+}
+
+.step-hero.completed .step-hero-circle {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 0 0 5px rgba(22, 163, 74, 0.18);
+}
+
+.step-hero-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.step-hero.active .step-hero-label { color: #ea580c; font-weight: 800; }
+.step-hero.completed .step-hero-label { color: #166534; font-weight: 800; }
+
+.step-hero-sublabel {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 2px;
+  font-weight: 500;
+}
 
 /* ── Premium badges ── */
 .badge-premium {
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: var(--radius-pill);
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .badge-pendiente {

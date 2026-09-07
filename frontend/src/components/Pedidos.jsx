@@ -1141,11 +1141,19 @@ function DirectivoPedidos() {
     return count > 0 ? <span style={{ marginLeft: 6, background: '#ef4444', color: '#fff', borderRadius: 99, fontSize: '0.7rem', padding: '1px 7px' }}>{count}</span> : null
   }
 
+  const pedidoAnualVigente = pedidos.find(p => (p.tipo || 'anual') === 'anual' && p.estado !== 'cancelado') || null
+  const tieneRetiroDisponible = pedidos.some(p => p.estado === 'aprobado' && p.habilitado_retiro !== false)
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0 }}>Mis Pedidos</h2>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 6 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.85rem', color: '#0f172a', fontWeight: 800 }}>Mis Pedidos</h2>
+          <p style={{ margin: '4px 0 0 0', color: '#475569', fontSize: '1.02rem', fontWeight: 500 }}>
+            Consultá el estado de los pedidos de tu escuela y gestioná el retiro de tus insumos escolares.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           {((tab === 'refuerzo' && tieneKits) || (tab === 'anual' && tieneKits)) && (
             <button
               type="button"
@@ -1155,10 +1163,16 @@ function DirectivoPedidos() {
               style={{
                 width: 'auto',
                 margin: 0,
-                padding: '14px 22px',
-                fontSize: '1rem',
+                padding: '12px 24px',
+                fontSize: '1.05rem',
+                fontWeight: 700,
+                borderRadius: 12,
                 opacity: pedidoActivoBloqueante ? 0.6 : 1,
-                cursor: pedidoActivoBloqueante ? 'not-allowed' : 'pointer'
+                cursor: pedidoActivoBloqueante ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                boxShadow: '0 4px 10px rgba(234, 88, 12, 0.25)'
               }}
               onClick={() => {
                 if (pedidoActivoBloqueante) return
@@ -1166,7 +1180,7 @@ function DirectivoPedidos() {
                 setMsg({ text: '', type: '' })
               }}
             >
-              <span aria-hidden="true" style={{ marginRight: 8, fontSize: '1.2rem' }}>📝</span>
+              <span aria-hidden="true" style={{ fontSize: '1.25rem' }}>📝</span>
               Nueva solicitud
             </button>
           )}
@@ -1174,125 +1188,329 @@ function DirectivoPedidos() {
         </div>
       </div>
 
-      {/* Pestañas */}
-      <div style={{ display: 'flex', gap: 4, marginTop: 20, borderBottom: '2px solid var(--border)' }}>
+      {/* Pestañas Accesibles con Alto Contraste (Estilo Carpeta) */}
+      <div style={{
+        display: 'flex',
+        gap: 10,
+        marginTop: 20,
+        padding: '6px',
+        background: '#f8fafc',
+        borderRadius: 14,
+        border: '1.5px solid #e2e8f0',
+        flexWrap: 'wrap'
+      }}>
         {[
-          { key: 'anual', label: 'Solicitud Anual' },
-          { key: 'refuerzo', label: 'Solicitud de Refuerzos' },
-          { key: 'retiro', label: 'Solicitud de Retiro' }
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            style={{
-              background: tab === key ? 'var(--primary, #2563eb)' : 'transparent',
-              color: tab === key ? '#fff' : 'var(--muted)',
-              border: 'none',
-              borderRadius: '6px 6px 0 0',
-              padding: '10px 22px',
-              fontWeight: tab === key ? 700 : 400,
-              cursor: 'pointer',
-              fontSize: '0.97rem',
-              transition: 'background 0.15s'
-            }}
-          >
-            {label}{badgeTab(key)}
-          </button>
-        ))}
-      </div>
+          { key: 'anual', icon: '📋', label: '1. Pedido Anual', desc: 'Kit oficial del año' },
+          { key: 'retiro', icon: '📦', label: '2. Retirar Mercadería', desc: 'Gestionar retiro en depósito' },
+          { key: 'refuerzo', icon: '➕', label: '3. Pedir Refuerzo', desc: 'Insumos extra por urgencia' }
+        ].map(({ key, icon, label, desc }) => {
+          const isActive = tab === key
+          const isRetiroListo = key === 'retiro' && tieneRetiroDisponible
+          const countPendientes = pedidos.filter(p => (p.tipo || 'anual') === key && getEstadoVisiblePedido(p) === 'pendiente').length
 
-      {/* Descripción contextual */}
-      <p style={{ marginTop: 12, marginBottom: 4, color: 'var(--muted)', fontSize: '0.9rem' }}>
-        {tab === 'anual'
-          ? 'Pedido anual planificado según el kit asignado a la escuela.'
-          : 'Pedidos extraordinarios para reforzar el stock cuando el pedido anual no fue suficiente.'}
-      </p>
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              style={{
+                flex: '1 1 210px',
+                minHeight: 56,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 18px',
+                borderRadius: 10,
+                border: isActive ? '2px solid #1d4ed8' : '1px solid #cbd5e1',
+                background: isActive ? '#1d4ed8' : '#ffffff',
+                color: isActive ? '#ffffff' : '#1e293b',
+                fontWeight: isActive ? 800 : 600,
+                fontSize: '1.02rem',
+                cursor: 'pointer',
+                boxShadow: isActive ? '0 4px 14px -2px rgba(29, 78, 216, 0.35)' : '0 1px 2px rgba(0,0,0,0.03)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left' }}>
+                <span style={{ fontSize: '1.4rem' }}>{icon}</span>
+                <div>
+                  <div style={{ lineHeight: 1.2 }}>{label}</div>
+                  <div style={{ fontSize: '0.8rem', color: isActive ? '#bfdbfe' : '#64748b', fontWeight: 500, marginTop: 2 }}>
+                    {desc}
+                  </div>
+                </div>
+              </div>
+              <div>
+                {isRetiroListo && !isActive && (
+                  <span style={{ background: '#16a34a', color: '#ffffff', fontSize: '0.75rem', fontWeight: 800, padding: '4px 9px', borderRadius: 99, boxShadow: '0 2px 4px rgba(22, 163, 74, 0.3)' }}>
+                    ● Listo para retirar
+                  </span>
+                )}
+                {countPendientes > 0 && !isRetiroListo && (
+                  <span style={{ background: isActive ? '#f97316' : '#ef4444', color: '#fff', fontSize: '0.78rem', fontWeight: 800, padding: '3px 8px', borderRadius: 99 }}>
+                    {countPendientes}
+                  </span>
+                )}
+              </div>
+            </button>
+          )
+        })}
+      </div>
 
       {tab === 'retiro' && (
         <SolicitudesRetiro embedded />
       )}
 
-      {tab === 'anual' && (
-        <div className="msg show" style={{ background: '#ecfeff', color: '#155e75', border: '1px solid #67e8f9', marginTop: 8 }}>
-          Pedido anual por kit: al seleccionar un kit se enviará el conjunto completo de productos configurados.
-        </div>
-      )}
-
       {tab !== 'retiro' && pedidoActivoBloqueante && (
-        <div className="msg show msg-error">
+        <div className="msg show msg-error" style={{ fontSize: '1rem', padding: '14px 18px', marginTop: 14 }}>
           {textoBloqueoSolicitud}
         </div>
       )}
 
       {!cargandoCupos && !tieneProductosKit && (
-        <div className="msg show msg-error">
+        <div className="msg show msg-error" style={{ fontSize: '1rem', padding: '14px 18px', marginTop: 14 }}>
           Tu escuela no tiene kits asignados. Contactá al director de área o al administrador para configurarlos.
         </div>
       )}
 
       {msg.text && (
-        <div className={`msg show ${msg.type === 'success' ? 'msg-success' : 'msg-error'}`}>{msg.text}</div>
+        <div className={`msg show ${msg.type === 'success' ? 'msg-success' : 'msg-error'}`} style={{ fontSize: '1rem', padding: '14px 18px', marginTop: 14 }}>
+          {msg.text}
+        </div>
       )}
 
-      {/* Sección de Pedidos Listos para Retirar */}
-      {tab === 'anual' && pedidos.some(p => p.estado === 'aprobado' && (p.tipo || 'anual') === 'anual') && (
-        <div className="fade-in" style={{ marginTop: 24, padding: '24px 30px', background: 'var(--surface-gradient)', border: '1px solid #dcfce7', borderRadius: 16, boxShadow: 'var(--shadow-premium)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <h3 style={{ marginTop: 0, color: '#166534', display: 'flex', alignItems: 'center', gap: 10, fontSize: '1.4rem' }}>
-                <span style={{ fontSize: '1.8rem' }}>🎉</span> ¡Solicitud Anual Aprobada!
+      {/* Hero Card del Pedido Anual Vigente */}
+      {tab === 'anual' && (
+        <div>
+          {!pedidoAnualVigente ? (
+            <div style={{
+              marginTop: 20,
+              padding: '32px 28px',
+              background: '#ffffff',
+              border: '2px dashed #93c5fd',
+              borderRadius: 16,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: 10 }}>📦</div>
+              <h3 style={{ fontSize: '1.35rem', color: '#1e3a8a', margin: '0 0 8px 0', fontWeight: 800 }}>
+                Aún no enviaste la Solicitud Anual para tu escuela
               </h3>
-              <p style={{ color: '#166534', fontWeight: 500, margin: 0, opacity: 0.8 }}>
-                Tu pedido ha sido aprobado por el Director de Área y ya podés retirar tus insumos.
+              <p style={{ color: '#475569', fontSize: '1rem', margin: '0 auto 20px', maxWidth: 600, lineHeight: 1.5 }}>
+                Tu escuela tiene asignado el <strong>{kitAsignado?.nombre || 'Kit Escolar Oficial'}</strong> con la provisión de insumos para todo el ciclo lectivo.
               </p>
+              {puedeCrearAnual && (
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  style={{
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: 12,
+                    padding: '14px 28px',
+                    fontSize: '1.05rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                  }}
+                >
+                  <span>📝</span> Iniciar Solicitud Anual ➔
+                </button>
+              )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setTab('retiro')}
-                style={{
-                  background: '#166534',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: 10,
-                  padding: '10px 18px',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
+          ) : (
+            <div className="fade-in" style={{
+              marginTop: 20,
+              padding: '26px 30px',
+              background: pedidoAnualVigente.estado === 'aprobado' ? '#f0fdf4' : (pedidoAnualVigente.estado === 'pendiente_director' ? '#eff6ff' : '#ffffff'),
+              border: `2px solid ${pedidoAnualVigente.estado === 'aprobado' ? '#86efac' : (pedidoAnualVigente.estado === 'pendiente_director' ? '#bfdbfe' : '#fed7aa')}`,
+              borderRadius: 18,
+              boxShadow: '0 6px 16px rgba(0,0,0,0.04)'
+            }}>
+              {/* Header de la Tarjeta */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, borderBottom: '1px solid rgba(0,0,0,0.08)', paddingBottom: 18 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{
+                      background: pedidoAnualVigente.estado === 'aprobado' ? '#166534' : (pedidoAnualVigente.estado === 'pendiente_director' ? '#1e40af' : '#c2410c'),
+                      color: '#ffffff',
+                      padding: '5px 12px',
+                      borderRadius: 8,
+                      fontSize: '0.85rem',
+                      fontWeight: 800,
+                      letterSpacing: '0.5px'
+                    }}>
+                      SOLICITUD ANUAL #{pedidoAnualVigente.id}
+                    </span>
+                    <span style={{ fontSize: '0.95rem', color: '#64748b', fontWeight: 600 }}>
+                      Fecha: {new Date(pedidoAnualVigente.created_at).toLocaleDateString('es-AR')}
+                    </span>
+                  </div>
+                  <h3 style={{ margin: '10px 0 4px 0', fontSize: '1.45rem', color: '#0f172a', fontWeight: 800 }}>
+                    {pedidoAnualVigente.kit_nombre || 'Kit Anual Asignado'}
+                  </h3>
+                  <p style={{ margin: 0, color: '#475569', fontSize: '1rem', fontWeight: 500 }}>
+                    {pedidoAnualVigente.estado === 'aprobado' && 'Tu solicitud completó todas las firmas oficiales. Ya podés retirar tus insumos en el depósito central.'}
+                    {pedidoAnualVigente.estado === 'pendiente_director' && 'El Supervisor Zonal ya aprobó la solicitud. Actualmente se encuentra a la firma del Director de Área.'}
+                    {pedidoAnualVigente.estado === 'pendiente' && 'Tu solicitud está en revisión por el supervisor zonal asignado a tu escuela.'}
+                  </p>
+                </div>
+
+                <div>
+                  {pedidoAnualVigente.estado === 'aprobado' ? (
+                    <div style={{ background: '#dcfce7', border: '1.5px solid #86efac', padding: '10px 18px', borderRadius: 12, textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado Oficial</div>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#166534' }}>✓ HABILITADA PARA RETIRO</div>
+                    </div>
+                  ) : pedidoAnualVigente.estado === 'pendiente_director' ? (
+                    <div style={{ background: '#dbeafe', border: '1.5px solid #93c5fd', padding: '10px 18px', borderRadius: 12, textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado Oficial</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e40af' }}>⏳ EN FIRMA DIRECTOR DE ÁREA</div>
+                    </div>
+                  ) : (
+                    <div style={{ background: '#ffedd5', border: '1.5px solid #fdba74', padding: '10px 18px', borderRadius: 12, textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado Oficial</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#c2410c' }}>⏳ EN REVISIÓN SUPERVISOR</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Stepper Amplio y Accesible */}
+              <div style={{ margin: '22px 0 16px 0' }}>
+                <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+                  Circuito de Aprobación y Entrega:
+                </div>
+                <div className="approval-stepper-hero">
+                  {[
+                    { id: 'enviado', label: '1. Solicitud Enviada', sub: 'Por la escuela', status: 'completed' },
+                    {
+                      id: 'supervisor',
+                      label: '2. Firma Supervisor',
+                      sub: pedidoAnualVigente.estado === 'pendiente' ? 'En revisión actual' : 'Aprobado ✓',
+                      status: pedidoAnualVigente.estado === 'pendiente' ? 'active' : 'completed'
+                    },
+                    {
+                      id: 'director',
+                      label: '3. Director de Área',
+                      sub: pedidoAnualVigente.estado === 'aprobado' ? 'Aprobado ✓' : (pedidoAnualVigente.estado === 'pendiente_director' ? 'En revisión actual' : 'Próximo paso'),
+                      status: pedidoAnualVigente.estado === 'aprobado' ? 'completed' : (pedidoAnualVigente.estado === 'pendiente_director' ? 'active' : 'pending')
+                    },
+                    {
+                      id: 'retiro',
+                      label: '4. Habilitado Retiro',
+                      sub: pedidoAnualVigente.estado === 'aprobado' ? '¡Listo para retirar!' : 'Paso final',
+                      status: pedidoAnualVigente.estado === 'aprobado' ? 'completed' : 'pending'
+                    }
+                  ].map((st) => (
+                    <div key={st.id} className={`step-hero ${st.status}`}>
+                      <div className="step-hero-circle">
+                        {st.status === 'completed' ? '✓' : st.status === 'active' ? '⏳' : '•'}
+                      </div>
+                      <div className="step-hero-label">{st.label}</div>
+                      <div className="step-hero-sublabel">{st.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Call to Action Box si está Aprobado */}
+              {pedidoAnualVigente.estado === 'aprobado' && (
+                <div style={{
+                  background: '#ffffff',
+                  border: '2px solid #22c55e',
+                  borderRadius: 14,
+                  padding: '20px 24px',
+                  margin: '22px 0',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  boxShadow: '0 4px 6px -1px rgba(22, 101, 52, 0.25)',
-                  transition: 'all 0.15s'
-                }}
-              >
-                <span>📦</span> Solicitar Retiro de Mercadería ➔
-              </button>
-              <div style={{ background: '#dcfce7', padding: '10px 18px', borderRadius: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Estado</div>
-                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#166534' }}>HABILITADA PARA RETIRO</div>
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 16,
+                  boxShadow: '0 4px 14px rgba(34, 197, 94, 0.18)'
+                }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: '1.7rem' }}>📦</span>
+                      <h4 style={{ margin: 0, fontSize: '1.25rem', color: '#15803d', fontWeight: 800 }}>
+                        ¡Tus insumos están disponibles para retiro!
+                      </h4>
+                    </div>
+                    <p style={{ margin: '6px 0 0 0', color: '#334155', fontSize: '0.98rem' }}>
+                      Coordiná la fecha de retiro o registrá a la persona autorizada con su DNI haciendo clic aquí:
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setTab('retiro')}
+                    style={{
+                      background: '#15803d',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 12,
+                      padding: '14px 24px',
+                      fontSize: '1.08rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      boxShadow: '0 4px 10px rgba(21, 128, 61, 0.3)',
+                      transition: 'transform 0.15s ease'
+                    }}
+                  >
+                    <span>📦</span> Solicitar Retiro de Mercadería ➔
+                  </button>
+                </div>
+              )}
+
+              {/* Insumos asignados */}
+              <div style={{ marginTop: 22 }}>
+                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+                  Insumos asignados a tu escuela en este pedido:
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+                  {(pedidoAnualVigente.items || []).map((it, idx) => (
+                    <div key={idx} style={{
+                      background: '#ffffff',
+                      padding: '16px 18px',
+                      borderRadius: 12,
+                      border: '1.5px solid #e2e8f0',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1.02rem', lineHeight: 1.3 }}>
+                          {it.producto_nombre}
+                        </div>
+                        <div style={{ color: '#64748b', fontSize: '0.85rem', marginTop: 3 }}>
+                          {it.unidad_medida || 'unidades'}
+                        </div>
+                      </div>
+                      <div style={{
+                        background: '#dcfce7',
+                        color: '#166534',
+                        fontSize: '1.35rem',
+                        fontWeight: 900,
+                        padding: '6px 14px',
+                        borderRadius: 10,
+                        flexShrink: 0
+                      }}>
+                        {it.cantidad}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginTop: 20 }}>
-            {pedidos
-              .filter(p => p.estado === 'aprobado' && (p.tipo || 'anual') === 'anual')
-              .flatMap(p => p.items || [])
-              .map((item, idx) => (
-                <div key={idx} style={{ background: '#fff', padding: '16px 20px', borderRadius: 12, border: '1px solid #f0fdf4', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'transform 0.2s' }} className="stat-card-clickable">
-                  <div>
-                    <div style={{ fontWeight: 700, color: '#111827', fontSize: '1rem' }}>{item.producto_nombre}</div>
-                    <div style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>{item.unidad_medida || 'unidades'}</div>
-                  </div>
-                  <div style={{ background: '#f0fdf4', color: '#166534', fontSize: '1.4rem', fontWeight: 800, padding: '4px 12px', borderRadius: 8 }}>
-                    {item.cantidad}
-                  </div>
-                </div>
-              ))}
-          </div>
-          {/* El comprobante de retiro se imprime desde la vista de Solicitudes de Retiro una vez que se confirma la entrega. */}
+          )}
         </div>
       )}
 
@@ -1515,74 +1733,109 @@ function DirectivoPedidos() {
       </Modal>
 
       {tab !== 'retiro' && (
-      <div ref={printRef} style={{ marginTop: 16 }}>
+      <div ref={printRef} style={{ marginTop: 28 }}>
+        <h4 style={{ margin: '0 0 14px 0', fontSize: '1.2rem', color: '#0f172a', fontWeight: 800 }}>
+          {tab === 'anual' ? '📋 Historial de Solicitudes Anuales' : '📋 Solicitudes de Refuerzo Registradas'}
+        </h4>
         {pedidosFiltrados.length === 0 ? (
-          <div className="sv-empty-state">
+          <div className="sv-empty-state" style={{ padding: '32px 20px', fontSize: '1.05rem' }}>
             No hay {tab === 'anual' ? 'solicitudes anuales' : 'solicitudes de refuerzos'} registradas.
           </div>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Estado</th>
-                <th>Notas</th>
-                <th>Fecha</th>
-                <th>Progreso</th>
-                <th>Detalle</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pedidosFiltrados.map(pedido => {
-                const estadoVisible = getEstadoVisiblePedido(pedido)
-                return (
-                  <tr key={pedido.id}>
-                    <td>#{pedido.id}</td>
-                    <td>{pedido.producto_nombre || '-'}</td>
-                    <td>{pedido.cantidad}</td>
-                    <td>
-                      <span className={`badge-premium badge-${estadoVisible}`}>
-                        {formatEstadoPedido(pedido)}
-                      </span>
-                    </td>
-                    <td>
-                      {pedido.notas || '-'}
-                      {pedido.motivo_supervisor && (
-                        <div style={{ marginTop: 6, fontSize: '0.85rem', color: estadoVisible === 'aclaracion' ? '#1d4ed8' : '#991b1b' }}>
-                          <strong>{estadoVisible === 'aclaracion' ? 'Replica del supervisor:' : 'Respuesta del supervisor:'}</strong> {pedido.motivo_supervisor}
-                        </div>
-                      )}
-                      {(pedido.tipo || 'anual') === 'refuerzo' && pedido.estado === 'aprobado' && (
-                        <div style={{ marginTop: 6, fontSize: '0.85rem', color: pedido.requiere_licitacion ? '#92400e' : '#166534' }}>
-                          <strong>Abastecimiento:</strong> {pedido.requiere_licitacion
-                            ? 'Derivado a Licitaciones Refuerzos por falta de stock.'
-                            : 'Se cubre con stock disponible.'}
-                        </div>
-                      )}
-                    </td>
-                    <td>{new Date(pedido.created_at).toLocaleDateString('es-AR')}</td>
-                    <td style={{ minWidth: 200 }}><ApprovalStepper pedido={pedido} /></td>
-                    <td>{pedido.resumen_items || '-'}</td>
-                    <td>
-                      {pedido.estado === 'pendiente' && (
-                        <button
-                          type="button"
-                          className="sv-btn-rechazar"
-                          style={{ margin: 0 }}
-                          onClick={() => handleCancelar(pedido)}
-                        >
-                          Cancelar
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div style={{ overflowX: 'auto', background: '#ffffff', borderRadius: 14, border: '1.5px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ padding: '14px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#334155', textAlign: 'left' }}># Solicitud</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#334155', textAlign: 'left' }}>Kit / Insumo</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#334155', textAlign: 'center' }}>Cantidad</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#334155', textAlign: 'left' }}>Estado Oficial</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#334155', textAlign: 'left' }}>Fecha</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#334155', textAlign: 'center', minWidth: 240 }}>Seguimiento</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#334155', textAlign: 'left' }}>Insumos Incluidos</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.9rem', fontWeight: 800, color: '#334155', textAlign: 'center' }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pedidosFiltrados.map(pedido => {
+                  const estadoVisible = getEstadoVisiblePedido(pedido)
+                  return (
+                    <tr key={pedido.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '14px 16px', fontWeight: 800, color: '#1e293b', fontSize: '0.98rem' }}>
+                        #{pedido.id}
+                      </td>
+                      <td style={{ padding: '14px 16px', fontWeight: 700, color: '#0f172a', fontSize: '0.98rem' }}>
+                        {pedido.producto_nombre || '-'}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, color: '#0f172a', fontSize: '1.05rem' }}>
+                        {pedido.cantidad}
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span className={`badge-premium badge-${estadoVisible}`}>
+                          {formatEstadoPedido(pedido)}
+                        </span>
+                        {pedido.motivo_supervisor && (
+                          <div style={{ marginTop: 6, fontSize: '0.85rem', color: estadoVisible === 'aclaracion' ? '#1d4ed8' : '#991b1b', fontWeight: 600 }}>
+                            {estadoVisible === 'aclaracion' ? 'Réplica:' : 'Motivo:'} {pedido.motivo_supervisor}
+                          </div>
+                        )}
+                        {(pedido.tipo || 'anual') === 'refuerzo' && pedido.estado === 'aprobado' && (
+                          <div style={{ marginTop: 6, fontSize: '0.82rem', color: pedido.requiere_licitacion ? '#92400e' : '#166534', fontWeight: 600 }}>
+                            {pedido.requiere_licitacion ? '● Derivado a Licitación' : '● Cubierto con stock'}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 16px', color: '#475569', fontSize: '0.95rem', fontWeight: 600 }}>
+                        {new Date(pedido.created_at).toLocaleDateString('es-AR')}
+                      </td>
+                      <td style={{ padding: '10px 16px', minWidth: 240 }}>
+                        <ApprovalStepper pedido={pedido} />
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        {Array.isArray(pedido.items) && pedido.items.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxWidth: 380 }}>
+                            {pedido.items.map((it, idx) => (
+                              <span key={idx} style={{
+                                background: '#f8fafc',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: 8,
+                                padding: '3px 9px',
+                                fontSize: '0.84rem',
+                                fontWeight: 600,
+                                color: '#1e293b',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}>
+                                <span>{it.producto_nombre}</span>
+                                <strong style={{ color: '#0f172a', background: '#e2e8f0', padding: '1px 5px', borderRadius: 4 }}>x{it.cantidad}</strong>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ color: '#64748b', fontSize: '0.9rem' }}>{pedido.resumen_items || '-'}</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        {pedido.estado === 'pendiente' ? (
+                          <button
+                            type="button"
+                            className="sv-btn-rechazar"
+                            style={{ margin: 0, padding: '8px 14px', fontSize: '0.88rem', fontWeight: 700 }}
+                            onClick={() => handleCancelar(pedido)}
+                          >
+                            Cancelar
+                          </button>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>-</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
       )}
