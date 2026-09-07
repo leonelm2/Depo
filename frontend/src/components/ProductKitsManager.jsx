@@ -427,7 +427,12 @@ export default function ProductKitsManager() {
                           required
                         >
                           <option value="">Seleccionar producto...</option>
-                          {productosOrdenados.map((producto) => (
+                          {productosOrdenados
+                            .filter(p => {
+                              const selectedProductIds = form.items.map(i => String(i.producto_id)).filter(Boolean);
+                              return !selectedProductIds.includes(String(p.id)) || String(p.id) === String(item.producto_id);
+                            })
+                            .map((producto) => (
                             <option key={producto.id} value={producto.id}>
                               {producto.nombre}{producto.marca ? ` - ${producto.marca}` : ''} ({producto.unidad_medida || 'unidad'})
                             </option>
