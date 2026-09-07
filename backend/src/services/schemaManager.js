@@ -144,13 +144,20 @@ async function initDatabaseSchema() {
 
     // 6. Institucion Alterations
     try {
-      await client.query(`
-        ALTER TABLE institucion ADD COLUMN IF NOT EXISTS tipo_escuela VARCHAR(40);
-        ALTER TABLE institucion ADD COLUMN IF NOT EXISTS matriculados INT DEFAULT 0;
-        ALTER TABLE institucion ADD COLUMN IF NOT EXISTS kit_id INT REFERENCES producto_kit(id);
-        ALTER TABLE institucion ADD COLUMN IF NOT EXISTS kit_cantidad INT;
-        ALTER TABLE institucion ADD COLUMN IF NOT EXISTS direccion_area VARCHAR(100);
-      `);
+      const alters = [
+        `ALTER TABLE institucion ADD COLUMN IF NOT EXISTS tipo_escuela VARCHAR(40);`,
+        `ALTER TABLE institucion ADD COLUMN IF NOT EXISTS matriculados INT DEFAULT 0;`,
+        `ALTER TABLE institucion ADD COLUMN IF NOT EXISTS kit_id INT REFERENCES producto_kit(id);`,
+        `ALTER TABLE institucion ADD COLUMN IF NOT EXISTS kit_cantidad INT;`,
+        `ALTER TABLE institucion ADD COLUMN IF NOT EXISTS direccion_area VARCHAR(100);`
+      ];
+      for (const query of alters) {
+        try {
+          await client.query(query);
+        } catch (err) {
+          console.warn("[schemaManager] Warning on individual alter:", err.message);
+        }
+      }
     } catch (err) {
       console.warn("[schemaManager] Warning altering table institucion:", err.message);
     }
