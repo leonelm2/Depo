@@ -36,6 +36,9 @@ export default function Instituciones({ supervisorMode = false }) {
   const [pedidosByInstitucion, setPedidosByInstitucion] = useState({})
   const [loadingPedidosId, setLoadingPedidosId] = useState(null)
   const [pedidosError, setPedidosError] = useState('')
+  const [kits, setKits] = useState([])
+  const [assignKitModal, setAssignKitModal] = useState({ open: false, instId: null, kit_id: '', kit_cantidad: '', instNombre: '' })
+  const [savingKit, setSavingKit] = useState(false)
 
   useEffect(() => {
     const fetchInstituciones = async () => {
@@ -67,7 +70,15 @@ export default function Instituciones({ supervisorMode = false }) {
       }
     }
     fetchInstituciones()
-  }, [supervisorMode])
+
+    if (user?.role === 'master') {
+      const token = localStorage.getItem('token')
+      apiFetch('/api/pedidos/kits', { token })
+        .then(r => r.json())
+        .then(data => setKits(data.kits || []))
+        .catch(err => console.error('Error loading kits:', err))
+    }
+  }, [supervisorMode, user?.role])
 
   const departamentos = Array.from(new Set(
     instituciones
@@ -187,6 +198,37 @@ export default function Instituciones({ supervisorMode = false }) {
       setPedidosError('No se pudo cargar el historial de egresos')
     } finally {
       setLoadingPedidosId(null)
+    }
+  }
+
+  const handleSaveAssignKit = async (e) => {
+    e.preventDefault()
+    setSavingKit(true)
+    try {
+      const token = localStorage.getItem('token')
+      // Se utiliza el endpoint del supervisor para asignar el kit, el master tiene permisos.
+      const res = await apiFetch(`/api/supervisor/instituciones/${assignKitModal.instId}/tipo-kit`, {
+        token,
+        method: 'PATCH',
+        body: JSON.stringify({ 
+          kit_id: assignKitModal.kit_id ? Number(assignKitModal.kit_id) : 0, 
+          kit_cantidad: assignKitModal.kit_cantidad ? Number(assignKitModal.kit_cantidad) : 0 
+        })
+      })
+      if (!res.ok) throw new Error('Error al asignar el kit')
+      const data = await res.json()
+
+      // Actualizar la lista local
+      setInstituciones(prev => prev.map(inst => 
+        inst.id === assignKitModal.instId 
+          ? { ...inst, kit_id: data.kit_id, kit_cantidad: assignKitModal.kit_cantidad, kit_nombre: data.kit_nombre } 
+          : inst
+      ))
+      setAssignKitModal({ open: false, instId: null, kit_id: '', kit_cantidad: '', instNombre: '' })
+    } catch (err) {
+      alert('Hubo un error al intentar asignar el kit. Revisa los permisos o intenta más tarde.')
+    } finally {
+      setSavingKit(false)
     }
   }
 
@@ -320,6 +362,7 @@ export default function Instituciones({ supervisorMode = false }) {
                 <th style={{ padding: 10 }}>CUI</th>
                 <th style={{ padding: 10 }}>Nivel</th>
                 <th style={{ padding: 10 }}>Departamento</th>
+                {user?.role === 'master' && <th style={{ padding: 10 }}>Kit Asignado</th>}
               </tr>
             </thead>
             <tbody>
@@ -334,6 +377,28 @@ export default function Instituciones({ supervisorMode = false }) {
                     </span>
                   </td>
                   <td style={{ padding: 10 }}>{inst.departamento || '-'}</td>
+                  {user?.role === 'master' && (
+                    <td style={{ padding: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {inst.kit_nombre ? (
+                          <div style={{ fontSize: '0.85rem' }}>
+                            <span style={{ fontWeight: 600 }}>{inst.kit_nombre}</span>
+                            <br />
+                            <span style={{ color: 'var(--muted)' }}>Cant: {inst.kit_cantidad || 0}</span>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Sin kit</span>
+                        )}
+                        <button 
+                          onClick={() => setAssignKitModal({ open: true, instId: inst.id, kit_id: inst.kit_id || '', kit_cantidad: inst.kit_cantidad || '', instNombre: inst.nombre })}
+                          style={{ margin: 0, padding: '4px 8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--dark)' }}
+                          title="Asignar Kit"
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
               {filteredInstituciones.length === 0 && (
@@ -484,6 +549,75 @@ export default function Instituciones({ supervisorMode = false }) {
       )}
 
       <p>Mostrando {Object.keys(groupedByEdificio).length} edificio(s) en mapa con {filteredInstituciones.length} instituciones</p>
+
+      {/* Modal para Asignar Kit (Master) */}
+      {assignKitModal.open && (
+        <div
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(15, 23, 42, 0.6)', 
+            backdropFilter: 'blur(8px)',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 1000, 
+            padding: 16 
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setAssignKitModal({ ...assignKitModal, open: false }) }}
+        >
+          <div style={{ 
+            background: '#ffffff', 
+            padding: 32, 
+            borderRadius: 16, 
+            width: '100%',
+            maxWidth: '500px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, color: '#1e3a8a' }}>Asignar Kit</h3>
+            <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: 20 }}>
+              Escuela: <strong>{assignKitModal.instNombre}</strong>
+            </p>
+            <form onSubmit={handleSaveAssignKit}>
+              <div style={{ marginBottom: 16 }}>
+                <label>Kit Asignado</label>
+                <select
+                  value={assignKitModal.kit_id}
+                  onChange={(e) => setAssignKitModal({ ...assignKitModal, kit_id: e.target.value })}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Ninguno</option>
+                  {kits.map(k => <option key={k.id} value={k.id}>{k.nombre}</option>)}
+                </select>
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <label>Cantidad de Kits</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={assignKitModal.kit_cantidad}
+                  onChange={(e) => setAssignKitModal({ ...assignKitModal, kit_cantidad: e.target.value })}
+                  style={{ width: '100%' }}
+                  placeholder="0"
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                <button 
+                  type="button" 
+                  className="secondary" 
+                  onClick={() => setAssignKitModal({ ...assignKitModal, open: false })}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" disabled={savingKit}>
+                  {savingKit ? 'Guardando...' : 'Guardar asignación'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

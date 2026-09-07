@@ -122,6 +122,9 @@ async function listInstituciones() {
       NULLIF(TRIM(d.departamento), '') AS departamento,
       d.latitud,
       d.longitud,
+      i.kit_id,
+      i.kit_cantidad,
+      pk.nombre AS kit_nombre,
       CASE WHEN EXISTS (
         SELECT 1 FROM orden_dispensacion od WHERE od.id_institucion = i.id_institucion
       ) THEN 'retiraron' ELSE 'no_retiraron' END AS status,
@@ -131,6 +134,7 @@ async function listInstituciones() {
     FROM institucion i
     LEFT JOIN edificio e ON i.id_edificio = e.id_edificio
     LEFT JOIN direccion d ON e.id_direccion = d.id_direccion
+    LEFT JOIN producto_kit pk ON pk.id = i.kit_id
     ORDER BY i.nombre ASC
   `);
   return { instituciones };
