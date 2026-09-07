@@ -22,9 +22,12 @@ async function getDirectivoContext(userId) {
   }
 
   const institucion = await get(
-    "SELECT id_institucion, nombre, cue FROM institucion WHERE id_institucion = $1",
+    "SELECT id_institucion, nombre, cue, nivel_educativo FROM institucion WHERE id_institucion = $1",
     [usuario.id_institucion]
   );
+  if (institucion) {
+    institucion.nivel_educativo = institucion.nivel_educativo || usuario.nivel_educativo || null;
+  }
 
   return { usuario, institucion };
 }

@@ -30,7 +30,7 @@ function StockBar({ consumido, total }) {
 }
 
 export default function DepositoInstitucion() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [tab, setTab] = useState('stock')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -138,6 +138,9 @@ export default function DepositoInstitucion() {
     </div>
   )
 
+  const nivelEducativoStr = institucion?.nivel_educativo || user?.nivel_educativo || user?.institucion?.nivel_educativo
+  const nivelBadge = nivelEducativoStr ? (nivelEducativoStr.toLowerCase().startsWith('nivel') ? nivelEducativoStr : `Nivel ${nivelEducativoStr}`) : ''
+
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       {/* Encabezado */}
@@ -146,7 +149,8 @@ export default function DepositoInstitucion() {
           🏫 Mi Depósito
         </h2>
         <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>
-          {institucion?.nombre || 'Tu institución'} — Stock de mercadería recibida y consumos registrados
+          {institucion?.nombre || 'Tu institución'}
+          {nivelBadge ? ` (${nivelBadge})` : ''} — Stock de mercadería recibida y consumos registrados
         </p>
       </div>
 

@@ -175,13 +175,15 @@ async function getMe(userId) {
   }
 
   let institucion = null;
-  if (String(user.role || "").toLowerCase() === "directivo" && user.id_institucion) {
+  if (user.id_institucion) {
     const row = await get(
-      "SELECT id_institucion as id, nombre, cue FROM institucion WHERE id_institucion = ?",
+      "SELECT id_institucion as id, nombre, cue, nivel_educativo FROM institucion WHERE id_institucion = ?",
       [user.id_institucion]
     );
     if (row) institucion = row;
   }
+
+  const nivelEducativoFinal = user.nivel_educativo || institucion?.nivel_educativo || null;
 
   return {
     id: user.id,
@@ -191,8 +193,11 @@ async function getMe(userId) {
     dni: user.dni,
     role: user.role,
     telefono: user.telefono,
-    institucion,
-    nivel_educativo: user.nivel_educativo || null,
+    institucion: institucion ? {
+      ...institucion,
+      nivel_educativo: institucion.nivel_educativo || nivelEducativoFinal
+    } : null,
+    nivel_educativo: nivelEducativoFinal,
     director_area_id: user.director_area_id || null
   };
 }

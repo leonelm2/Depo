@@ -349,6 +349,12 @@ export default function Dashboard() {
                   <span>
                     {ROLE_LABELS[user?.role] || user?.role || 'Sin rol'}
                     {user?.institucion?.nombre ? ` - ${user.institucion.nombre}` : ''}
+                    {(() => {
+                      const n = user?.nivel_educativo || user?.institucion?.nivel_educativo || user?.nivel
+                      if (!n) return ''
+                      const nClean = n.toLowerCase().startsWith('nivel') ? n : `Nivel ${n}`
+                      return ` (${nClean})`
+                    })()}
                   </span>
                 </div>
               </div>

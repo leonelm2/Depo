@@ -305,12 +305,16 @@ button:not(.secondary):hover {
 
 /* Interactive Card & Dashboard elements */
 .interactive-card {
-  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease-smooth);
+  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease-smooth), border-color 0.2s ease, outline 0.2s ease, background-color 0.2s ease;
 }
 
 .interactive-card:hover {
   transform: translateY(-3px);
-  box-shadow: var(--shadow-md);
+  background-color: #ffffff !important;
+  border-color: var(--dark, #0f172a) !important;
+  outline: 2px solid var(--dark, #0f172a) !important;
+  outline-offset: -2px;
+  box-shadow: 0 8px 20px -6px rgba(15, 23, 42, 0.15) !important;
 }
 
 /* Quick Action Toolbar Pill */

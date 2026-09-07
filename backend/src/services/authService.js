@@ -141,17 +141,21 @@ class AuthService {
     }
 
     let institucionInfo = null;
-    if (user.role === 'directivo' && user.id_institucion) {
+    if (user.id_institucion) {
       const institucion = await get(
-        'SELECT id_institucion, nombre, cue FROM institucion WHERE id_institucion = ?',
+        'SELECT id_institucion, nombre, cue, nivel_educativo FROM institucion WHERE id_institucion = ?',
         [user.id_institucion]
       );
       if (institucion) {
         institucionInfo = {
           id: institucion.id_institucion,
           nombre: institucion.nombre,
-          cue: institucion.cue
+          cue: institucion.cue,
+          nivel_educativo: institucion.nivel_educativo || user.nivel_educativo || null
         };
+        if (!user.nivel_educativo) {
+          user.nivel_educativo = institucionInfo.nivel_educativo;
+        }
       }
     }
 

@@ -49,6 +49,9 @@ export default function MiCuenta() {
           apellido: nextUser.apellido || '',
           email: nextUser.email || '',
           telefono: nextUser.telefono || '',
+          nivel_educativo: nextUser.nivel_educativo || nextUser.institucion?.nivel_educativo || '',
+          institucion_nombre: nextUser.institucion?.nombre || '',
+          institucion_cue: nextUser.institucion?.cue || '',
         })
       } catch (err) {
         if (!mounted) return
@@ -74,7 +77,12 @@ export default function MiCuenta() {
       const res = await apiFetch('/api/users/me', {
         token,
         method: 'PATCH',
-        body: JSON.stringify(profile),
+        body: JSON.stringify({
+          nombre: profile.nombre,
+          apellido: profile.apellido,
+          email: profile.email,
+          telefono: profile.telefono,
+        }),
       })
 
       if (res.status === 401) {
@@ -155,6 +163,11 @@ export default function MiCuenta() {
     return <p className="dashboard-muted-copy">Cargando mi cuenta...</p>
   }
 
+  const nivelRaw = profile.nivel_educativo || user?.nivel_educativo || user?.institucion?.nivel_educativo
+  const nivelVal = nivelRaw ? (nivelRaw.toLowerCase().startsWith('nivel') ? nivelRaw : `Nivel ${nivelRaw}`) : 'Sin nivel asignado'
+  const instNombre = profile.institucion_nombre || user?.institucion?.nombre
+  const instCue = profile.institucion_cue || user?.institucion?.cue
+
   return (
     <div className="dashboard-stack">
       <div className="dashboard-page-header">
@@ -188,6 +201,26 @@ export default function MiCuenta() {
               <label>Telefono</label>
               <input value={profile.telefono} onChange={(event) => setProfile((prev) => ({ ...prev, telefono: event.target.value }))} />
             </div>
+            <div>
+              <label>Nivel educativo</label>
+              <input
+                type="text"
+                readOnly
+                value={nivelVal}
+                style={{ background: '#f8fafc', color: '#334155', fontWeight: 600, cursor: 'not-allowed' }}
+              />
+            </div>
+            {instNombre && (
+              <div>
+                <label>Institución escolar</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={`${instNombre}${instCue ? ` (CUE: ${instCue})` : ''}`}
+                  style={{ background: '#f8fafc', color: '#334155', fontWeight: 600, cursor: 'not-allowed' }}
+                />
+              </div>
+            )}
             <div style={{ gridColumn: '1 / -1' }}>
               <button type="submit" disabled={savingProfile}>
                 {savingProfile ? 'Guardando...' : 'Guardar cambios'}

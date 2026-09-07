@@ -56,7 +56,7 @@ button {
   transform: none !important;
 }
 
-button:hover:not(:disabled) {
+button:not(.secondary):not(.dashboard-stat-card):not(.dashboard-mini-card):not(.stat-card):not(.interactive-card):hover:not(:disabled) {
   background: var(--orange-hover);
   transform: none !important;
   box-shadow: none !important;
