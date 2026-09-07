@@ -26,13 +26,13 @@ function formatDate(value, withTime = false) {
 
 function ProgressBar({ value, total, color, showText = true }) {
   const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0
-  const barColor = color || (pct >= 100 ? '#10b981' : pct >= 50 ? '#3b82f6' : '#f59e0b')
+  const barColor = color || (pct >= 100 ? '#16a34a' : '#0284c7')
 
   return (
     <div style={{ width: '100%' }}>
       <div style={{
         width: '100%',
-        height: 8,
+        height: 6,
         background: '#e2e8f0',
         borderRadius: 999,
         overflow: 'hidden',
@@ -43,11 +43,11 @@ function ProgressBar({ value, total, color, showText = true }) {
           width: `${pct}%`,
           background: barColor,
           borderRadius: 999,
-          transition: 'width 0.4s ease'
+          transition: 'width 0.3s ease'
         }} />
       </div>
       {showText && (
-        <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 3, display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 3, display: 'flex', justifyContent: 'space-between' }}>
           <span>{pct}%</span>
           <span>{value} / {total}</span>
         </div>
@@ -72,11 +72,11 @@ export default function MiStock() {
   const [institucion, setInstitucion] = useState(null)
   const [depositoItems, setDepositoItems] = useState([])
 
-  // Historiales de los distintos flujos
+  // Historiales
   const [historialRetiros, setHistorialRetiros] = useState([])
   const [historialConsumos, setHistorialConsumos] = useState([])
   const [historialDistribuciones, setHistorialDistribuciones] = useState([])
-  const [historialFilter, setHistorialFilter] = useState('todos') // 'todos' | 'retiros' | 'distribuciones' | 'consumos'
+  const [historialFilter, setHistorialFilter] = useState('todos') // 'todos' | 'retiro' | 'distribucion' | 'consumo'
 
   // Búsqueda y filtros
   const [searchQuery, setSearchQuery] = useState('')
@@ -236,7 +236,7 @@ export default function MiStock() {
       }))
 
     if (itemsPayload.length === 0) {
-      setMsg({ type: 'error', text: 'Ingresá al menos una cantidad válida mayor a 0 para registrar.' })
+      setMsg({ type: 'error', text: 'Ingresá al menos una cantidad mayor a 0 para registrar.' })
       return
     }
 
@@ -254,9 +254,8 @@ export default function MiStock() {
       if (res.ok) {
         setMsg({
           type: 'success',
-          text: `✓ Se registró correctamente el consumo para ${data.registrados} producto${data.registrados !== 1 ? 's' : ''}. El stock se ha actualizado.`,
+          text: `Consumo registrado para ${data.registrados} producto${data.registrados !== 1 ? 's' : ''}. Stock actualizado.`,
         })
-        // Limpiar form
         const reset = {}
         for (const item of depositoItems) {
           reset[item.producto_id] = { cantidad: '', categoria: '', motivo: '' }
@@ -273,66 +272,53 @@ export default function MiStock() {
     }
   }
 
-  // Flujo consolidado para la pestaña de Historial
+  // Flujo consolidado para Historial
   const timelineFlujos = useMemo(() => {
     const list = []
 
-    // 1. Retiros entregados de Kit
     for (const r of historialRetiros) {
       list.push({
         id: `retiro-${r.id}`,
         tipo: 'retiro',
         titulo: `Retiro de Kit #${r.id_pedido || r.id}`,
-        subtitulo: r.tipo_pedido === 'refuerzo' ? 'Pedido Extraordinario / Refuerzo' : 'Kit Anual Ordinario',
+        subtitulo: r.tipo_pedido === 'refuerzo' ? 'Pedido extraordinario (refuerzo)' : 'Kit anual ordinario',
         fecha: r.fecha_entrega || r.fecha_retiro,
-        badgeColor: '#2563eb',
-        badgeBg: '#eff6ff',
-        badgeText: '🚚 Retiro de Kit',
-        icono: '🚚',
+        tipoLabel: 'Retiro de Kit',
         items: (r.items || []).map((i) => ({
           nombre: i.producto_nombre,
           cantidad: i.cantidad_entregada || i.cantidad_solicitada,
           unidad: i.unidad_medida || 'u.',
         })),
-        detalles: r.cargo_retira ? `Retirado por cargo: ${r.cargo_retira}` : null,
+        detalles: r.cargo_retira ? `Retirado por: ${r.cargo_retira}` : null,
       })
     }
 
-    // 2. Recepciones por distribución en la escuela
     for (const d of historialDistribuciones) {
       list.push({
         id: `dist-${d.lote_id}`,
         tipo: 'distribucion',
-        titulo: `Lote de Distribución #${d.lote_id}`,
-        subtitulo: `${d.deposito_nombre || 'Depósito Central'} · Zona ${d.zona_nombre || '-'}`,
+        titulo: `Recepción de Lote #${d.lote_id}`,
+        subtitulo: `${d.deposito_nombre || 'Depósito'} · Zona ${d.zona_nombre || '-'}`,
         fecha: d.recibido_at || d.created_at,
-        badgeColor: '#059669',
-        badgeBg: '#ecfdf5',
-        badgeText: '📥 Recepción en Escuela',
-        icono: '📥',
+        tipoLabel: 'Recepción en Escuela',
         items: (d.items || []).map((i) => ({
           nombre: i.producto_nombre,
           cantidad: i.cantidad_recibida,
           unidad: i.unidad_medida || 'u.',
-          estado: i.estado_recepcion,
           danado: i.cantidad_danada,
         })),
-        detalles: d.lote_estado === 'con_reclamos' ? '⚠️ Recepción con observaciones / reclamos' : '✓ Recepción completada',
+        detalles: d.lote_estado === 'con_reclamos' ? 'Recepción con observaciones' : 'Recepción confirmada',
       })
     }
 
-    // 3. Consumos internos
     for (const c of historialConsumos) {
       list.push({
         id: `consumo-${c.id}`,
         tipo: 'consumo',
         titulo: `Consumo: ${c.producto_nombre}`,
-        subtitulo: c.categoria ? `Categoría: ${c.categoria}` : 'Uso interno institucional',
+        subtitulo: c.categoria ? `Área: ${c.categoria}` : 'Uso interno',
         fecha: c.fecha,
-        badgeColor: '#d97706',
-        badgeBg: '#fffbeb',
-        badgeText: '🔻 Consumo Interno',
-        icono: '🔻',
+        tipoLabel: 'Consumo Interno',
         items: [
           {
             nombre: c.producto_nombre,
@@ -340,18 +326,17 @@ export default function MiStock() {
             unidad: c.unidad_medida || 'u.',
           },
         ],
-        detalles: c.motivo ? `"${c.motivo}" (Registrado por: ${c.usuario || 'Directivo'})` : `Registrado por: ${c.usuario || 'Directivo'}`,
+        detalles: c.motivo ? `"${c.motivo}" (${c.usuario || 'Directivo'})` : (c.usuario || 'Directivo'),
       })
     }
 
-    // Ordenar cronológicamente descendente
     list.sort((a, b) => new Date(b.fecha || 0).getTime() - new Date(a.fecha || 0).getTime())
 
     if (historialFilter === 'todos') return list
     return list.filter((item) => item.tipo === historialFilter)
   }, [historialRetiros, historialDistribuciones, historialConsumos, historialFilter])
 
-  // Filtrado de productos en la tabla de stock
+  // Filtrado de stock
   const filteredStockItems = useMemo(() => {
     return depositoItems.filter((it) => {
       const matchQuery = !searchQuery || it.producto_nombre?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -365,18 +350,17 @@ export default function MiStock() {
 
   if (loading) {
     return (
-      <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--muted)' }}>
+      <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
         <div style={{
-          width: 42,
-          height: 42,
-          border: '4px solid #e2e8f0',
-          borderTopColor: 'var(--primary)',
+          width: 32,
+          height: 32,
+          border: '3px solid #e2e8f0',
+          borderTopColor: '#0f172a',
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite',
-          margin: '0 auto 16px',
+          margin: '0 auto 12px',
         }} />
-        <h3 style={{ margin: '0 0 8px', color: 'var(--dark)' }}>Cargando Mi Stock y Depósito...</h3>
-        <p style={{ margin: 0, fontSize: '0.9rem' }}>Sincronizando saldo de kit, inventario físico y flujos...</p>
+        <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569' }}>Cargando información de stock y depósito...</p>
       </div>
     )
   }
@@ -385,224 +369,195 @@ export default function MiStock() {
   const nivelBadge = nivelStr ? (nivelStr.toLowerCase().startsWith('nivel') ? nivelStr : `Nivel ${nivelStr}`) : ''
 
   return (
-    <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* ── CABECERA PRINCIPAL ── */}
+    <div style={{ maxWidth: 1040, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* ── CABECERA PRINCIPAL (Sobria, limpia, sin emojis) ── */}
       <div style={{
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-        border: '1px solid var(--border)',
-        borderRadius: 16,
-        padding: '20px 24px',
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: 12,
+        padding: '18px 22px',
         display: 'flex',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 16,
-        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+        gap: 14,
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.65rem', fontWeight: 800, color: 'var(--dark)' }}>
-              🏫 Mi Stock y Depósito
+            <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>
+              Mi Stock y Depósito
             </h2>
             {nivelBadge && (
               <span style={{
-                background: '#eff6ff',
-                color: '#1d4ed8',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                padding: '4px 12px',
-                borderRadius: 999,
-                border: '1px solid #bfdbfe',
+                background: '#f1f5f9',
+                color: '#334155',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                padding: '3px 10px',
+                borderRadius: 6,
+                border: '1px solid #e2e8f0',
               }}>
                 {nivelBadge}
               </span>
             )}
             {kit ? (
               <span style={{
-                background: '#f0fdf4',
-                color: '#15803d',
-                fontSize: '0.8rem',
+                background: '#f8fafc',
+                color: '#0f172a',
+                fontSize: '0.78rem',
                 fontWeight: 700,
-                padding: '4px 12px',
-                borderRadius: 999,
-                border: '1px solid #bbf7d0',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
+                padding: '3px 10px',
+                borderRadius: 6,
+                border: '1px solid #cbd5e1',
               }}>
-                📦 {kit.nombre} {kit.cantidad_alumnos ? `(${kit.cantidad_alumnos} alumnos)` : ''}
+                Kit: {kit.nombre} {kit.cantidad_alumnos ? `(${kit.cantidad_alumnos} alumnos)` : ''}
               </span>
             ) : (
               <span style={{
-                background: '#fff7ed',
-                color: '#c2410c',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                padding: '4px 12px',
-                borderRadius: 999,
-                border: '1px solid #fed7aa',
+                background: '#f8fafc',
+                color: '#64748b',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                padding: '3px 10px',
+                borderRadius: 6,
+                border: '1px solid #e2e8f0',
               }}>
-                ⚠️ Sin kit asignado
+                Sin kit asignado
               </span>
             )}
           </div>
-          <p style={{ margin: '6px 0 0', color: 'var(--muted)', fontSize: '0.92rem' }}>
+          <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: '0.88rem' }}>
             {institucion?.nombre || user?.institucion?.nombre || 'Institución Escolar'}
-            {institucion?.cue ? ` · CUE: ${institucion.cue}` : ''} — Gestión unificada de stock físico, retiros de kit y consumos.
+            {institucion?.cue ? ` · CUE: ${institucion.cue}` : ''} — Control de existencias, kits asignados y consumos internos.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
             type="button"
             className="secondary"
             onClick={() => loadData(true)}
             disabled={refreshing}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', fontSize: '0.88rem' }}
+            style={{ padding: '8px 14px', fontSize: '0.85rem' }}
           >
-            <span style={{ display: 'inline-block', transform: refreshing ? 'rotate(180deg)' : 'none', transition: 'transform 0.5s ease' }}>
-              🔄
-            </span>
             {refreshing ? 'Actualizando...' : 'Actualizar'}
           </button>
           <button
             type="button"
             className="primary"
             onClick={() => { setActiveTab('consumo'); setMsg(null) }}
-            style={{ padding: '8px 18px', fontSize: '0.88rem' }}
+            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
           >
-            📝 Registrar Consumo
+            Registrar Consumo
           </button>
         </div>
       </div>
 
-      {/* ── TARJETAS MÉTRICAS (KPIs) ── */}
+      {/* ── TARJETAS MÉTRICAS (Balanceadas, fondo blanco neutro, tipografía sobria) ── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 14,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+        gap: 12,
       }}>
-        {/* 1. En Stock Ahora */}
+        {/* 1. Stock disponible en escuela */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(5, 150, 105, 0.08) 0%, rgba(5, 150, 105, 0.02) 100%)',
-          border: '1px solid rgba(5, 150, 105, 0.25)',
-          borderRadius: 14,
-          padding: '16px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          position: 'relative',
-          overflow: 'hidden',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: 10,
+          padding: '14px 18px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: '#047857' }}>
-              En Stock Ahora
-            </span>
-            <span style={{ fontSize: '1.25rem' }}>📦</span>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            Stock en Escuela
           </div>
-          <div style={{ margin: '8px 0 2px', fontSize: '2rem', fontWeight: 900, color: '#065f46', lineHeight: 1 }}>
+          <div style={{ margin: '6px 0 2px', fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
             {totalStockActual}
           </div>
-          <span style={{ fontSize: '0.8rem', color: '#047857' }}>
+          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
             {productosConStock} producto{productosConStock !== 1 ? 's' : ''} con existencias
-          </span>
+          </div>
         </div>
 
-        {/* 2. Restante por Retirar del Kit */}
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(37, 99, 235, 0.02) 100%)',
-          border: '1px solid rgba(37, 99, 235, 0.25)',
-          borderRadius: 14,
-          padding: '16px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          cursor: kit ? 'pointer' : 'default',
-        }}
-        onClick={() => { if (kit) setActiveTab('kit') }}
-        title={kit ? 'Click para ver detalle del kit' : ''}
+        {/* 2. Por retirar del Kit */}
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
+            padding: '14px 18px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+            cursor: kit ? 'pointer' : 'default',
+          }}
+          onClick={() => { if (kit) setActiveTab('kit') }}
+          title={kit ? 'Click para ver detalle del kit' : ''}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: '#1d4ed8' }}>
-              Por Retirar del Kit
-            </span>
-            <span style={{ fontSize: '1.25rem' }}>🚚</span>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            Por Retirar del Kit
           </div>
-          <div style={{ margin: '8px 0 2px', fontSize: '2rem', fontWeight: 900, color: totalPendienteRetirar > 0 ? '#1e40af' : '#047857', lineHeight: 1 }}>
+          <div style={{ margin: '6px 0 2px', fontSize: '1.75rem', fontWeight: 800, color: totalPendienteRetirar > 0 ? '#0369a1' : '#0f172a', lineHeight: 1.1 }}>
             {kit ? totalPendienteRetirar : '—'}
           </div>
-          <span style={{ fontSize: '0.8rem', color: '#1d4ed8' }}>
-            {kit ? (totalPendienteRetirar > 0 ? `${productosPendientesDeRetiro.length} productos pendientes` : '✓ Kit retirado al 100%') : 'Sin kit asignado'}
-          </span>
+          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+            {kit ? (totalPendienteRetirar > 0 ? `${productosPendientesDeRetiro.length} productos pendientes` : 'Retiro completado') : 'Sin kit asignado'}
+          </div>
         </div>
 
         {/* 3. Consumido */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.08) 0%, rgba(217, 119, 6, 0.02) 100%)',
-          border: '1px solid rgba(217, 119, 6, 0.25)',
-          borderRadius: 14,
-          padding: '16px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: 10,
+          padding: '14px 18px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: '#b45309' }}>
-              Consumido
-            </span>
-            <span style={{ fontSize: '1.25rem' }}>🔻</span>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            Consumo Acumulado
           </div>
-          <div style={{ margin: '8px 0 2px', fontSize: '2rem', fontWeight: 900, color: '#92400e', lineHeight: 1 }}>
+          <div style={{ margin: '6px 0 2px', fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
             {totalConsumido}
           </div>
-          <span style={{ fontSize: '0.8rem', color: '#b45309' }}>
-            registrados en aulas y áreas
-          </span>
+          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+            Unidades utilizadas
+          </div>
         </div>
 
-        {/* 4. Total Recibido Histórico */}
+        {/* 4. Total Recibido */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(100, 116, 139, 0.08) 0%, rgba(100, 116, 139, 0.02) 100%)',
-          border: '1px solid rgba(100, 116, 139, 0.25)',
-          borderRadius: 14,
-          padding: '16px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: 10,
+          padding: '14px 18px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: '#475569' }}>
-              Total Recibido
-            </span>
-            <span style={{ fontSize: '1.25rem' }}>📥</span>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            Total Recibido
           </div>
-          <div style={{ margin: '8px 0 2px', fontSize: '2rem', fontWeight: 900, color: '#334155', lineHeight: 1 }}>
+          <div style={{ margin: '6px 0 2px', fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
             {totalRecibido}
           </div>
-          <span style={{ fontSize: '0.8rem', color: '#475569' }}>
-            ingresado históricamente
-          </span>
+          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+            Histórico ingresado
+          </div>
         </div>
       </div>
 
-      {/* Alertas y Mensajes */}
+      {/* Alertas informativas discretas */}
       {error && <div className="msg show msg-error" style={{ margin: 0 }}>{error}</div>}
       {msg && <div className={`msg show msg-${msg.type}`} style={{ margin: 0 }}>{msg.text}</div>}
 
-      {/* ── PESTAÑAS DE NAVEGACIÓN ── */}
+      {/* ── NAVEGACIÓN POR PESTAÑAS (Sobria, limpia, sin emojis) ── */}
       <div style={{
         display: 'flex',
-        gap: 8,
-        borderBottom: '2px solid var(--border)',
+        gap: 4,
+        borderBottom: '1px solid #cbd5e1',
         overflowX: 'auto',
-        paddingBottom: 2,
       }}>
         {[
-          { key: 'resumen', label: '📊 Vista General' },
-          { key: 'kit', label: '📋 Kit y Saldo por Retirar' },
-          { key: 'stock', label: '📦 Stock en Depósito' },
-          { key: 'consumo', label: '📝 Registrar Consumo' },
-          { key: 'historial', label: '📜 Historial de Flujos' },
+          { key: 'resumen', label: 'Resumen' },
+          { key: 'kit', label: 'Kit y Pendientes' },
+          { key: 'stock', label: 'Stock en Escuela' },
+          { key: 'consumo', label: 'Registrar Consumo' },
+          { key: 'historial', label: 'Historial' },
         ].map((tab) => {
           const isActive = activeTab === tab.key
           return (
@@ -614,14 +569,14 @@ export default function MiStock() {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                padding: '12px 18px',
-                fontWeight: isActive ? 800 : 600,
-                color: isActive ? 'var(--primary)' : 'var(--muted)',
-                borderBottom: isActive ? '3px solid var(--primary)' : '3px solid transparent',
-                marginBottom: -4,
-                fontSize: '0.95rem',
+                padding: '10px 16px',
+                fontWeight: isActive ? 700 : 500,
+                color: isActive ? '#0f172a' : '#64748b',
+                borderBottom: isActive ? '2px solid #0f172a' : '2px solid transparent',
+                marginBottom: -1,
+                fontSize: '0.9rem',
                 whiteSpace: 'nowrap',
-                transition: 'all 0.15s ease',
+                transition: 'color 0.15s ease, border-color 0.15s ease',
               }}
             >
               {tab.label}
@@ -631,113 +586,104 @@ export default function MiStock() {
       </div>
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* 1. PESTAÑA: VISTA GENERAL (RESUMEN DINÁMICO)              */}
+      {/* 1. PESTAÑA: RESUMEN                                        */}
       {/* ────────────────────────────────────────────────────────── */}
       {activeTab === 'resumen' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {/* Fila superior: Estado del Kit vs Estado del Depósito */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
-            {/* Tarjeta: Saldo de Kit Restante */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
+            {/* Panel Izquierdo: Saldo del Kit */}
             <div style={{
-              background: '#fff',
-              border: '1px solid var(--border)',
-              borderRadius: 14,
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
               overflow: 'hidden',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
               display: 'flex',
               flexDirection: 'column',
             }}>
               <div style={{
-                padding: '16px 20px',
+                padding: '14px 18px',
                 background: '#f8fafc',
-                borderBottom: '1px solid var(--border)',
+                borderBottom: '1px solid #e2e8f0',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--dark)' }}>
-                    📦 Saldo Pendiente del Kit Aprobado
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, color: '#0f172a' }}>
+                    Productos por retirar del Kit
                   </h3>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                    {kit ? `${kit.nombre} · Productos que aún no fueron retirados` : 'Asignación de Kit Institucional'}
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    {kit ? `${kit.nombre}` : 'Kit asignado a la escuela'}
                   </span>
                 </div>
                 {kit && (
-                  <span className={`badge badge-estado-${totalPendienteRetirar > 0 ? 'pendiente' : 'aprobado'}`}>
-                    {totalPendienteRetirar > 0 ? `${totalPendienteRetirar} pendientes` : 'Retiro Completo'}
+                  <span style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    background: totalPendienteRetirar > 0 ? '#f1f5f9' : '#f0fdf4',
+                    color: totalPendienteRetirar > 0 ? '#334155' : '#166534',
+                    border: '1px solid #e2e8f0',
+                  }}>
+                    {totalPendienteRetirar > 0 ? `${totalPendienteRetirar} pendientes` : 'Completo'}
                   </span>
                 )}
               </div>
 
-              <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 {!kit ? (
-                  // ESTADO VACÍO AMIGABLE SI NO TIENE KIT ASIGNADO
                   <div style={{
                     textAlign: 'center',
-                    padding: '30px 16px',
+                    padding: '32px 16px',
                     margin: 'auto 0',
                     background: '#f8fafc',
-                    borderRadius: 12,
-                    border: '1px dashed #cbd5e1',
+                    borderRadius: 8,
+                    border: '1px solid #e2e8f0',
                   }}>
-                    <div style={{ fontSize: '3rem', marginBottom: 12 }}>📭</div>
-                    <h4 style={{ margin: '0 0 6px', fontSize: '1.15rem', color: '#1e293b', fontWeight: 700 }}>
+                    <h4 style={{ margin: '0 0 6px', fontSize: '1rem', color: '#1e293b', fontWeight: 700 }}>
                       No tiene productos aún asignados
                     </h4>
-                    <p style={{ margin: '0 auto 16px', maxWidth: 360, fontSize: '0.88rem', color: '#64748b', lineHeight: 1.5 }}>
-                      Tu institución no cuenta con un kit escolar previamente aprobado o asignado. Cuando tu supervisor escolar realice la asignación, verás aquí el desglose de productos disponibles para retirar.
+                    <p style={{ margin: '0 auto 12px', maxWidth: 360, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
+                      Tu institución no cuenta con un kit escolar previamente aprobado o asignado. Cuando tu supervisión escolar cargue la asignación, aquí podrás consultar las cantidades aprobadas.
                     </p>
-                    <span style={{
-                      display: 'inline-block',
-                      background: '#e0f2fe',
-                      color: '#0369a1',
-                      padding: '6px 14px',
-                      borderRadius: 8,
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                    }}>
-                      ℹ️ Podés consultar con tu supervisor de zona sobre la asignación del kit.
+                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      Contactá a tu supervisor escolar si necesitás gestionar la asignación.
                     </span>
                   </div>
                 ) : productosPendientesDeRetiro.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '36px 16px', margin: 'auto 0' }}>
-                    <div style={{ fontSize: '2.8rem', marginBottom: 10 }}>🎉</div>
-                    <h4 style={{ margin: '0 0 6px', color: '#047857', fontWeight: 700 }}>¡Todo el kit ha sido retirado!</h4>
-                    <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)' }}>
-                      No quedan productos pendientes de retiro para tu institución en el depósito central.
+                  <div style={{ textAlign: 'center', padding: '32px 16px', margin: 'auto 0' }}>
+                    <h4 style={{ margin: '0 0 4px', color: '#15803d', fontWeight: 700, fontSize: '0.98rem' }}>
+                      Todo el kit ha sido retirado
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                      No quedan unidades pendientes de retiro en el depósito central.
                     </p>
                   </div>
                 ) : (
                   <>
-                    <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: 'var(--muted)' }}>
-                      Estos insumos ya están aprobados para tu escuela y podés coordinar el retiro en el depósito central:
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
                       {productosPendientesDeRetiro.slice(0, 5).map((it) => {
                         const asignado = Number(it.cantidad_por_kit || 0) + Number(it.pedido_refuerzo || 0)
                         const retirado = Number(it.total_retirado || 0)
                         return (
                           <div key={it.producto_id} style={{
-                            padding: '10px 14px',
+                            padding: '10px 12px',
                             background: '#f8fafc',
-                            borderRadius: 8,
+                            borderRadius: 6,
                             border: '1px solid #e2e8f0',
                           }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                              <strong style={{ fontSize: '0.9rem', color: 'var(--dark)' }}>{it.producto_nombre}</strong>
+                              <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0f172a' }}>{it.producto_nombre}</span>
                               <span style={{
-                                fontWeight: 800,
-                                color: '#b91c1c',
-                                background: '#fef2f2',
-                                padding: '2px 8px',
-                                borderRadius: 6,
+                                fontWeight: 700,
+                                color: '#0f172a',
                                 fontSize: '0.82rem',
                               }}>
-                                Quedan {it.restante} {it.unidad_medida || 'u.'}
+                                Restan {it.restante} {it.unidad_medida || 'u.'}
                               </span>
                             </div>
-                            <ProgressBar value={retirado} total={asignado} color="#3b82f6" />
+                            <ProgressBar value={retirado} total={asignado} showText={false} />
                           </div>
                         )
                       })}
@@ -747,137 +693,126 @@ export default function MiStock() {
                       type="button"
                       className="secondary"
                       onClick={() => setActiveTab('kit')}
-                      style={{ marginTop: 16, width: '100%', fontSize: '0.88rem' }}
+                      style={{ marginTop: 14, width: '100%', fontSize: '0.85rem' }}
                     >
-                      Ver todos los productos del Kit ({itemsKit.length}) →
+                      Ver detalle del kit ({itemsKit.length} rubros)
                     </button>
                   </>
                 )}
               </div>
             </div>
 
-            {/* Tarjeta: Stock Físico en la Escuela */}
+            {/* Panel Derecho: Stock Físico en Escuela */}
             <div style={{
-              background: '#fff',
-              border: '1px solid var(--border)',
-              borderRadius: 14,
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
               overflow: 'hidden',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
               display: 'flex',
               flexDirection: 'column',
             }}>
               <div style={{
-                padding: '16px 20px',
+                padding: '14px 18px',
                 background: '#f8fafc',
-                borderBottom: '1px solid var(--border)',
+                borderBottom: '1px solid #e2e8f0',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--dark)' }}>
-                    🏢 Stock Disponible en la Escuela
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, color: '#0f172a' }}>
+                    Stock disponible en la escuela
                   </h3>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                    Mercadería recibida lista para ser utilizada internamente
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    Existencias físicas listas para usar
                   </span>
                 </div>
-                <span className={`badge badge-estado-${totalStockActual > 0 ? 'aprobado' : 'pendiente'}`}>
-                  {totalStockActual > 0 ? `${totalStockActual} u. disponibles` : 'Sin existencias'}
+                <span style={{
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  background: totalStockActual > 0 ? '#f0fdf4' : '#f8fafc',
+                  color: totalStockActual > 0 ? '#166534' : '#64748b',
+                  border: '1px solid #e2e8f0',
+                }}>
+                  {totalStockActual} u. disponibles
                 </span>
               </div>
 
-              <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 {depositoItems.length === 0 ? (
                   <div style={{
                     textAlign: 'center',
-                    padding: '30px 16px',
+                    padding: '32px 16px',
                     margin: 'auto 0',
                     background: '#f8fafc',
-                    borderRadius: 12,
-                    border: '1px dashed #cbd5e1',
+                    borderRadius: 8,
+                    border: '1px solid #e2e8f0',
                   }}>
-                    <div style={{ fontSize: '3rem', marginBottom: 12 }}>📥</div>
-                    <h4 style={{ margin: '0 0 6px', fontSize: '1.15rem', color: '#1e293b', fontWeight: 700 }}>
+                    <h4 style={{ margin: '0 0 6px', fontSize: '1rem', color: '#1e293b', fontWeight: 700 }}>
                       No hay mercadería recibida aún
                     </h4>
-                    <p style={{ margin: '0 auto 14px', maxWidth: 360, fontSize: '0.88rem', color: '#64748b', lineHeight: 1.5 }}>
-                      El stock físico de tu escuela se acreditará automáticamente cuando confirmes recepciones en <strong>Recepción de Mercadería</strong> o cuando retires insumos en depósito.
+                    <p style={{ margin: '0 auto', maxWidth: 360, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
+                      El stock físico aparecerá cuando confirmes entregas en <strong>Recepción de Mercadería</strong> o retires insumos de tu kit.
                     </p>
                   </div>
                 ) : (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <span style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
-                        Insumos con mayor disponibilidad actual:
-                      </span>
-                      <button
-                        type="button"
-                        className="primary"
-                        style={{ width: 'auto', padding: '6px 14px', fontSize: '0.82rem' }}
-                        onClick={() => setActiveTab('consumo')}
-                      >
-                        ➕ Registrar Uso
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                       {depositoItems
                         .filter((i) => i.stock_actual > 0)
                         .slice(0, 5)
-                        .map((item) => {
-                          const pct = item.total_recibido > 0 ? Math.round((item.total_consumido / item.total_recibido) * 100) : 0
-                          return (
-                            <div key={item.producto_id} style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              padding: '10px 14px',
-                              background: '#f8fafc',
-                              borderRadius: 8,
-                              border: '1px solid #e2e8f0',
-                            }}>
-                              <div>
-                                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--dark)' }}>
-                                  {item.producto_nombre}
-                                </div>
-                                <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-                                  Recibido: {item.total_recibido} · Consumido: {item.total_consumido} ({pct}%)
-                                </div>
+                        .map((item) => (
+                          <div key={item.producto_id} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '8px 12px',
+                            background: '#f8fafc',
+                            borderRadius: 6,
+                            border: '1px solid #e2e8f0',
+                          }}>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0f172a' }}>
+                                {item.producto_nombre}
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{
-                                  background: '#ecfdf5',
-                                  color: '#065f46',
-                                  fontWeight: 800,
-                                  fontSize: '0.95rem',
-                                  padding: '4px 10px',
-                                  borderRadius: 8,
-                                }}>
-                                  {item.stock_actual} {item.unidad_medida || 'u.'}
-                                </span>
-                                <button
-                                  type="button"
-                                  className="secondary"
-                                  onClick={() => handleQuickConsumir(item.producto_id)}
-                                  style={{ padding: '4px 10px', fontSize: '0.78rem' }}
-                                  title="Consumir este producto"
-                                >
-                                  Usar
-                                </button>
+                              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                Recibido: {item.total_recibido} · Consumido: {item.total_consumido}
                               </div>
                             </div>
-                          )
-                        })}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{
+                                fontWeight: 700,
+                                fontSize: '0.9rem',
+                                color: '#0f172a',
+                                background: '#ffffff',
+                                border: '1px solid #cbd5e1',
+                                padding: '2px 8px',
+                                borderRadius: 6,
+                              }}>
+                                {item.stock_actual} {item.unidad_medida || 'u.'}
+                              </span>
+                              <button
+                                type="button"
+                                className="secondary"
+                                onClick={() => handleQuickConsumir(item.producto_id)}
+                                style={{ padding: '3px 8px', fontSize: '0.75rem' }}
+                              >
+                                Usar
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                     </div>
 
                     <button
                       type="button"
                       className="secondary"
                       onClick={() => setActiveTab('stock')}
-                      style={{ marginTop: 16, width: '100%', fontSize: '0.88rem' }}
+                      style={{ marginTop: 14, width: '100%', fontSize: '0.85rem' }}
                     >
-                      Ver inventario completo del depósito ({depositoItems.length} productos) →
+                      Ver inventario completo ({depositoItems.length} rubros)
                     </button>
                   </>
                 )}
@@ -885,73 +820,70 @@ export default function MiStock() {
             </div>
           </div>
 
-          {/* Fila inferior: Últimos movimientos registrados en cualquier flujo */}
+          {/* Fila Inferior: Actividad Reciente */}
           <div style={{
-            background: '#fff',
-            border: '1px solid var(--border)',
-            borderRadius: 14,
-            padding: '20px 24px',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
+            padding: '16px 20px',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--dark)' }}>
-                  🕒 Movimientos Recientes
+                <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, color: '#0f172a' }}>
+                  Movimientos recientes
                 </h3>
-                <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                  Últimos retiros, recepciones y consumos de tu escuela
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  Últimas operaciones de kit, recepciones y consumos
                 </span>
               </div>
               <button
                 type="button"
                 className="secondary"
                 onClick={() => setActiveTab('historial')}
-                style={{ fontSize: '0.85rem', padding: '6px 14px' }}
+                style={{ fontSize: '0.82rem', padding: '5px 12px' }}
               >
-                Ver Historial Completo ({timelineFlujos.length}) →
+                Ver historial completo
               </button>
             </div>
 
             {timelineFlujos.length === 0 ? (
-              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem', textAlign: 'center', padding: '24px 0' }}>
-                Todavía no hay movimientos registrados en ningún flujo.
+              <p style={{ margin: 0, color: '#64748b', fontSize: '0.88rem', textAlign: 'center', padding: '16px 0' }}>
+                No hay movimientos registrados.
               </p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {timelineFlujos.slice(0, 4).map((f) => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {timelineFlujos.slice(0, 3).map((f) => (
                   <div key={f.id} style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    borderRadius: 10,
+                    padding: '10px 14px',
+                    borderRadius: 6,
                     border: '1px solid #e2e8f0',
                     background: '#f8fafc',
                     flexWrap: 'wrap',
-                    gap: 12,
+                    gap: 8,
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{
-                        background: f.badgeBg,
-                        color: f.badgeColor,
-                        padding: '6px 12px',
-                        borderRadius: 8,
-                        fontSize: '0.82rem',
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        color: '#334155',
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontSize: '0.75rem',
                         fontWeight: 700,
-                        whiteSpace: 'nowrap',
                       }}>
-                        {f.badgeText}
+                        {f.tipoLabel}
                       </span>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--dark)' }}>{f.titulo}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{f.subtitulo}</div>
+                        <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#0f172a' }}>{f.titulo}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{f.subtitulo}</div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--muted)', fontWeight: 500 }}>
-                        {formatDate(f.fecha, true)}
-                      </span>
-                    </div>
+                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      {formatDate(f.fecha, true)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -964,116 +896,117 @@ export default function MiStock() {
       {/* 2. PESTAÑA: KIT Y SALDO POR RETIRAR                        */}
       {/* ────────────────────────────────────────────────────────── */}
       {activeTab === 'kit' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {!kit ? (
             <div style={{
-              background: '#fff',
-              border: '1px solid var(--border)',
-              borderRadius: 14,
-              padding: '48px 24px',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              padding: '40px 20px',
               textAlign: 'center',
             }}>
-              <div style={{ fontSize: '3.5rem', marginBottom: 14 }}>📦</div>
-              <h3 style={{ margin: '0 0 8px', fontSize: '1.35rem', fontWeight: 800, color: 'var(--dark)' }}>
+              <h3 style={{ margin: '0 0 6px', fontSize: '1.15rem', fontWeight: 700, color: '#0f172a' }}>
                 No tiene productos aún asignados
               </h3>
-              <p style={{ margin: '0 auto 20px', maxWidth: 440, fontSize: '0.92rem', color: 'var(--muted)', lineHeight: 1.5 }}>
-                Tu institución educativa no cuenta actualmente con un kit escolar previamente aprobado o asignado para este ciclo. 
+              <p style={{ margin: '0 auto 14px', maxWidth: 420, fontSize: '0.88rem', color: '#64748b', lineHeight: 1.5 }}>
+                Tu institución educativa no cuenta actualmente con un kit escolar previamente aprobado o asignado.
               </p>
               <div style={{
                 background: '#f8fafc',
                 border: '1px solid #e2e8f0',
-                borderRadius: 10,
-                padding: '16px 20px',
-                maxWidth: 500,
+                borderRadius: 8,
+                padding: '12px 16px',
+                maxWidth: 460,
                 margin: '0 auto',
-                fontSize: '0.88rem',
+                fontSize: '0.82rem',
                 color: '#475569',
               }}>
-                ℹ️ La asignación de kits es administrada por la <strong>Supervisión Escolar</strong> y la <strong>Dirección de Área</strong>. Una vez cargado el kit para tu escuela, aquí podrás consultar las cantidades aprobadas y realizar el seguimiento de cada retiro.
+                La asignación es coordinada por la Supervisión Escolar. Cuando se registre el kit correspondiente, aparecerá aquí detallado.
               </div>
             </div>
           ) : (
             <>
-              {/* Resumen del Kit Asignado */}
+              {/* Encabezado Kit */}
               <div style={{
-                background: '#fff',
-                border: '1px solid var(--border)',
-                borderRadius: 14,
-                padding: '20px 24px',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: 10,
+                padding: '16px 20px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 flexWrap: 'wrap',
-                gap: 16,
+                gap: 12,
               }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--dark)' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
                     {kit.nombre}
                   </h3>
-                  <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '0.88rem' }}>
-                    Cantidad de alumnos base: <strong>{kit.cantidad_alumnos || 'No especificada'}</strong> · Tipo de escuela: <strong>{kit.tipo_escuela || '-'}</strong>
+                  <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: '0.85rem' }}>
+                    Alumnos asignados: <strong>{kit.cantidad_alumnos || '-'}</strong> · Modalidad: <strong>{kit.tipo_escuela || '-'}</strong>
                   </p>
                 </div>
 
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
                   <div style={{
-                    background: '#eff6ff',
-                    border: '1px solid #bfdbfe',
-                    borderRadius: 10,
-                    padding: '8px 16px',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 8,
+                    padding: '6px 14px',
                     textAlign: 'center',
                   }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase' }}>Total Kit Asignado</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1d4ed8' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Total Asignado</div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
                       {itemsKit.reduce((sum, it) => sum + Number(it.cantidad_por_kit || 0), 0)} u.
                     </div>
                   </div>
                   <div style={{
-                    background: totalPendienteRetirar > 0 ? '#fef2f2' : '#f0fdf4',
-                    border: `1px solid ${totalPendienteRetirar > 0 ? '#fecaca' : '#bbf7d0'}`,
-                    borderRadius: 10,
-                    padding: '8px 16px',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 8,
+                    padding: '6px 14px',
                     textAlign: 'center',
                   }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: totalPendienteRetirar > 0 ? '#991b1b' : '#166534', textTransform: 'uppercase' }}>
-                      Pendiente Retiro
-                    </div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: totalPendienteRetirar > 0 ? '#b91c1c' : '#15803d' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Pendiente Retiro</div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: totalPendienteRetirar > 0 ? '#0369a1' : '#15803d' }}>
                       {totalPendienteRetirar} u.
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Grid: Pedido Anual y Refuerzos */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: 20 }}>
-                {/* Panel 1: Pedido Anual (Kit Base) */}
+              {/* Tablas: Pedido Anual y Refuerzos */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16 }}>
+                {/* Pedido Anual */}
                 <div style={{
-                  background: '#fff',
-                  border: '1px solid var(--border)',
-                  borderRadius: 14,
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
                   overflow: 'hidden',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
                 }}>
                   <div style={{
-                    padding: '16px 20px',
+                    padding: '12px 16px',
                     background: '#f8fafc',
-                    borderBottom: '1px solid var(--border)',
+                    borderBottom: '1px solid #e2e8f0',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                   }}>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--dark)' }}>
-                        📘 Pedido Anual
+                      <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>
+                        Pedido Anual (Base)
                       </h4>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                        Kit base asignado a la escuela por normativa
-                      </span>
                     </div>
-                    <span className={`badge badge-estado-${anualItems.some((i) => i.pendiente > 0) ? 'pendiente' : 'aprobado'}`}>
-                      {anualItems.some((i) => i.pendiente > 0) ? 'Pendiente' : 'Completo'}
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      background: anualItems.some((i) => i.pendiente > 0) ? '#f1f5f9' : '#f0fdf4',
+                      color: anualItems.some((i) => i.pendiente > 0) ? '#334155' : '#166534',
+                      border: '1px solid #e2e8f0',
+                    }}>
+                      {anualItems.some((i) => i.pendiente > 0) ? 'Con saldo pendiente' : 'Completo'}
                     </span>
                   </div>
 
@@ -1082,10 +1015,10 @@ export default function MiStock() {
                       <thead>
                         <tr style={{ background: '#f8fafc' }}>
                           <th>Producto</th>
-                          <th style={{ textAlign: 'center', width: 90 }}>Asignado</th>
-                          <th style={{ textAlign: 'center', width: 90 }}>Retirado</th>
-                          <th style={{ textAlign: 'center', width: 100 }}>Pendiente</th>
-                          <th style={{ width: 130 }}>Progreso</th>
+                          <th style={{ textAlign: 'center', width: 85 }}>Asignado</th>
+                          <th style={{ textAlign: 'center', width: 85 }}>Retirado</th>
+                          <th style={{ textAlign: 'center', width: 90 }}>Pendiente</th>
+                          <th style={{ width: 110 }}>Progreso</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1094,29 +1027,17 @@ export default function MiStock() {
                           return (
                             <tr key={`anual-${it.producto_id}`}>
                               <td>
-                                <div style={{ fontWeight: 700, color: 'var(--dark)' }}>{it.producto_nombre}</div>
-                                <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>{it.unidad_medida || 'u.'}</div>
+                                <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.88rem' }}>{it.producto_nombre}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{it.unidad_medida || 'u.'}</div>
                               </td>
                               <td style={{ textAlign: 'center', fontWeight: 600 }}>{it.asignado}</td>
-                              <td style={{ textAlign: 'center', color: it.retirado > 0 ? '#1d4ed8' : 'var(--muted)' }}>
-                                {it.retirado}
-                              </td>
-                              <td style={{ textAlign: 'center' }}>
-                                <span style={{
-                                  fontWeight: 800,
-                                  color: it.pendiente > 0 ? '#b91c1c' : '#059669',
-                                  background: it.pendiente > 0 ? '#fef2f2' : '#ecfdf5',
-                                  padding: '3px 10px',
-                                  borderRadius: 6,
-                                  fontSize: '0.88rem',
-                                  display: 'inline-block',
-                                }}>
-                                  {it.pendiente}
-                                </span>
+                              <td style={{ textAlign: 'center', color: '#64748b' }}>{it.retirado}</td>
+                              <td style={{ textAlign: 'center', fontWeight: 700, color: it.pendiente > 0 ? '#0f172a' : '#15803d' }}>
+                                {it.pendiente}
                               </td>
                               <td>
                                 <ProgressBar value={it.retirado} total={it.asignado} showText={false} />
-                                <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>{pct}% retirado</span>
+                                <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{pct}%</span>
                               </td>
                             </tr>
                           )
@@ -1126,42 +1047,42 @@ export default function MiStock() {
                   </div>
                 </div>
 
-                {/* Panel 2: Refuerzos Aprobados */}
+                {/* Refuerzos Aprobados */}
                 <div style={{
-                  background: '#fff',
-                  border: '1px solid var(--border)',
-                  borderRadius: 14,
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
                   overflow: 'hidden',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
                 }}>
                   <div style={{
-                    padding: '16px 20px',
+                    padding: '12px 16px',
                     background: '#f8fafc',
-                    borderBottom: '1px solid var(--border)',
+                    borderBottom: '1px solid #e2e8f0',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                   }}>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--dark)' }}>
-                        📙 Refuerzos Aprobados
+                      <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>
+                        Refuerzos Extraordinarios
                       </h4>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                        Pedidos extraordinarios autorizados para la institución
-                      </span>
                     </div>
-                    <span className={`badge badge-estado-${refuerzoItems.some((i) => i.pendiente > 0) ? 'pendiente' : 'aprobado'}`}>
-                      {refuerzoItems.length === 0 ? 'Sin refuerzos' : refuerzoItems.some((i) => i.pendiente > 0) ? 'Pendiente' : 'Completo'}
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      background: '#f1f5f9',
+                      color: '#334155',
+                      border: '1px solid #e2e8f0',
+                    }}>
+                      {refuerzoItems.length === 0 ? 'Sin registros' : refuerzoItems.some((i) => i.pendiente > 0) ? 'Pendiente' : 'Completo'}
                     </span>
                   </div>
 
                   {refuerzoItems.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--muted)' }}>
-                      <div style={{ fontSize: '2.2rem', marginBottom: 8 }}>📋</div>
-                      <p style={{ margin: 0, fontWeight: 600 }}>No hay refuerzos extraordinarios registrados.</p>
-                      <p style={{ margin: '4px 0 0', fontSize: '0.82rem' }}>
-                        Cuando se apruebe una solicitud de refuerzo aparecerá aquí para coordinar el retiro.
-                      </p>
+                    <div style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>
+                      <p style={{ margin: 0, fontSize: '0.88rem' }}>No hay refuerzos extraordinarios aprobados para esta escuela.</p>
                     </div>
                   ) : (
                     <div style={{ overflowX: 'auto' }}>
@@ -1169,10 +1090,10 @@ export default function MiStock() {
                         <thead>
                           <tr style={{ background: '#f8fafc' }}>
                             <th>Producto</th>
-                            <th style={{ textAlign: 'center', width: 90 }}>Autorizado</th>
-                            <th style={{ textAlign: 'center', width: 90 }}>Retirado</th>
-                            <th style={{ textAlign: 'center', width: 100 }}>Pendiente</th>
-                            <th style={{ width: 130 }}>Progreso</th>
+                            <th style={{ textAlign: 'center', width: 85 }}>Autorizado</th>
+                            <th style={{ textAlign: 'center', width: 85 }}>Retirado</th>
+                            <th style={{ textAlign: 'center', width: 90 }}>Pendiente</th>
+                            <th style={{ width: 110 }}>Progreso</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1181,29 +1102,17 @@ export default function MiStock() {
                             return (
                               <tr key={`refuerzo-${it.producto_id}`}>
                                 <td>
-                                  <div style={{ fontWeight: 700, color: 'var(--dark)' }}>{it.producto_nombre}</div>
-                                  <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>{it.unidad_medida || 'u.'}</div>
+                                  <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.88rem' }}>{it.producto_nombre}</div>
+                                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{it.unidad_medida || 'u.'}</div>
                                 </td>
                                 <td style={{ textAlign: 'center', fontWeight: 600 }}>{it.asignado}</td>
-                                <td style={{ textAlign: 'center', color: it.retirado > 0 ? '#1d4ed8' : 'var(--muted)' }}>
-                                  {it.retirado}
-                                </td>
-                                <td style={{ textAlign: 'center' }}>
-                                  <span style={{
-                                    fontWeight: 800,
-                                    color: it.pendiente > 0 ? '#b91c1c' : '#059669',
-                                    background: it.pendiente > 0 ? '#fef2f2' : '#ecfdf5',
-                                    padding: '3px 10px',
-                                    borderRadius: 6,
-                                    fontSize: '0.88rem',
-                                    display: 'inline-block',
-                                  }}>
-                                    {it.pendiente}
-                                  </span>
+                                <td style={{ textAlign: 'center', color: '#64748b' }}>{it.retirado}</td>
+                                <td style={{ textAlign: 'center', fontWeight: 700, color: it.pendiente > 0 ? '#0f172a' : '#15803d' }}>
+                                  {it.pendiente}
                                 </td>
                                 <td>
                                   <ProgressBar value={it.retirado} total={it.asignado} showText={false} />
-                                  <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>{pct}% retirado</span>
+                                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{pct}%</span>
                                 </td>
                               </tr>
                             )
@@ -1220,47 +1129,47 @@ export default function MiStock() {
       )}
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* 3. PESTAÑA: STOCK EN DEPÓSITO Y PRODUCTOS CONSUMIDOS      */}
+      {/* 3. PESTAÑA: STOCK EN ESCUELA                               */}
       {/* ────────────────────────────────────────────────────────── */}
       {activeTab === 'stock' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Barra de Filtros y Búsqueda */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Filtros */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: 12,
-            background: '#fff',
-            border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '12px 18px',
+            gap: 10,
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
+            padding: '10px 14px',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 260 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 240 }}>
               <input
                 type="text"
-                placeholder="🔍 Buscar por nombre de producto..."
+                placeholder="Buscar producto por nombre..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: '100%', maxWidth: 360, padding: '8px 12px', fontSize: '0.9rem' }}
+                style={{ width: '100%', maxWidth: 320, padding: '7px 10px', fontSize: '0.88rem' }}
               />
               {searchQuery && (
                 <button
                   type="button"
                   className="secondary"
                   onClick={() => setSearchQuery('')}
-                  style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                  style={{ padding: '5px 8px', fontSize: '0.75rem' }}
                 >
-                  ✕
+                  Limpiar
                 </button>
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               {[
                 { key: 'todos', label: 'Todos' },
-                { key: 'con_stock', label: 'En Stock' },
-                { key: 'sin_stock', label: 'Sin Stock / Agotados' },
+                { key: 'con_stock', label: 'En stock' },
+                { key: 'sin_stock', label: 'Sin stock' },
               ].map((f) => (
                 <button
                   key={f.key}
@@ -1268,11 +1177,11 @@ export default function MiStock() {
                   onClick={() => setStockStatusFilter(f.key)}
                   style={{
                     background: stockStatusFilter === f.key ? '#0f172a' : '#f1f5f9',
-                    color: stockStatusFilter === f.key ? '#fff' : '#475569',
+                    color: stockStatusFilter === f.key ? '#ffffff' : '#475569',
                     border: 'none',
-                    borderRadius: 8,
-                    padding: '6px 14px',
-                    fontSize: '0.82rem',
+                    borderRadius: 6,
+                    padding: '5px 12px',
+                    fontSize: '0.8rem',
                     fontWeight: 600,
                     cursor: 'pointer',
                   }}
@@ -1284,31 +1193,26 @@ export default function MiStock() {
                 type="button"
                 className="primary"
                 onClick={() => setActiveTab('consumo')}
-                style={{ padding: '7px 16px', fontSize: '0.85rem', marginLeft: 6 }}
+                style={{ padding: '6px 14px', fontSize: '0.82rem', marginLeft: 4 }}
               >
-                ➕ Registrar Consumo
+                Registrar consumo
               </button>
             </div>
           </div>
 
-          {/* Tabla de Stock */}
+          {/* Tabla */}
           <div style={{
-            background: '#fff',
-            border: '1px solid var(--border)',
-            borderRadius: 14,
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
             overflow: 'hidden',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
           }}>
             {filteredStockItems.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--muted)' }}>
-                <div style={{ fontSize: '2.8rem', marginBottom: 10 }}>📦</div>
-                <h4 style={{ margin: '0 0 6px', color: 'var(--dark)' }}>
-                  {depositoItems.length === 0 ? 'No hay mercadería recibida en el depósito' : 'No se encontraron productos con ese filtro'}
-                </h4>
-                <p style={{ margin: '0 auto', maxWidth: 400, fontSize: '0.88rem' }}>
+              <div style={{ textAlign: 'center', padding: '40px 16px', color: '#64748b' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem' }}>
                   {depositoItems.length === 0
-                    ? 'Cuando confirmes recepciones o retires productos del kit, figurarán automáticamente en esta lista.'
-                    : 'Probá modificando el término de búsqueda o seleccionando "Todos".'}
+                    ? 'No hay mercadería recibida en la escuela aún.'
+                    : 'No se encontraron productos con el filtro aplicado.'}
                 </p>
               </div>
             ) : (
@@ -1317,11 +1221,11 @@ export default function MiStock() {
                   <thead>
                     <tr style={{ background: '#f8fafc' }}>
                       <th>Producto</th>
-                      <th style={{ textAlign: 'center', width: 110 }}>Total Recibido</th>
-                      <th style={{ textAlign: 'center', width: 110 }}>Consumido</th>
-                      <th style={{ textAlign: 'center', width: 130 }}>En Stock Ahora</th>
-                      <th style={{ width: 160 }}>% Consumo</th>
-                      <th style={{ textAlign: 'center', width: 100 }}>Acción</th>
+                      <th style={{ textAlign: 'center', width: 100 }}>Recibido</th>
+                      <th style={{ textAlign: 'center', width: 100 }}>Consumido</th>
+                      <th style={{ textAlign: 'center', width: 120 }}>En Stock</th>
+                      <th style={{ width: 140 }}>Uso</th>
+                      <th style={{ textAlign: 'center', width: 90 }}>Acción</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1333,42 +1237,37 @@ export default function MiStock() {
                       return (
                         <tr key={item.producto_id}>
                           <td>
-                            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--dark)' }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0f172a' }}>
                               {item.producto_nombre}
                             </div>
-                            <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-                              Unidad de medida: <strong>{item.unidad_medida || 'u.'}</strong>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              {item.unidad_medida || 'u.'}
                             </div>
                           </td>
-                          <td style={{ textAlign: 'center', fontWeight: 600, color: '#334155' }}>
+                          <td style={{ textAlign: 'center', color: '#475569' }}>
                             {item.total_recibido}
                           </td>
-                          <td style={{ textAlign: 'center', fontWeight: 600, color: item.total_consumido > 0 ? '#d97706' : 'var(--muted)' }}>
+                          <td style={{ textAlign: 'center', color: '#475569' }}>
                             {item.total_consumido}
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             <span style={{
-                              display: 'inline-block',
-                              padding: '5px 14px',
-                              borderRadius: 8,
-                              fontWeight: 900,
-                              fontSize: '1.05rem',
-                              background: sinStock ? '#fef2f2' : stockBajo ? '#fffbeb' : '#f0fdf4',
-                              color: sinStock ? '#dc2626' : stockBajo ? '#d97706' : '#059669',
-                              border: `1px solid ${sinStock ? '#fca5a5' : stockBajo ? '#fde68a' : '#86efac'}`,
+                              fontWeight: 800,
+                              fontSize: '0.98rem',
+                              color: sinStock ? '#991b1b' : '#0f172a',
                             }}>
                               {item.stock_actual}
                             </span>
                             {stockBajo && (
-                              <div style={{ fontSize: '0.7rem', color: '#d97706', fontWeight: 700, marginTop: 3 }}>
-                                ⚠️ Stock bajo
+                              <div style={{ fontSize: '0.7rem', color: '#b45309', fontWeight: 600 }}>
+                                Stock bajo
                               </div>
                             )}
                           </td>
                           <td>
                             <ProgressBar value={item.total_consumido} total={item.total_recibido} showText={false} />
-                            <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: 3 }}>
-                              {pct}% utilizado
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>
+                              {pct}%
                             </div>
                           </td>
                           <td style={{ textAlign: 'center' }}>
@@ -1378,14 +1277,12 @@ export default function MiStock() {
                               disabled={sinStock}
                               onClick={() => handleQuickConsumir(item.producto_id)}
                               style={{
-                                padding: '6px 12px',
-                                fontSize: '0.82rem',
-                                fontWeight: 700,
+                                padding: '4px 10px',
+                                fontSize: '0.78rem',
                                 opacity: sinStock ? 0.4 : 1,
                               }}
-                              title={sinStock ? 'Sin existencias para consumir' : 'Registrar uso de este producto'}
                             >
-                              Consumir
+                              Usar
                             </button>
                           </td>
                         </tr>
@@ -1400,46 +1297,37 @@ export default function MiStock() {
       )}
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* 4. PESTAÑA: REGISTRAR CONSUMO DE PRODUCTOS                */}
+      {/* 4. PESTAÑA: REGISTRAR CONSUMO                              */}
       {/* ────────────────────────────────────────────────────────── */}
       {activeTab === 'consumo' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{
-            background: '#f0f9ff',
-            border: '1px solid #bae6fd',
-            borderRadius: 12,
-            padding: '16px 20px',
-            fontSize: '0.9rem',
-            color: '#0369a1',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 12,
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: 8,
+            padding: '12px 16px',
+            fontSize: '0.85rem',
+            color: '#475569',
           }}>
-            <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>📝</span>
-            <div>
-              <strong style={{ display: 'block', marginBottom: 2 }}>Registrar Uso / Consumo Institucional</strong>
-              Ingresá las cantidades utilizadas en aulas, oficinas o tareas de limpieza. El sistema validará que no superes las existencias y descontará el stock al guardar.
-            </div>
+            Ingresá las cantidades utilizadas en aulas o tareas de la escuela. Las cantidades se descontarán del stock físico actual.
           </div>
 
           {depositoItems.filter((i) => Number(i.stock_actual) > 0).length === 0 ? (
             <div style={{
-              background: '#fff',
-              border: '1px solid var(--border)',
-              borderRadius: 14,
-              padding: '48px 20px',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              padding: '40px 20px',
               textAlign: 'center',
             }}>
-              <div style={{ fontSize: '3rem', marginBottom: 12 }}>📦</div>
-              <h3 style={{ margin: '0 0 6px', color: 'var(--dark)' }}>No hay stock físico disponible</h3>
-              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>
-                Para registrar consumos, tu escuela debe tener al menos un producto con existencias en depósito.
+              <h3 style={{ margin: '0 0 6px', fontSize: '1.05rem', color: '#0f172a' }}>No hay stock físico disponible</h3>
+              <p style={{ margin: 0, color: '#64748b', fontSize: '0.88rem' }}>
+                Tu escuela no tiene productos con existencias para registrar consumos en este momento.
               </p>
             </div>
           ) : (
             <>
-              {/* Tarjetas de productos a consumir */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {depositoItems
                   .filter((i) => Number(i.stock_actual) > 0)
                   .map((item) => {
@@ -1457,28 +1345,26 @@ export default function MiStock() {
                       <div
                         key={item.producto_id}
                         style={{
-                          background: cantNum > 0 ? (excede ? '#fef2f2' : '#f0fdf4') : '#fff',
-                          border: `2px solid ${cantNum > 0 ? (excede ? '#ef4444' : '#10b981') : 'var(--border)'}`,
-                          borderRadius: 14,
-                          padding: '16px 20px',
-                          transition: 'all 0.2s ease',
-                          boxShadow: cantNum > 0 ? '0 2px 8px rgba(16, 185, 129, 0.08)' : 'none',
+                          background: '#ffffff',
+                          border: `1px solid ${cantNum > 0 ? (excede ? '#ef4444' : '#0f172a') : '#e2e8f0'}`,
+                          borderRadius: 8,
+                          padding: '14px 18px',
+                          transition: 'border-color 0.15s ease',
                         }}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                           <div>
-                            <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--dark)' }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>
                               {item.producto_nombre}
                             </div>
-                            <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: 2 }}>
-                              Unidad: <strong>{item.unidad_medida || 'u.'}</strong> · Existencias disponibles:{' '}
-                              <strong style={{ color: '#059669', fontSize: '0.9rem' }}>{item.stock_actual}</strong>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                              Disponible: <strong>{item.stock_actual} {item.unidad_medida || 'u.'}</strong>
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--dark)' }}>
-                              Cantidad a descontar:
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569' }}>
+                              Cantidad a usar:
                             </label>
                             <input
                               type="number"
@@ -1488,50 +1374,50 @@ export default function MiStock() {
                               onChange={(e) => setField('cantidad', e.target.value)}
                               placeholder="0"
                               style={{
-                                width: 95,
+                                width: 80,
                                 textAlign: 'center',
-                                fontWeight: 800,
-                                fontSize: '1.15rem',
-                                borderColor: excede ? '#ef4444' : cantNum > 0 ? '#10b981' : '',
+                                fontWeight: 700,
+                                fontSize: '1rem',
+                                borderColor: excede ? '#ef4444' : '#cbd5e1',
                               }}
                             />
                           </div>
                         </div>
 
                         {excede && (
-                          <div style={{ color: '#dc2626', fontSize: '0.82rem', fontWeight: 700, marginTop: 8 }}>
-                            ⚠️ La cantidad supera el stock disponible ({item.stock_actual} {item.unidad_medida || 'u.'})
+                          <div style={{ color: '#dc2626', fontSize: '0.78rem', fontWeight: 600, marginTop: 6 }}>
+                            La cantidad supera el stock disponible ({item.stock_actual})
                           </div>
                         )}
 
                         {cantNum > 0 && !excede && (
-                          <div style={{ display: 'flex', gap: 12, marginTop: 14, flexWrap: 'wrap', borderTop: '1px dashed #cbd5e1', paddingTop: 12 }}>
-                            <div style={{ flex: 1, minWidth: 190 }}>
-                              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                                Área / Categoría de destino
+                          <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap', borderTop: '1px solid #f1f5f9', paddingTop: 10 }}>
+                            <div style={{ flex: 1, minWidth: 180 }}>
+                              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 3 }}>
+                                Destino / Área
                               </label>
                               <select
                                 value={val.categoria}
                                 onChange={(e) => setField('categoria', e.target.value)}
-                                style={{ width: '100%', padding: '8px 10px', fontSize: '0.88rem' }}
+                                style={{ width: '100%', padding: '6px 8px', fontSize: '0.85rem' }}
                               >
-                                <option value="">— Seleccionar categoría —</option>
+                                <option value="">— Seleccionar —</option>
                                 {CATEGORIAS_CONSUMO.map((c) => (
                                   <option key={c} value={c}>{c}</option>
                                 ))}
                               </select>
                             </div>
 
-                            <div style={{ flex: 2, minWidth: 240 }}>
-                              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                                Observación / Motivo (opcional)
+                            <div style={{ flex: 2, minWidth: 220 }}>
+                              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: 3 }}>
+                                Motivo / Detalle (opcional)
                               </label>
                               <input
                                 type="text"
                                 value={val.motivo}
                                 onChange={(e) => setField('motivo', e.target.value)}
-                                placeholder="Ej: Entregado a sala de 4 años, limpieza semanal..."
-                                style={{ width: '100%', padding: '8px 10px', fontSize: '0.88rem' }}
+                                placeholder="Ej: Sala de 5 años, limpieza semanal..."
+                                style={{ width: '100%', padding: '6px 8px', fontSize: '0.85rem' }}
                                 maxLength={200}
                               />
                             </div>
@@ -1542,28 +1428,26 @@ export default function MiStock() {
                   })}
               </div>
 
-              {/* Resumen previo a guardar */}
+              {/* Resumen */}
               {Object.values(consumos).some((v) => Number(v.cantidad) > 0) && (
                 <div style={{
-                  background: '#fff7ed',
-                  border: '2px solid #fb923c',
-                  borderRadius: 14,
-                  padding: '16px 20px',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: 8,
+                  padding: '12px 16px',
                 }}>
-                  <h4 style={{ margin: '0 0 10px', color: '#9a3412', fontWeight: 800 }}>
-                    📋 Resumen del consumo a registrar:
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+                    Resumen del consumo:
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {Object.entries(consumos)
                       .filter(([, v]) => Number(v.cantidad) > 0)
                       .map(([pid, v]) => {
                         const item = depositoItems.find((i) => i.producto_id === Number(pid))
                         return (
-                          <div key={pid} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px dashed #fed7aa', fontSize: '0.9rem' }}>
-                            <span>
-                              <strong>{item?.producto_nombre}</strong> {v.categoria ? `(${v.categoria})` : ''}
-                            </span>
-                            <span style={{ fontWeight: 800, color: '#c2410c' }}>
+                          <div key={pid} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                            <span>{item?.producto_nombre} {v.categoria ? `(${v.categoria})` : ''}</span>
+                            <span style={{ fontWeight: 700, color: '#0f172a' }}>
                               -{v.cantidad} {item?.unidad_medida || 'u.'}
                             </span>
                           </div>
@@ -1573,8 +1457,8 @@ export default function MiStock() {
                 </div>
               )}
 
-              {/* Botones de acción */}
-              <div style={{ display: 'flex', gap: 12 }}>
+              {/* Botones */}
+              <div style={{ display: 'flex', gap: 10 }}>
                 <button
                   type="button"
                   className="primary"
@@ -1587,9 +1471,9 @@ export default function MiStock() {
                       return Number(v.cantidad) > Number(item?.stock_actual || 0)
                     })
                   }
-                  style={{ flex: 1, padding: '12px 20px', fontSize: '1rem', fontWeight: 800 }}
+                  style={{ flex: 1, padding: '10px 16px', fontSize: '0.9rem', fontWeight: 700 }}
                 >
-                  {savingConsumo ? 'Guardando consumo...' : '✓ Confirmar y Guardar Consumo'}
+                  {savingConsumo ? 'Guardando...' : 'Confirmar Consumo'}
                 </button>
                 <button
                   type="button"
@@ -1599,9 +1483,9 @@ export default function MiStock() {
                     for (const item of depositoItems) reset[item.producto_id] = { cantidad: '', categoria: '', motivo: '' }
                     setConsumos(reset)
                   }}
-                  style={{ padding: '12px 20px', fontSize: '0.9rem' }}
+                  style={{ padding: '10px 16px', fontSize: '0.85rem' }}
                 >
-                  Limpiar campos
+                  Limpiar
                 </button>
               </div>
             </>
@@ -1610,25 +1494,25 @@ export default function MiStock() {
       )}
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* 5. PESTAÑA: HISTORIAL CONSOLIDADO DE CADA FLUJO           */}
+      {/* 5. PESTAÑA: HISTORIAL DE FLUJOS                            */}
       {/* ────────────────────────────────────────────────────────── */}
       {activeTab === 'historial' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {/* Selector de Flujo */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Filtros */}
           <div style={{
             display: 'flex',
-            gap: 10,
-            background: '#fff',
-            border: '1px solid var(--border)',
-            borderRadius: 12,
-            padding: '10px 14px',
+            gap: 6,
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 8,
+            padding: '8px 10px',
             overflowX: 'auto',
           }}>
             {[
-              { key: 'todos', label: 'Todos los Flujos', icon: '🔄', count: timelineFlujos.length },
-              { key: 'retiro', label: 'Retiros de Kit', icon: '🚚', count: historialRetiros.length },
-              { key: 'distribucion', label: 'Recepciones en Escuela', icon: '📥', count: historialDistribuciones.length },
-              { key: 'consumo', label: 'Consumos Internos', icon: '🔻', count: historialConsumos.length },
+              { key: 'todos', label: 'Todos', count: timelineFlujos.length },
+              { key: 'retiro', label: 'Retiros de Kit', count: historialRetiros.length },
+              { key: 'distribucion', label: 'Recepciones', count: historialDistribuciones.length },
+              { key: 'consumo', label: 'Consumos', count: historialConsumos.length },
             ].map((f) => {
               const isSelected = historialFilter === f.key
               return (
@@ -1637,30 +1521,28 @@ export default function MiStock() {
                   type="button"
                   onClick={() => setHistorialFilter(f.key)}
                   style={{
-                    background: isSelected ? 'var(--primary)' : '#f8fafc',
-                    color: isSelected ? '#fff' : 'var(--dark)',
-                    border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
-                    borderRadius: 8,
-                    padding: '8px 14px',
-                    fontSize: '0.88rem',
-                    fontWeight: isSelected ? 800 : 600,
+                    background: isSelected ? '#0f172a' : 'transparent',
+                    color: isSelected ? '#ffffff' : '#475569',
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '6px 12px',
+                    fontSize: '0.82rem',
+                    fontWeight: isSelected ? 700 : 500,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    transition: 'all 0.15s ease',
                   }}
                 >
-                  <span>{f.icon}</span>
                   <span>{f.label}</span>
                   <span style={{
-                    background: isSelected ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
-                    color: isSelected ? '#fff' : '#475569',
+                    background: isSelected ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
+                    color: isSelected ? '#ffffff' : '#64748b',
                     fontSize: '0.72rem',
-                    padding: '2px 7px',
+                    padding: '1px 6px',
                     borderRadius: 999,
-                    fontWeight: 700,
+                    fontWeight: 600,
                   }}>
                     {f.count}
                   </span>
@@ -1669,21 +1551,16 @@ export default function MiStock() {
             })}
           </div>
 
-          {/* Listado de eventos cronológicos */}
+          {/* Listado */}
           <div style={{
-            background: '#fff',
-            border: '1px solid var(--border)',
-            borderRadius: 14,
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
             overflow: 'hidden',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
           }}>
             {timelineFlujos.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--muted)' }}>
-                <div style={{ fontSize: '2.8rem', marginBottom: 10 }}>📜</div>
-                <h4 style={{ margin: '0 0 6px', color: 'var(--dark)' }}>No hay registros en este flujo</h4>
-                <p style={{ margin: 0, fontSize: '0.88rem' }}>
-                  Los movimientos correspondientes aparecerán aquí conforme se registren retiros, recepciones o consumos.
-                </p>
+              <div style={{ textAlign: 'center', padding: '40px 16px', color: '#64748b' }}>
+                <p style={{ margin: 0, fontSize: '0.88rem' }}>No hay registros en este flujo.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1691,71 +1568,52 @@ export default function MiStock() {
                   <div
                     key={item.id}
                     style={{
-                      padding: '16px 20px',
-                      borderBottom: idx === timelineFlujos.length - 1 ? 'none' : '1px solid #e2e8f0',
+                      padding: '14px 18px',
+                      borderBottom: idx === timelineFlujos.length - 1 ? 'none' : '1px solid #f1f5f9',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'flex-start',
                       flexWrap: 'wrap',
-                      gap: 16,
-                      background: idx % 2 === 0 ? '#ffffff' : '#fcfcfd',
+                      gap: 12,
                     }}
                   >
-                    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                      <div style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 10,
-                        background: item.badgeBg,
-                        color: item.badgeColor,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '1.25rem',
-                        flexShrink: 0,
-                      }}>
-                        {item.icono}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '0.92rem', color: '#0f172a' }}>{item.titulo}</strong>
+                        <span style={{
+                          background: '#f1f5f9',
+                          color: '#475569',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          border: '1px solid #e2e8f0',
+                        }}>
+                          {item.tipoLabel}
+                        </span>
                       </div>
 
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <strong style={{ fontSize: '0.98rem', color: 'var(--dark)' }}>{item.titulo}</strong>
-                          <span style={{
-                            background: item.badgeBg,
-                            color: item.badgeColor,
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: 6,
-                          }}>
-                            {item.badgeText}
-                          </span>
-                        </div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
+                        {item.subtitulo}
+                      </div>
 
-                        <div style={{ fontSize: '0.83rem', color: 'var(--muted)', marginTop: 3 }}>
-                          {item.subtitulo}
-                        </div>
-
-                        {/* Listado de ítems involucrados */}
-                        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {(item.items || []).map((prod, i) => (
-                            <div key={i} style={{ fontSize: '0.84rem', color: '#334155' }}>
-                              • <strong>{prod.nombre}</strong>: <span style={{ fontWeight: 700, color: item.tipo === 'consumo' ? '#b91c1c' : '#047857' }}>{prod.cantidad} {prod.unidad}</span>
-                              {prod.danado > 0 && <span style={{ color: '#dc2626', marginLeft: 6 }}>(⚠️ {prod.danado} dañados)</span>}
-                            </div>
-                          ))}
-                        </div>
-
-                        {item.detalles && (
-                          <div style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic', marginTop: 6 }}>
-                            {item.detalles}
+                      <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {(item.items || []).map((prod, i) => (
+                          <div key={i} style={{ fontSize: '0.82rem', color: '#334155' }}>
+                            • {prod.nombre}: <strong>{prod.cantidad} {prod.unidad}</strong>
                           </div>
-                        )}
+                        ))}
                       </div>
+
+                      {item.detalles && (
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 4 }}>
+                          {item.detalles}
+                        </div>
+                      )}
                     </div>
 
-                    <div style={{ fontSize: '0.85rem', color: 'var(--muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      📅 {formatDate(item.fecha, true)}
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                      {formatDate(item.fecha, true)}
                     </div>
                   </div>
                 ))}
