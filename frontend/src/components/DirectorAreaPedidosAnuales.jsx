@@ -28,7 +28,7 @@ export default function DirectorAreaPedidosAnuales({ solicitudes, isSent, onUpda
   const ESTADO_LABELS = {
     pendiente: 'Falta Supervisor',
     pendiente_director: 'Aprob. Supervisor',
-    aprobado: 'Aprobado Final',
+    aprobado: 'Habilitada para Retiro',
     rechazado: 'Rechazado',
     cancelado: 'Cancelado',
     entregado: 'Entregado',
@@ -315,9 +315,12 @@ export default function DirectorAreaPedidosAnuales({ solicitudes, isSent, onUpda
              <p><strong>Escuela:</strong> {detalle.escuela_nombre || detalle.institucion}</p>
              <p><strong>Kit Solicitado:</strong> {detalle.producto || '-'}</p>
              <p><strong>Cantidad de Kits:</strong> {detalle.cantidad || 0}</p>
-             <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
+             <div className="msg show" style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', marginTop: 16 }}>
+               ℹ️ Al aprobar, la solicitud pasará automáticamente al estado <b>Habilitada para retiro</b> para que la escuela pueda retirar sus insumos en el depósito.
+             </div>
+             <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
                 <button 
-                  style={{ flex: 1 }} 
+                  style={{ flex: 1, background: '#16a34a', color: '#fff', fontWeight: 700 }} 
                   onClick={async () => {
                     try {
                       const res = await apiFetch(`/api/pedidos/${detalle.id}/aprobar-director`, {
@@ -326,7 +329,7 @@ export default function DirectorAreaPedidosAnuales({ solicitudes, isSent, onUpda
                         body: JSON.stringify({ decision: 'aceptar' })
                       })
                       if (res.ok) {
-                        alert('Solicitud aprobada correctamente')
+                        alert('Solicitud aprobada correctamente. Ha quedado habilitada para retiro.')
                         setDetalle(null)
                         if (onUpdated) {
                           await onUpdated()
@@ -342,7 +345,7 @@ export default function DirectorAreaPedidosAnuales({ solicitudes, isSent, onUpda
                     }
                   }}
                 >
-                  Aprobar Solicitud
+                  ✓ Aprobar y Habilitar para Retiro
                 </button>
                 <button className="secondary" onClick={() => setDetalle(null)}>Cerrar</button>
              </div>

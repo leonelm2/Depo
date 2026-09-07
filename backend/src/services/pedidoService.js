@@ -88,6 +88,7 @@ function groupPedidos(rows = []) {
         fecha_aprobacion_supervisor: row.fecha_aprobacion_supervisor || null,
         usuario_nombre: row.usuario_nombre || null,
         institucion: row.institucion || null,
+        habilitado_retiro: Boolean(row.habilitado_retiro ?? (row.estado === 'aprobado' && row.aprobado_director_area)),
         kit_id: row.kit_id ? Number(row.kit_id) : null,
         kit_nombre: row.kit_nombre || null,
         producto_id: row.detalle_producto_id ? Number(row.detalle_producto_id) : null,
@@ -601,7 +602,12 @@ async function listarPedidos(user) {
     ? "dp.stock_disponible_relevado as detalle_stock_disponible_relevado"
     : "0 as detalle_stock_disponible_relevado";
 
-  let query = `SELECT p.id_pedido as id, CASE WHEN p.estado::text = 'finalizado' THEN 'entregado' ELSE p.estado::text END as estado, p.observaciones_generales as notas, p.motivo_supervisor, p.respuesta_supervisor_tipo, COALESCE(p.tipo, 'anual') as tipo, p.fecha_creacion as created_at, p.id_institucion, ${requiereLicitacionExpr}, ${estadoAbastecimientoExpr}, p.aprobado_por_supervisor_id, p.fecha_aprobacion_supervisor, p.kit_id, p.kit_nombre, p.kit_cantidad, dp.id_producto as detalle_producto_id, pr.nombre as detalle_producto_nombre, pr.unidad_medida as detalle_unidad_medida, pr.stock_actual as detalle_stock_actual, ${detalleRequiereLicitacionExpr}, ${stockRelevadoExpr}, dp.cantidad_solicitada as detalle_cantidad, p.aprobado_por_director_id, p.fecha_aprobacion_director, p.aprobado_director_area, u.nombre as usuario_nombre, i.nombre as institucion FROM pedido p LEFT JOIN detalle_pedido dp ON dp.id_pedido = p.id_pedido JOIN producto pr ON dp.id_producto = pr.id_producto JOIN usuario u ON p.id_usuario_solicitante = u.id_usuario LEFT JOIN institucion i ON p.id_institucion = i.id_institucion WHERE 1 = 1`;
+  const hasHabilitadoRetiro = await columnExists('pedido', 'habilitado_retiro');
+  const habilitadoRetiroExpr = hasHabilitadoRetiro
+    ? "COALESCE(p.habilitado_retiro, (p.estado::text = 'aprobado' AND COALESCE(p.aprobado_director_area, FALSE) = TRUE)) as habilitado_retiro"
+    : "(p.estado::text = 'aprobado' AND COALESCE(p.aprobado_director_area, FALSE) = TRUE) as habilitado_retiro";
+
+  let query = `SELECT p.id_pedido as id, CASE WHEN p.estado::text = 'finalizado' THEN 'entregado' ELSE p.estado::text END as estado, p.observaciones_generales as notas, p.motivo_supervisor, p.respuesta_supervisor_tipo, COALESCE(p.tipo, 'anual') as tipo, p.fecha_creacion as created_at, p.id_institucion, ${requiereLicitacionExpr}, ${estadoAbastecimientoExpr}, ${habilitadoRetiroExpr}, p.aprobado_por_supervisor_id, p.fecha_aprobacion_supervisor, p.kit_id, p.kit_nombre, p.kit_cantidad, dp.id_producto as detalle_producto_id, pr.nombre as detalle_producto_nombre, pr.unidad_medida as detalle_unidad_medida, pr.stock_actual as detalle_stock_actual, ${detalleRequiereLicitacionExpr}, ${stockRelevadoExpr}, dp.cantidad_solicitada as detalle_cantidad, p.aprobado_por_director_id, p.fecha_aprobacion_director, p.aprobado_director_area, u.nombre as usuario_nombre, i.nombre as institucion FROM pedido p LEFT JOIN detalle_pedido dp ON dp.id_pedido = p.id_pedido JOIN producto pr ON dp.id_producto = pr.id_producto JOIN usuario u ON p.id_usuario_solicitante = u.id_usuario LEFT JOIN institucion i ON p.id_institucion = i.id_institucion WHERE 1 = 1`;
   const params = [];
 
   if (user.role === "directivo") {
@@ -625,12 +631,13 @@ async function listarPedidos(user) {
       const progreso = await get("SELECT SUM(pad.cantidad) as total_pedida, COALESCE(SUM(ea.entregada), 0) as total_entregada FROM planilla_pedido_anual_detalle pad LEFT JOIN (SELECT id_institucion, id_producto, SUM(cantidad_entregada) as entregada FROM entrega_anual WHERE anio = $1 GROUP BY id_institucion, id_producto) ea ON ea.id_institucion = pad.id_institucion AND ea.id_producto = pad.id_producto WHERE pad.id_institucion = $2 AND pad.planilla_id IN (SELECT id FROM planilla_pedido_anual WHERE anio = $1)", [anio, p.id_institucion]);
 
       p.logistica = {
-        estado_licitacion: lic?.estado || 'pendiente',
+        estado_licitacion: lic?.estado || null,
         total_pedida: progreso?.total_pedida || 0,
         total_entregada: progreso?.total_entregada || 0,
         porcentaje_entrega: progreso?.total_pedida > 0 
           ? Math.round((progreso.total_entregada / progreso.total_pedida) * 100) 
-          : 0
+          : 0,
+        habilitado_retiro: Boolean(p.habilitado_retiro !== false)
       };
     }
   }
@@ -720,13 +727,34 @@ async function getHistorialInstitucion(institucion, user) {
 }
 
 async function getPedidoById(id, user) {
+  const hasHabilitadoRetiro = await columnExists('pedido', 'habilitado_retiro');
+  const habilitadoRetiroExpr = hasHabilitadoRetiro
+    ? "COALESCE(p.habilitado_retiro, (p.estado::text = 'aprobado' AND COALESCE(p.aprobado_director_area, FALSE) = TRUE)) as habilitado_retiro"
+    : "(p.estado::text = 'aprobado' AND COALESCE(p.aprobado_director_area, FALSE) = TRUE) as habilitado_retiro";
+
   const pedidoRows = await all(
-    "SELECT p.id_pedido as id, CASE WHEN p.estado::text = 'finalizado' THEN 'entregado' ELSE p.estado::text END as estado, p.observaciones_generales as notas, p.fecha_creacion as created_at, p.id_institucion, COALESCE(p.tipo, 'anual') as tipo, p.motivo_supervisor, p.respuesta_supervisor_tipo, p.aprobado_por_supervisor_id, p.fecha_aprobacion_supervisor, p.kit_id, p.kit_nombre, p.kit_cantidad, dp.id_producto as detalle_producto_id, pr.nombre as detalle_producto_nombre, pr.unidad_medida as detalle_unidad_medida, pr.stock_actual as detalle_stock_actual, dp.cantidad_solicitada as detalle_cantidad, u.nombre as usuario_nombre, i.nombre as institucion FROM pedido p JOIN detalle_pedido dp ON dp.id_pedido = p.id_pedido JOIN producto pr ON dp.id_producto = pr.id_producto JOIN usuario u ON p.id_usuario_solicitante = u.id_usuario LEFT JOIN institucion i ON i.id_institucion = p.id_institucion WHERE p.id_pedido = ? ORDER BY pr.nombre ASC",
+    `SELECT p.id_pedido as id, CASE WHEN p.estado::text = 'finalizado' THEN 'entregado' ELSE p.estado::text END as estado, p.observaciones_generales as notas, p.fecha_creacion as created_at, p.id_institucion, COALESCE(p.tipo, 'anual') as tipo, ${habilitadoRetiroExpr}, p.motivo_supervisor, p.respuesta_supervisor_tipo, p.aprobado_por_supervisor_id, p.fecha_aprobacion_supervisor, p.kit_id, p.kit_nombre, p.kit_cantidad, dp.id_producto as detalle_producto_id, pr.nombre as detalle_producto_nombre, pr.unidad_medida as detalle_unidad_medida, pr.stock_actual as detalle_stock_actual, dp.cantidad_solicitada as detalle_cantidad, u.nombre as usuario_nombre, i.nombre as institucion FROM pedido p JOIN detalle_pedido dp ON dp.id_pedido = p.id_pedido JOIN producto pr ON dp.id_producto = pr.id_producto JOIN usuario u ON p.id_usuario_solicitante = u.id_usuario LEFT JOIN institucion i ON i.id_institucion = p.id_institucion WHERE p.id_pedido = ? ORDER BY pr.nombre ASC`,
     [id]
   );
 
   const pedido = groupPedidos(pedidoRows)[0];
   if (!pedido) throw { status: 404, message: "Pedido no encontrado" };
+
+  if (pedido.tipo === 'anual' && pedido.estado === 'aprobado') {
+    const anio = new Date(pedido.created_at).getFullYear();
+    const lic = await get("SELECT estado FROM licitacion_publicada WHERE anio = ?", [anio]);
+    const progreso = await get("SELECT SUM(pad.cantidad) as total_pedida, COALESCE(SUM(ea.entregada), 0) as total_entregada FROM planilla_pedido_anual_detalle pad LEFT JOIN (SELECT id_institucion, id_producto, SUM(cantidad_entregada) as entregada FROM entrega_anual WHERE anio = $1 GROUP BY id_institucion, id_producto) ea ON ea.id_institucion = pad.id_institucion AND ea.id_producto = pad.id_producto WHERE pad.id_institucion = $2 AND pad.planilla_id IN (SELECT id FROM planilla_pedido_anual WHERE anio = $1)", [anio, pedido.id_institucion]);
+
+    pedido.logistica = {
+      estado_licitacion: lic?.estado || null,
+      total_pedida: progreso?.total_pedida || 0,
+      total_entregada: progreso?.total_entregada || 0,
+      porcentaje_entrega: progreso?.total_pedida > 0 
+        ? Math.round((progreso.total_entregada / progreso.total_pedida) * 100) 
+        : 0,
+      habilitado_retiro: Boolean(pedido.habilitado_retiro !== false)
+    };
+  }
 
   if (user.role === "directivo") {
     const userInstitution = await get(
@@ -1023,10 +1051,12 @@ async function updateEstadoPedido(id, data, user) {
     const nuevoEstado = (estadoObjetivoDb === "aprobado" && esPedidoAnual && !isDirectApprovalRole) ? "pendiente_director" : estadoObjetivoDb;
 
     if (nuevoEstado === "aprobado") {
-      await run(
-        "UPDATE pedido SET estado = 'aprobado', aprobado_director_area = TRUE, aprobado_por_supervisor_id = COALESCE(aprobado_por_supervisor_id, ?), fecha_aprobacion_supervisor = COALESCE(fecha_aprobacion_supervisor, NOW()), aprobado_por_director_id = ?, fecha_aprobacion_director = NOW(), motivo_supervisor = NULL, respuesta_supervisor_tipo = 'aprobacion' WHERE id_pedido = ?",
-        [user.sub, user.sub, id]
-      );
+      const hasHabilitadoRetiro = await columnExists('pedido', 'habilitado_retiro');
+      const updateSql = hasHabilitadoRetiro
+        ? "UPDATE pedido SET estado = 'aprobado', aprobado_director_area = TRUE, aprobado_por_supervisor_id = COALESCE(aprobado_por_supervisor_id, ?), fecha_aprobacion_supervisor = COALESCE(fecha_aprobacion_supervisor, NOW()), aprobado_por_director_id = ?, fecha_aprobacion_director = NOW(), motivo_supervisor = NULL, respuesta_supervisor_tipo = 'aprobacion', habilitado_retiro = TRUE WHERE id_pedido = ?"
+        : "UPDATE pedido SET estado = 'aprobado', aprobado_director_area = TRUE, aprobado_por_supervisor_id = COALESCE(aprobado_por_supervisor_id, ?), fecha_aprobacion_supervisor = COALESCE(fecha_aprobacion_supervisor, NOW()), aprobado_por_director_id = ?, fecha_aprobacion_director = NOW(), motivo_supervisor = NULL, respuesta_supervisor_tipo = 'aprobacion' WHERE id_pedido = ?";
+
+      await run(updateSql, [user.sub, user.sub, id]);
     } else {
       await run(
         "UPDATE pedido SET estado = ?, aprobado_por_supervisor_id = ?, fecha_aprobacion_supervisor = NOW(), motivo_supervisor = ?, respuesta_supervisor_tipo = ? WHERE id_pedido = ?",
@@ -1135,11 +1165,13 @@ async function aprobarDirector(id, data, user) {
     return { ok: true, estado: 'rechazado' };
   }
 
-  await run(
-    "UPDATE pedido SET estado = 'aprobado', aprobado_director_area = TRUE, aprobado_por_director_id = ?, fecha_aprobacion_director = NOW() WHERE id_pedido = ?",
-    [user.sub, id]
-  );
-  return { ok: true, estado: 'aprobado' };
+  const hasHabilitadoRetiro = await columnExists('pedido', 'habilitado_retiro');
+  const updateSql = hasHabilitadoRetiro
+    ? "UPDATE pedido SET estado = 'aprobado', aprobado_director_area = TRUE, aprobado_por_director_id = ?, fecha_aprobacion_director = NOW(), habilitado_retiro = TRUE WHERE id_pedido = ?"
+    : "UPDATE pedido SET estado = 'aprobado', aprobado_director_area = TRUE, aprobado_por_director_id = ?, fecha_aprobacion_director = NOW() WHERE id_pedido = ?";
+
+  await run(updateSql, [user.sub, id]);
+  return { ok: true, estado: 'aprobado', habilitado_retiro: true };
 }
 
 module.exports = {
