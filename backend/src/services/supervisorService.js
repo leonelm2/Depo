@@ -137,7 +137,8 @@ async function getInstitucionSelectSql() {
     hasTipo,
     hasCategoria,
     hasMatriculados,
-    hasProductoKit
+    hasProductoKit,
+    hasKitCantidad
   ] = await Promise.all([
     columnExists("institucion", "tipo_escuela"),
     columnExists("institucion", "kit_id"),
@@ -145,7 +146,8 @@ async function getInstitucionSelectSql() {
     columnExists("institucion", "tipo"),
     columnExists("institucion", "categoria"),
     columnExists("institucion", "matriculados"),
-    tableExists("producto_kit")
+    tableExists("producto_kit"),
+    columnExists("institucion", "kit_cantidad")
   ]);
   const departamentoSql = await getDepartamentoSql();
   const nivelExpr = await getInstitucionNivelExpr();
@@ -155,6 +157,7 @@ async function getInstitucionSelectSql() {
     nivelExpr,
     tipoEscuelaExpr: hasTipoEscuela ? "COALESCE(i.tipo_escuela, 'normal')" : "'normal'::text",
     kitIdExpr: hasKitId ? "i.kit_id" : "NULL::int",
+    kitCantidadExpr: hasKitCantidad ? "i.kit_cantidad" : "NULL::int",
     kitJoin: hasKitId && hasProductoKit ? "LEFT JOIN producto_kit k ON k.id = i.kit_id" : "",
     kitNombreExpr: hasKitId && hasProductoKit ? "k.nombre" : "NULL::text",
     tipoExpr: hasAmbito ? "i.ambito" : hasTipo ? "i.tipo" : "NULL::text",
@@ -204,6 +207,7 @@ async function getInstituciones(user, queryJurisdiccion) {
               d.latitud,
               d.longitud,
               ${selectSql.kitIdExpr} AS kit_id,
+              ${selectSql.kitCantidadExpr} AS kit_cantidad,
               ${selectSql.kitNombreExpr} AS kit_nombre,
               CASE 
                 WHEN i.kit_id IS NULL THEN 'sin_kit'
@@ -342,7 +346,7 @@ async function getDashboardStats(user) {
   };
 }
 
-async function updateInstitucionKit(user, institucionId, kitId) {
+async function updateInstitucionKit(user, institucionId, kitId, kitCantidad = 0) {
   await ensureSupervisorSchema();
 
   if (user?.role !== "supervisor" && user?.role !== "master") {
@@ -354,6 +358,9 @@ async function updateInstitucionKit(user, institucionId, kitId) {
   }
   if (!Number.isInteger(kitId) || kitId <= 0) {
     throw { status: 400, message: "Kit inválido." };
+  }
+  if (!Number.isInteger(kitCantidad) || kitCantidad < 0) {
+    throw { status: 400, message: "Cantidad de kit inválida." };
   }
 
   if (!(await supervisorHasAssignedInstitution(user.sub, institucionId))) {
@@ -374,10 +381,11 @@ async function updateInstitucionKit(user, institucionId, kitId) {
   await get(
     `UPDATE institucion
      SET kit_id = $1,
+         kit_cantidad = $2,
          updated_at = NOW()
-     WHERE id_institucion = $2
+     WHERE id_institucion = $3
      RETURNING id_institucion`,
-    [kitId, institucionId]
+    [kitId, kitCantidad, institucionId]
   );
 
   return { ok: true, kit_id: kitId, kit_nombre: kit.nombre };

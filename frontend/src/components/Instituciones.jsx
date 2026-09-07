@@ -19,6 +19,7 @@ L.Icon.Default.mergeOptions({
 
 export default function Instituciones({ supervisorMode = false }) {
   const { user } = useAuth()
+  const [activeTab, setActiveTab] = useState('listado')
   const [instituciones, setInstituciones] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -292,7 +293,61 @@ export default function Instituciones({ supervisorMode = false }) {
         </div>
       </div>
 
-      <div className="instituciones-map-layout">
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, borderBottom: '1px solid var(--border)' }}>
+        <button 
+          className={activeTab === 'listado' ? '' : 'secondary'}
+          style={{ borderRadius: '8px 8px 0 0', margin: 0, padding: '10px 20px', borderBottom: activeTab === 'listado' ? '2px solid var(--blue)' : 'none' }}
+          onClick={() => setActiveTab('listado')}
+        >
+          📄 Listado
+        </button>
+        <button 
+          className={activeTab === 'mapa' ? '' : 'secondary'}
+          style={{ borderRadius: '8px 8px 0 0', margin: 0, padding: '10px 20px', borderBottom: activeTab === 'mapa' ? '2px solid var(--blue)' : 'none' }}
+          onClick={() => setActiveTab('mapa')}
+        >
+          🗺️ Mapa
+        </button>
+      </div>
+
+      {activeTab === 'listado' && (
+        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: 16, overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
+                <th style={{ padding: 10 }}>Nombre</th>
+                <th style={{ padding: 10 }}>CUE</th>
+                <th style={{ padding: 10 }}>CUI</th>
+                <th style={{ padding: 10 }}>Nivel</th>
+                <th style={{ padding: 10 }}>Departamento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredInstituciones.map(inst => (
+                <tr key={inst.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: 10, fontWeight: 500, color: 'var(--dark)' }}>{inst.nombre}</td>
+                  <td style={{ padding: 10 }}>{inst.cue || '-'}</td>
+                  <td style={{ padding: 10 }}>{inst.cui || '-'}</td>
+                  <td style={{ padding: 10 }}>
+                    <span className="badge" style={{ background: '#f1f5f9', color: '#475569' }}>
+                      {inst.nivel || '-'}
+                    </span>
+                  </td>
+                  <td style={{ padding: 10 }}>{inst.departamento || '-'}</td>
+                </tr>
+              ))}
+              {filteredInstituciones.length === 0 && (
+                <tr>
+                  <td colSpan="5" style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>No se encontraron instituciones con los filtros aplicados.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'mapa' && (
+        <div className="instituciones-map-layout">
         {/* Mapa */}
         <div className="instituciones-map-container" style={{ isolation: 'isolate' }}>
           {validInstituciones.length === 0 ? (
@@ -425,7 +480,7 @@ export default function Instituciones({ supervisorMode = false }) {
             </>
           )}
         </aside>
-      </div>
+      )}
 
       <p>Mostrando {Object.keys(groupedByEdificio).length} edificio(s) en mapa con {filteredInstituciones.length} instituciones</p>
     </div>

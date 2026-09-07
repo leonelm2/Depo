@@ -148,6 +148,7 @@ async function initDatabaseSchema() {
         ALTER TABLE institucion ADD COLUMN IF NOT EXISTS tipo_escuela VARCHAR(40);
         ALTER TABLE institucion ADD COLUMN IF NOT EXISTS matriculados INT DEFAULT 0;
         ALTER TABLE institucion ADD COLUMN IF NOT EXISTS kit_id INT REFERENCES producto_kit(id);
+        ALTER TABLE institucion ADD COLUMN IF NOT EXISTS kit_cantidad INT;
         ALTER TABLE institucion ADD COLUMN IF NOT EXISTS direccion_area VARCHAR(100);
       `);
     } catch (err) {

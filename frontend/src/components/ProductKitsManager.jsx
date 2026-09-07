@@ -7,7 +7,6 @@ function emptyForm() {
     id: null,
     nombre: '',
     descripcion: '',
-    cantidad_alumnos: '',
     items: [{ producto_id: '', cantidad: '' }]
   }
 }
@@ -81,7 +80,6 @@ export default function ProductKitsManager() {
       id: kit.id,
       nombre: kit.nombre || '',
       descripcion: kit.descripcion || '',
-      cantidad_alumnos: kit.cantidad_alumnos || '',
       items: (kit.items || []).length
         ? kit.items.map((item) => ({
             producto_id: String(item.producto_id),
@@ -127,7 +125,6 @@ export default function ProductKitsManager() {
     const payload = {
       nombre: form.nombre.trim(),
       descripcion: form.descripcion.trim(),
-      cantidad_alumnos: form.cantidad_alumnos ? Number(form.cantidad_alumnos) : null,
       items: form.items
         .filter((item) => item.producto_id && item.cantidad)
         .map((item) => ({
@@ -405,17 +402,6 @@ export default function ProductKitsManager() {
                   value={form.nombre}
                   onChange={(e) => setForm({ ...form, nombre: e.target.value })}
                   placeholder="Ej: Kit Primaria Turno Manana"
-                  required
-                />
-              </div>
-              <div>
-                <label>Cantidad de alumnos (referencia)</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={form.cantidad_alumnos}
-                  onChange={(e) => setForm({ ...form, cantidad_alumnos: e.target.value })}
-                  placeholder="Ej: 100"
                   required
                 />
               </div>

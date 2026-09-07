@@ -15,6 +15,7 @@ export default function AsignarKit() {
   })
   const [kits, setKits] = useState([])
   const [kitByInstitucion, setKitByInstitucion] = useState({})
+  const [cantidadByInstitucion, setCantidadByInstitucion] = useState({})
   const [savingTipoId, setSavingTipoId] = useState(null)
   const [msg, setMsg] = useState({ text: '', type: '' })
 
@@ -39,6 +40,9 @@ export default function AsignarKit() {
           setKitByInstitucion(
             Object.fromEntries(rows.map((inst) => [String(inst.id), inst.kit_id ? String(inst.kit_id) : '']))
           )
+          setCantidadByInstitucion(
+            Object.fromEntries(rows.map((inst) => [String(inst.id), inst.kit_cantidad ? String(inst.kit_cantidad) : '']))
+          )
         }
 
         if (kitsRes.ok) {
@@ -58,12 +62,14 @@ export default function AsignarKit() {
 
   const handleGuardarTipoKit = async (institucionId) => {
     const kit_id = Number(kitByInstitucion[String(institucionId)] || 0)
+    const kit_cantidad = Number(cantidadByInstitucion[String(institucionId)] || 0)
+
     setSavingTipoId(institucionId)
     try {
       const res = await apiFetch(`/api/supervisor/instituciones/${institucionId}/tipo-kit`, {
         token,
         method: 'PATCH',
-        body: JSON.stringify({ kit_id })
+        body: JSON.stringify({ kit_id, kit_cantidad })
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -72,7 +78,7 @@ export default function AsignarKit() {
 
       setInstituciones((prev) => prev.map((inst) => (
         Number(inst.id) === Number(institucionId)
-          ? { ...inst, kit_id, kit_nombre: data.kit_nombre || '' }
+          ? { ...inst, kit_id, kit_cantidad, kit_nombre: data.kit_nombre || '' }
           : inst
       )))
       setMsg({ text: 'Kit actualizado correctamente.', type: 'success' })
@@ -122,7 +128,12 @@ export default function AsignarKit() {
                     <div className="sv-inst-nombre">{inst.nombre}</div>
                     <div className="sv-inst-cue">CUE: {inst.cue || '-'}</div>
                   </div>
-                  {inst.kit_nombre && <span className="badge sv-badge-tipo-escuela">{inst.kit_nombre}</span>}
+                  {inst.kit_nombre && (
+                    <div style={{ textAlign: 'right' }}>
+                      <span className="badge sv-badge-tipo-escuela">{inst.kit_nombre}</span>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: 4 }}>Cantidad: {inst.kit_cantidad || 0}</div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="sv-kit-meta">
@@ -131,18 +142,32 @@ export default function AsignarKit() {
                 </div>
 
                 <label>Kit asignado</label>
-                <select
-                  value={kitByInstitucion[String(inst.id)] || ''}
-                  onChange={(e) => setKitByInstitucion((prev) => ({
-                    ...prev,
-                    [String(inst.id)]: e.target.value
-                  }))}
-                >
-                  <option value="">Seleccionar kit...</option>
-                  {kits.map((kit) => (
-                    <option key={kit.id} value={kit.id}>{kit.nombre}</option>
-                  ))}
-                </select>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <select
+                    style={{ flex: 1, marginBottom: 0 }}
+                    value={kitByInstitucion[String(inst.id)] || ''}
+                    onChange={(e) => setKitByInstitucion((prev) => ({
+                      ...prev,
+                      [String(inst.id)]: e.target.value
+                    }))}
+                  >
+                    <option value="">Seleccionar kit...</option>
+                    {kits.map((kit) => (
+                      <option key={kit.id} value={kit.id}>{kit.nombre}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    placeholder="Cant."
+                    title="Cantidad de kits (ej. cantidad de alumnos)"
+                    style={{ width: 80, marginBottom: 0 }}
+                    value={cantidadByInstitucion[String(inst.id)] || ''}
+                    onChange={(e) => setCantidadByInstitucion((prev) => ({
+                      ...prev,
+                      [String(inst.id)]: e.target.value
+                    }))}
+                  />
+                </div>
 
                 <button
                   type="button"

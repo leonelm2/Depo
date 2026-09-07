@@ -26,7 +26,8 @@ async function updateInstitucionKit(req, res) {
   try {
     const institucionId = Number(req.params.id);
     const kitId = Number(req.body?.kit_id);
-    const result = await supervisorService.updateInstitucionKit(req.user, institucionId, kitId);
+    const kitCantidad = Number(req.body?.kit_cantidad) || 0;
+    const result = await supervisorService.updateInstitucionKit(req.user, institucionId, kitId, kitCantidad);
     return res.json(result);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
