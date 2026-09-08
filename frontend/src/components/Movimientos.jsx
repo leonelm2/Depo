@@ -329,6 +329,30 @@ export default function Movimientos() {
     }
   }
 
+  const handleEstadoEgresoChange = async (idMovimiento, nuevoEstado) => {
+    if (!confirm(`¿Estás seguro de cambiar el estado del egreso a ${nuevoEstado}?`)) return
+    setIsLoading(true)
+    try {
+      const res = await apiFetch(`/api/depositos/egreso/${idMovimiento}/estado`, {
+        method: 'PUT',
+        token,
+        body: JSON.stringify({ nuevo_estado: nuevoEstado })
+      })
+      if (res.ok) {
+        setMsg({ text: `Estado cambiado a ${nuevoEstado}`, type: 'success' })
+        loadMovimientos()
+        loadProductos() // para actualizar stock disponible
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setMsg({ text: data.error || 'Error al cambiar estado', type: 'error' })
+      }
+    } catch (e) {
+      setMsg({ text: 'Error de red', type: 'error' })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   // Ingreso handlers
   const addToIngreso = () => {
     const productoId = parseInt(ingresoItem.productoId, 10)
@@ -1403,6 +1427,7 @@ return (
                 <th>Proveedor / Institución</th>
                 <th>Registrado por</th>
                 <th>Fecha</th>
+                <th>Estado Egreso</th>
                 <th style={{ textAlign: 'center' }}>Acciones</th>
               </tr>
             </thead>
@@ -1459,6 +1484,40 @@ return (
                       <td>{proveedorDisplay}</td>
                       <td>{first.usuario_nombre || '-'}</td>
                       <td>{first.created_at ? new Date(first.created_at).toLocaleDateString() : '-'}</td>
+                      <td>
+                        {first.tipo === 'egreso' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '3px 8px',
+                              borderRadius: 12,
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              background: first.estado_egreso === 'aceptado' ? '#fef9c3' : first.estado_egreso === 'despachado' ? '#dbeafe' : '#dcfce7',
+                              color: first.estado_egreso === 'aceptado' ? '#854d0e' : first.estado_egreso === 'despachado' ? '#1e40af' : '#166534',
+                              border: `1px solid ${first.estado_egreso === 'aceptado' ? '#fde047' : first.estado_egreso === 'despachado' ? '#bfdbfe' : '#bbf7d0'}`,
+                              width: 'fit-content'
+                            }}>
+                              {first.estado_egreso ? first.estado_egreso.charAt(0).toUpperCase() + first.estado_egreso.slice(1) : '-'}
+                            </span>
+                            {canCreate && first.estado_egreso !== 'entregado' && (
+                              <select 
+                                value={first.estado_egreso || ''} 
+                                onChange={(e) => handleEstadoEgresoChange(first.id, e.target.value)}
+                                style={{
+                                  fontSize: '0.75rem', padding: '2px 4px', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer'
+                                }}
+                              >
+                                <option value="aceptado" disabled={first.estado_egreso !== 'aceptado'}>Aceptado</option>
+                                <option value="despachado" disabled={first.estado_egreso === 'entregado'}>Despachado</option>
+                                <option value="entregado" disabled={first.estado_egreso === 'aceptado'}>Entregado</option>
+                              </select>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: '#9ca3af' }}>—</span>
+                        )}
+                      </td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                           <button

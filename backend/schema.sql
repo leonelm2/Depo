@@ -82,6 +82,7 @@ CREATE TABLE producto (
     unidad_medida VARCHAR(20),
     marca VARCHAR(120),
     stock_actual INT DEFAULT 0 CHECK (stock_actual >= 0),
+    stock_reservado INT DEFAULT 0,
     stock_minimo INT DEFAULT 0 CHECK (stock_minimo >= 0),
     id_categoria INT REFERENCES categoria(id_categoria) ON DELETE SET NULL
 );
@@ -483,7 +484,8 @@ CREATE TABLE movimiento_stock (
     motivo TEXT, 
     fecha_vencimiento DATE,
     id_deposito INT REFERENCES deposito(id_deposito) ON DELETE SET NULL,
-    id_deposito_destino INT REFERENCES deposito(id_deposito) ON DELETE SET NULL
+    id_deposito_destino INT REFERENCES deposito(id_deposito) ON DELETE SET NULL,
+    estado_egreso VARCHAR(30)
 );
 
 CREATE TABLE pedido_entrega (
@@ -582,6 +584,7 @@ CREATE TABLE stock_deposito (
     id_deposito INTEGER NOT NULL REFERENCES deposito(id_deposito) ON DELETE CASCADE,
     id_producto INTEGER NOT NULL REFERENCES producto(id_producto) ON DELETE CASCADE,
     cantidad INTEGER DEFAULT 0 NOT NULL,
+    reservado INTEGER DEFAULT 0 NOT NULL,
     PRIMARY KEY (id_deposito, id_producto)
 );
 

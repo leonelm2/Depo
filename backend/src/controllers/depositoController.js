@@ -130,6 +130,28 @@ async function registrarEgreso(req, res) {
   }
 }
 
+async function actualizarEstadoEgreso(req, res) {
+  try {
+    const { id_movimiento } = req.params;
+    const { nuevo_estado } = req.body;
+    
+    if (!nuevo_estado) {
+      return res.status(400).json({ error: "El nuevo estado es requerido" });
+    }
+
+    const result = await depositoService.actualizarEstadoEgreso({
+      id_movimiento,
+      nuevo_estado,
+      user: req.user
+    });
+    return res.json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error("Error al actualizar egreso:", err);
+    return res.status(500).json({ error: "No se pudo actualizar el estado del egreso" });
+  }
+}
+
 async function getRecepcionesLicitacion(req, res) {
   try {
     const licitaciones = await depositoService.getRecepcionesLicitacion();
@@ -356,6 +378,7 @@ module.exports = {
   getTraslados,
   registrarIngreso,
   registrarEgreso,
+  actualizarEstadoEgreso,
   getRecepcionesLicitacion,
   getDetalleRecepcion,
   registrarIngresoLicitacion,

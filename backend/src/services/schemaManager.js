@@ -803,6 +803,19 @@ async function initDatabaseSchema() {
       console.warn("[schemaManager] Warning syncing serial sequences:", err.message);
     }
 
+    // 28. Egresos states & Reserved stock
+    try {
+      await client.query(`
+        ALTER TABLE movimiento_stock ADD COLUMN IF NOT EXISTS estado_egreso VARCHAR(30);
+        UPDATE movimiento_stock SET estado_egreso = 'despachado' WHERE tipo = 'egreso' AND estado_egreso IS NULL;
+        
+        ALTER TABLE producto ADD COLUMN IF NOT EXISTS stock_reservado INT DEFAULT 0;
+        ALTER TABLE stock_deposito ADD COLUMN IF NOT EXISTS reservado INT DEFAULT 0;
+      `);
+    } catch (err) {
+      console.warn("[schemaManager] Warning adding egreso states and reserved stock:", err.message);
+    }
+
     console.log("[schemaManager] Database schema and migrations completed successfully!");
   } finally {
     client.release();

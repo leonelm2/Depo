@@ -21,7 +21,8 @@ async function listarMovimientos(queryParams) {
       u.email as usuario_email,
       m.fecha_movimiento as created_at,
       m.id_deposito,
-      d.nombre as deposito_nombre
+      d.nombre as deposito_nombre,
+      m.estado_egreso
     FROM movimiento_stock m
     LEFT JOIN producto p ON m.id_producto = p.id_producto
     LEFT JOIN usuario u ON m.id_usuario = u.id_usuario
@@ -108,7 +109,8 @@ async function obtenerMovimiento(id) {
       COALESCE(pr.nombre, pr_lic.proveedor_nombre) as proveedor_nombre,
       m.motivo,
       u.nombre as usuario_nombre,
-      m.fecha_movimiento as created_at
+      m.fecha_movimiento as created_at,
+      m.estado_egreso
     FROM movimiento_stock m
     LEFT JOIN producto p ON m.id_producto = p.id_producto
     LEFT JOIN usuario u ON m.id_usuario = u.id_usuario

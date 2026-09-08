@@ -45,5 +45,6 @@ router.get("/:id/productos", authorizePermissions(PERMISSIONS.STOCK_VIEW), depos
 router.get("/:id/stock", authorizePermissions(PERMISSIONS.STOCK_VIEW), depositoController.getStockByDeposito);
 router.post("/:id/ingreso", authorizePermissions(PERMISSIONS.STOCK_MOVEMENT_CREATE), depositoController.registrarIngreso);
 router.post("/:id/egreso", authorizePermissions(PERMISSIONS.STOCK_MOVEMENT_CREATE), depositoController.registrarEgreso);
+router.put("/egreso/:id_movimiento/estado", authorizePermissions(PERMISSIONS.STOCK_MOVEMENT_CREATE), depositoController.actualizarEstadoEgreso);
 
 module.exports = router;

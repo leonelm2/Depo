@@ -274,10 +274,10 @@ async function registrarEgreso({ id, id_producto, cantidad, id_institucion, moti
   }
 
   const stockDep = await get(
-    "SELECT cantidad FROM stock_deposito WHERE id_deposito = $1 AND id_producto = $2",
+    "SELECT cantidad, reservado FROM stock_deposito WHERE id_deposito = $1 AND id_producto = $2",
     [depositoIdNum, productoIdNum]
   );
-  const stockDisp = stockDep?.cantidad || 0;
+  const stockDisp = (stockDep?.cantidad || 0) - (stockDep?.reservado || 0);
   if (stockDisp < cantidadNum) {
     throw { status: 400, message: `Stock insuficiente. Disponible: ${stockDisp}` };
   }
@@ -291,21 +291,70 @@ async function registrarEgreso({ id, id_producto, cantidad, id_institucion, moti
   }
 
   await run(`
-    INSERT INTO movimiento_stock (id_producto, cantidad, tipo, id_institucion, motivo, id_usuario, id_deposito)
-    VALUES ($1, $2, 'egreso', $3, $4, $5, $6)
+    INSERT INTO movimiento_stock (id_producto, cantidad, tipo, id_institucion, motivo, id_usuario, id_deposito, estado_egreso)
+    VALUES ($1, $2, 'egreso', $3, $4, $5, $6, 'aceptado')
   `, [productoIdNum, cantidadNum, institucionIdNum, motivo || "Egreso de depósito", user.sub, depositoIdNum]);
 
   await run(
-    "UPDATE stock_deposito SET cantidad = cantidad - $1 WHERE id_deposito = $2 AND id_producto = $3",
+    "UPDATE stock_deposito SET reservado = reservado + $1 WHERE id_deposito = $2 AND id_producto = $3",
     [cantidadNum, depositoIdNum, productoIdNum]
   );
 
   await pool.query(
-    "UPDATE producto SET stock_actual = COALESCE(stock_actual, 0) - $1 WHERE id_producto = $2",
+    "UPDATE producto SET stock_reservado = COALESCE(stock_reservado, 0) + $1 WHERE id_producto = $2",
     [cantidadNum, productoIdNum]
   );
 
   return { ok: true, message: "Egreso registrado" };
+}
+
+async function actualizarEstadoEgreso({ id_movimiento, nuevo_estado, user }) {
+  await ensureDepositosSchema();
+  const idMovNum = parseInt(id_movimiento, 10);
+  
+  if (!['aceptado', 'despachado', 'entregado'].includes(nuevo_estado)) {
+    throw { status: 400, message: "Estado de egreso inválido" };
+  }
+
+  const mov = await get("SELECT * FROM movimiento_stock WHERE id_movimiento = $1 AND tipo = 'egreso'", [idMovNum]);
+  if (!mov) {
+    throw { status: 404, message: "Movimiento de egreso no encontrado" };
+  }
+
+  if (mov.estado_egreso === nuevo_estado) {
+    return { ok: true, message: "El egreso ya se encuentra en este estado" };
+  }
+
+  // Si pasa de 'aceptado' a 'despachado' -> descontar de reservado y de cantidad real
+  if (mov.estado_egreso === 'aceptado' && nuevo_estado === 'despachado') {
+    // Verificar si hay depósito para este egreso
+    if (mov.id_deposito) {
+      await run(
+        "UPDATE stock_deposito SET reservado = reservado - $1, cantidad = cantidad - $1 WHERE id_deposito = $2 AND id_producto = $3",
+        [mov.cantidad, mov.id_deposito, mov.id_producto]
+      );
+    }
+    await pool.query(
+      "UPDATE producto SET stock_reservado = stock_reservado - $1, stock_actual = stock_actual - $1 WHERE id_producto = $2",
+      [mov.cantidad, mov.id_producto]
+    );
+  }
+  // Si de casualidad se revierte de 'despachado' a 'aceptado'
+  else if (mov.estado_egreso === 'despachado' && nuevo_estado === 'aceptado') {
+    if (mov.id_deposito) {
+      await run(
+        "UPDATE stock_deposito SET reservado = reservado + $1, cantidad = cantidad + $1 WHERE id_deposito = $2 AND id_producto = $3",
+        [mov.cantidad, mov.id_deposito, mov.id_producto]
+      );
+    }
+    await pool.query(
+      "UPDATE producto SET stock_reservado = stock_reservado + $1, stock_actual = stock_actual + $1 WHERE id_producto = $2",
+      [mov.cantidad, mov.id_producto]
+    );
+  }
+
+  await run("UPDATE movimiento_stock SET estado_egreso = $1 WHERE id_movimiento = $2", [nuevo_estado, idMovNum]);
+  return { ok: true, message: `Egreso actualizado a estado ${nuevo_estado}` };
 }
 
 async function getRecepcionesLicitacion() {
@@ -1276,6 +1325,7 @@ module.exports = {
   getTraslados,
   registrarIngreso,
   registrarEgreso,
+  actualizarEstadoEgreso,
   getRecepcionesLicitacion,
   getDetalleRecepcion,
   registrarIngresoLicitacion,
