@@ -29,7 +29,7 @@ async function listPublic(req, res) {
 
 async function list(req, res) {
   try {
-    const result = await institucionService.listInstituciones();
+    const result = await institucionService.listInstituciones(req.user, req.query);
     return res.json(result);
   } catch (err) {
     console.error('Error en consulta instituciones:', err.message);
@@ -43,7 +43,14 @@ async function list(req, res) {
 async function getHistorialGlobal(req, res) {
   try {
     const { desde, hasta, tipo, subtipoPedido, institucionId } = req.query;
-    const result = await institucionService.getHistorialGlobal({ desde, hasta, tipo, subtipoPedido, institucionId });
+    const result = await institucionService.getHistorialGlobal({
+      desde,
+      hasta,
+      tipo,
+      subtipoPedido,
+      institucionId,
+      user: req.user,
+    });
     return res.json(result);
   } catch (err) {
     console.error(err);
@@ -57,7 +64,7 @@ async function getHistorialGlobal(req, res) {
 async function getById(req, res) {
   try {
     const { id } = req.params;
-    const result = await institucionService.getInstitucionById(id);
+    const result = await institucionService.getInstitucionById(id, req.user);
     return res.json(result);
   } catch (err) {
     console.error(err);
@@ -71,7 +78,7 @@ async function getById(req, res) {
 async function getByCue(req, res) {
   try {
     const { cue } = req.params;
-    const result = await institucionService.getInstitucionesByCue(cue);
+    const result = await institucionService.getInstitucionesByCue(cue, req.user);
     return res.json(result);
   } catch (err) {
     console.error(err);
@@ -129,7 +136,10 @@ async function deleteInstitucion(req, res) {
 async function getAsignaciones(req, res) {
   try {
     const { id } = req.params;
-    const result = await institucionService.getAsignacionesByInstitucion(id, req.query || {});
+    const result = await institucionService.getAsignacionesByInstitucion(id, {
+      ...(req.query || {}),
+      user: req.user
+    });
     return res.json(result);
   } catch (err) {
     console.error(err);
@@ -200,7 +210,10 @@ async function getResumenPeriodo(req, res) {
 async function getHistorialInstitucion(req, res) {
   try {
     const { id } = req.params;
-    const result = await institucionService.getHistorialInstitucion(id, req.query || {});
+    const result = await institucionService.getHistorialInstitucion(id, {
+      ...(req.query || {}),
+      user: req.user
+    });
     return res.json(result);
   } catch (err) {
     console.error(err);

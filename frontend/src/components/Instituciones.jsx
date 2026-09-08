@@ -60,9 +60,16 @@ export default function Instituciones({ supervisorMode = false }) {
         }
 
         if (user?.role === 'director_area' && user?.nivel_educativo) {
-          list = list.filter(i => 
-            String(i.nivel || '').toLowerCase().trim() === String(user.nivel_educativo).toLowerCase().trim()
-          )
+          const userNivel = String(user.nivel_educativo).toLowerCase().trim()
+          list = list.filter(i => {
+            const instNivel = String(i.nivel || '').toLowerCase().trim()
+            if (userNivel === 'primario') return instNivel.includes('primari') || instNivel.includes('albergue')
+            if (userNivel === 'secundario') return instNivel.includes('secundari') || instNivel.includes('tecnic') || instNivel.includes('agro')
+            if (userNivel === 'inicial') return instNivel.includes('inicial')
+            if (userNivel === 'especial') return instNivel.includes('especial')
+            if (userNivel === 'adultos') return instNivel.includes('adult') || instNivel.includes('cens')
+            return instNivel.includes(userNivel)
+          })
         }
 
         setInstituciones(list)
@@ -82,7 +89,7 @@ export default function Instituciones({ supervisorMode = false }) {
         .then(data => setKits(data.kits || []))
         .catch(err => console.error('Error loading kits:', err))
     }
-  }, [supervisorMode, user?.role])
+  }, [supervisorMode, user?.role, user?.nivel_educativo])
 
   const departamentos = Array.from(new Set(
     instituciones
@@ -275,7 +282,41 @@ export default function Instituciones({ supervisorMode = false }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', position: 'relative', zIndex: 100 }}>
-        <h2>{supervisorMode ? 'Mis Escuelas' : 'Mapa de Instituciones - San Juan'}</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h2 style={{ margin: 0 }}>{supervisorMode ? 'Mis Escuelas' : 'Mapa de Instituciones - San Juan'}</h2>
+          {user?.role === 'director_area' && user?.nivel_educativo && (
+            <span style={{
+              fontSize: '0.82rem',
+              padding: '4px 12px',
+              borderRadius: '999px',
+              background: 'rgba(59, 130, 246, 0.12)',
+              color: '#2563eb',
+              fontWeight: 600,
+              border: '1px solid rgba(59, 130, 246, 0.25)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4
+            }}>
+              <span>Dirección de Área:</span>
+              <strong style={{ textTransform: 'capitalize' }}>{user.nivel_educativo}</strong>
+            </span>
+          )}
+          {(supervisorMode || user?.role === 'supervisor') && (
+            <span style={{
+              fontSize: '0.82rem',
+              padding: '4px 12px',
+              borderRadius: '999px',
+              background: 'rgba(16, 185, 129, 0.12)',
+              color: '#059669',
+              fontWeight: 600,
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              display: 'inline-flex',
+              alignItems: 'center'
+            }}>
+              Zonas Asignadas
+            </span>
+          )}
+        </div>
         <FilterSortButton
           searchValue={searchText}
           searchPlaceholder="Buscar nombre, CUE, CUI o departamento..."

@@ -89,7 +89,7 @@ const ROLE_LABELS = {
 const TABS = [
   { key: 'inicio', label: 'Inicio', permission: null, icon: GridIcon },
   { key: 'usuarios', label: 'Usuarios', permission: 'users.read', rolesAllowed: ['admin', 'master', 'director_area'], icon: UserIcon },
-  { key: 'instituciones', label: 'Instituciones', permission: 'instituciones.view', rolesAllowed: ['admin', 'master', 'director_area', 'supervisor', 'area_compras'], icon: BuildingIcon },
+  { key: 'instituciones', label: 'Instituciones', permission: 'instituciones.view', rolesAllowed: ['admin', 'master', 'director_area', 'supervisor', 'area_compras'], hideForRoles: ['supervisor'], icon: BuildingIcon },
   { key: 'productos', label: 'Productos', permission: 'productos.view', rolesAllowed: ['admin', 'master', 'operador', 'area_compras', 'consulta'], icon: BoxIcon },
   { key: 'depositos', label: 'Depositos', permission: 'stock.view', rolesAllowed: ['admin', 'master', 'operador'], icon: BuildingIcon },
   { key: 'proveedores', label: 'Proveedores', permission: 'proveedores.view', rolesAllowed: ['admin', 'master', 'area_compras', 'operador'], icon: TruckIcon },
@@ -252,7 +252,7 @@ export default function Dashboard() {
       case 'deposito-institucion':
         return <DepositoInstitucion />
       case 'instituciones':
-        return <Instituciones />
+        return <Instituciones supervisorMode={user?.role === 'supervisor'} />
       case 'historial':
         return <HistorialInstitucion />
       case 'proveedores':

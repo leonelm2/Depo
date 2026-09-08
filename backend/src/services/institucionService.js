@@ -105,11 +105,156 @@ async function listPublicInstituciones() {
   return { instituciones };
 }
 
-async function listInstituciones() {
+async function getInstitucionScopeCondition(user, query = {}) {
+  if (!user) return { condition: "", params: [] };
+
+  const role = String(user.role || "").toLowerCase();
+  const userId = Number(user.sub || user.id || 0);
+
+  // 1. Director de Área (o Master emulando a un Director de Área)
+  let targetDirectorId = null;
+  if (role === "director_area") {
+    targetDirectorId = userId;
+  } else if (role === "master" && query.director_area_id) {
+    targetDirectorId = Number(query.director_area_id);
+  }
+
+  if (targetDirectorId) {
+    let directorLevel = String(user.nivel_educativo || user.nivel || "").trim().toLowerCase();
+    if (!directorLevel || targetDirectorId !== userId) {
+      const uRow = await get("SELECT nivel_educativo FROM usuario WHERE id_usuario = ?", [targetDirectorId]);
+      directorLevel = String(uRow?.nivel_educativo || "").trim().toLowerCase();
+    }
+
+    if (directorLevel) {
+      return {
+        condition: ` AND (
+          LOWER(TRIM(COALESCE(i.nivel_educativo, ''))) = ?
+          OR LOWER(TRIM(COALESCE(i.direccion_area, ''))) = ?
+          OR LOWER(TRIM(COALESCE(i.nivel, ''))) = ?
+          OR i.id_institucion IN (
+            SELECT zi.institucion_id
+            FROM zona_institucion zi
+            JOIN zona z ON z.id = zi.zona_id
+            WHERE z.director_area_id = ? AND z.activo = TRUE
+          )
+        )`,
+        params: [directorLevel, directorLevel, directorLevel, targetDirectorId],
+      };
+    } else {
+      return {
+        condition: ` AND i.id_institucion IN (
+          SELECT zi.institucion_id
+          FROM zona_institucion zi
+          JOIN zona z ON z.id = zi.zona_id
+          WHERE z.director_area_id = ? AND z.activo = TRUE
+        )`,
+        params: [targetDirectorId],
+      };
+    }
+  }
+
+  // 2. Supervisor: solo instituciones de sus zonas asignadas o asignadas por supervisión
+  if (role === "supervisor") {
+    return {
+      condition: ` AND i.id_institucion IN (
+        SELECT zi.institucion_id
+        FROM zona_supervisor zs
+        JOIN zona z ON z.id = zs.zona_id
+        JOIN zona_institucion zi ON zi.zona_id = z.id
+        WHERE zs.supervisor_id = ? AND z.activo = TRUE
+        UNION
+        SELECT institucion_id
+        FROM supervisor_escuela_asignacion
+        WHERE supervisor_id = ?
+      )`,
+      params: [userId, userId],
+    };
+  }
+
+  // 3. Directivo u Operador Escolar: su propia institución si está asignada
+  if ((role === "directivo" || role === "operador_escolar") && user.id_institucion) {
+    return {
+      condition: ` AND i.id_institucion = ?`,
+      params: [Number(user.id_institucion)],
+    };
+  }
+
+  // Admin, Master (sin emulación), Area Compras: sin restricciones
+  return { condition: "", params: [] };
+}
+
+async function canUserAccessInstitucion(user, institucionId) {
+  if (!user) return true;
+  const role = String(user.role || "").toLowerCase();
+  if (role === "admin" || role === "master" || role === "area_compras" || role === "consulta") {
+    return true;
+  }
+
+  const instId = Number(institucionId);
+  const userId = Number(user.sub || user.id || 0);
+
+  if (role === "director_area") {
+    let directorLevel = String(user.nivel_educativo || user.nivel || "").trim().toLowerCase();
+    if (!directorLevel) {
+      const uRow = await get("SELECT nivel_educativo FROM usuario WHERE id_usuario = ?", [userId]);
+      directorLevel = String(uRow?.nivel_educativo || "").trim().toLowerCase();
+    }
+
+    const check = await get(`
+      SELECT 1 FROM institucion i
+      WHERE i.id_institucion = ?
+        AND (
+          LOWER(TRIM(COALESCE(i.nivel_educativo, ''))) = ?
+          OR LOWER(TRIM(COALESCE(i.direccion_area, ''))) = ?
+          OR LOWER(TRIM(COALESCE(i.nivel, ''))) = ?
+          OR i.id_institucion IN (
+            SELECT zi.institucion_id
+            FROM zona_institucion zi
+            JOIN zona z ON z.id = zi.zona_id
+            WHERE z.director_area_id = ? AND z.activo = TRUE
+          )
+        )
+    `, [instId, directorLevel, directorLevel, directorLevel, userId]);
+
+    return !!check;
+  }
+
+  if (role === "supervisor") {
+    const check = await get(`
+      SELECT 1 FROM (
+        SELECT zi.institucion_id
+        FROM zona_supervisor zs
+        JOIN zona z ON z.id = zs.zona_id
+        JOIN zona_institucion zi ON zi.zona_id = z.id
+        WHERE zs.supervisor_id = ? AND z.activo = TRUE
+        UNION
+        SELECT institucion_id
+        FROM supervisor_escuela_asignacion
+        WHERE supervisor_id = ?
+      ) s WHERE s.institucion_id = ?
+    `, [userId, userId, instId]);
+
+    return !!check;
+  }
+
+  if (role === "directivo" || role === "operador_escolar") {
+    return !user.id_institucion || Number(user.id_institucion) === instId;
+  }
+
+  return true;
+}
+
+async function listInstituciones(user, query = {}) {
   const nivelColumn = await getInstitucionNivelColumn();
   if (!nivelColumn) {
     throw validationError("Configuración inválida: falta columna de nivel en institucion", 500);
   }
+
+  const hasKitCantidad = await columnExists("institucion", "kit_cantidad");
+  const kitCantidadExpr = hasKitCantidad ? "i.kit_cantidad AS kit_cantidad" : "NULL::int AS kit_cantidad";
+
+  const scope = await getInstitucionScopeCondition(user, query);
 
   const instituciones = await all(`
     SELECT
@@ -123,7 +268,7 @@ async function listInstituciones() {
       d.latitud,
       d.longitud,
       i.kit_id,
-      i.kit_cantidad,
+      ${kitCantidadExpr},
       pk.nombre AS kit_nombre,
       CASE WHEN EXISTS (
         SELECT 1 FROM orden_dispensacion od WHERE od.id_institucion = i.id_institucion
@@ -135,12 +280,14 @@ async function listInstituciones() {
     LEFT JOIN edificio e ON i.id_edificio = e.id_edificio
     LEFT JOIN direccion d ON e.id_direccion = d.id_direccion
     LEFT JOIN producto_kit pk ON pk.id = i.kit_id
+    WHERE 1=1
+      ${scope.condition}
     ORDER BY i.nombre ASC
-  `);
+  `, scope.params);
   return { instituciones };
 }
 
-async function getHistorialGlobal({ desde, hasta, tipo, subtipoPedido, institucionId }) {
+async function getHistorialGlobal({ desde, hasta, tipo, subtipoPedido, institucionId, user }) {
   const eventos = [];
   const params_pedidos = [];
   const params_movimientos = [];
@@ -149,10 +296,21 @@ async function getHistorialGlobal({ desde, hasta, tipo, subtipoPedido, instituci
   let filtroMovimientos = "";
 
   if (institucionId) {
+    if (user && !(await canUserAccessInstitucion(user, institucionId))) {
+      throw validationError("Acceso denegado a la información de esta institución", 403);
+    }
     filtroPedidos += " AND p.id_institucion = ?";
     filtroMovimientos += " AND ms.id_institucion = ?";
     params_pedidos.push(institucionId);
     params_movimientos.push(institucionId);
+  } else if (user) {
+    const scope = await getInstitucionScopeCondition(user);
+    if (scope.condition) {
+      filtroPedidos += ` AND p.id_institucion IN (SELECT i.id_institucion FROM institucion i WHERE 1=1 ${scope.condition})`;
+      filtroMovimientos += ` AND ms.id_institucion IN (SELECT i.id_institucion FROM institucion i WHERE 1=1 ${scope.condition})`;
+      params_pedidos.push(...scope.params);
+      params_movimientos.push(...scope.params);
+    }
   }
 
   if (desde) {
@@ -267,7 +425,18 @@ async function getHistorialGlobal({ desde, hasta, tipo, subtipoPedido, instituci
   return { eventos, resumen };
 }
 
-async function getInstitucionById(id) {
+async function getInstitucionById(id, user) {
+  if (user) {
+    const allowed = await canUserAccessInstitucion(user, id);
+    if (!allowed) {
+      const role = String(user.role || "").toLowerCase();
+      const msg = role === "director_area"
+        ? "Acceso denegado: esta institución no pertenece a su Dirección de Área"
+        : "Acceso denegado: esta institución no está asignada a sus zonas de supervisión";
+      throw validationError(msg, 403);
+    }
+  }
+
   const institucion = await get(`
     SELECT 
       i.id_institucion AS id,
@@ -306,7 +475,7 @@ async function getInstitucionById(id) {
   return { institucion, asignaciones };
 }
 
-async function getInstitucionesByCue(cue) {
+async function getInstitucionesByCue(cue, user) {
   const instituciones = await all(`
     SELECT 
       i.id_institucion AS id,
@@ -329,6 +498,19 @@ async function getInstitucionesByCue(cue) {
 
   if (!instituciones || instituciones.length === 0) {
     throw validationError("Institución no encontrada", 404);
+  }
+
+  if (user) {
+    const filtered = [];
+    for (const inst of instituciones) {
+      if (await canUserAccessInstitucion(user, inst.id)) {
+        filtered.push(inst);
+      }
+    }
+    if (filtered.length === 0) {
+      throw validationError("Acceso denegado: no tiene permisos para ver instituciones de este CUE", 403);
+    }
+    return { instituciones: filtered };
   }
 
   return { instituciones };
@@ -536,7 +718,18 @@ async function deleteInstitucion(authUserId, id) {
   return { ok: true };
 }
 
-async function getAsignacionesByInstitucion(id, { periodo }) {
+async function getAsignacionesByInstitucion(id, { periodo, user } = {}) {
+  if (user) {
+    const allowed = await canUserAccessInstitucion(user, id);
+    if (!allowed) {
+      const role = String(user.role || "").toLowerCase();
+      const msg = role === "director_area"
+        ? "Acceso denegado: esta institución no pertenece a su Dirección de Área"
+        : "Acceso denegado: esta institución no está asignada a sus zonas de supervisión";
+      throw validationError(msg, 403);
+    }
+  }
+
   let sql = `
     SELECT 
       a.id, a.producto_id, p.nombre as producto_nombre, p.codigo as producto_codigo,
@@ -789,7 +982,18 @@ async function getResumenPeriodo(periodo) {
   return { resumen, instituciones };
 }
 
-async function getHistorialInstitucion(id, { desde, hasta, tipo, subtipoPedido }) {
+async function getHistorialInstitucion(id, { desde, hasta, tipo, subtipoPedido, user } = {}) {
+  if (user) {
+    const allowed = await canUserAccessInstitucion(user, id);
+    if (!allowed) {
+      const role = String(user.role || "").toLowerCase();
+      const msg = role === "director_area"
+        ? "Acceso denegado: esta institución no pertenece a su Dirección de Área"
+        : "Acceso denegado: esta institución no está asignada a sus zonas de supervisión";
+      throw validationError(msg, 403);
+    }
+  }
+
   const institucion = await get(`
     SELECT id_institucion AS id, nombre, cue, nivel_educativo
     FROM institucion WHERE id_institucion = ?
@@ -934,5 +1138,7 @@ module.exports = {
   massAssignStock,
   deliverStock,
   getResumenPeriodo,
-  getHistorialInstitucion
+  getHistorialInstitucion,
+  canUserAccessInstitucion,
+  getInstitucionScopeCondition
 };
