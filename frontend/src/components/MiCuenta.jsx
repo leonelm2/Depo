@@ -3,25 +3,136 @@ import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 
 const ROLE_LABELS = {
-  admin: 'Administrador',
+  admin: 'Administrador General',
+  master: 'Administrador Master',
   supervisor: 'Supervisor Escolar',
   director_area: 'Director de Área',
   directivo: 'Directivo Escolar',
   operador_escolar: 'Operador Escolar',
   operador: 'Operador de Depósito',
   area_compras: 'Área de Compras',
-  consulta: 'Consulta',
+  consulta: 'Usuario de Consulta',
   control_ministerio: 'Control Ministerio',
-  master: 'Administrador Master',
   secretario_administrativo: 'Secretario Administrativo',
   ministro_financiero: 'Ministro Financiero',
+}
+
+function getUserAssignment(user, profile) {
+  const role = user?.role || 'consulta'
+  const nivelRaw = profile.nivel_educativo || user?.nivel_educativo || user?.institucion?.nivel_educativo
+  const nivelVal = nivelRaw ? (nivelRaw.toLowerCase().startsWith('nivel') ? nivelRaw : `Nivel ${nivelRaw}`) : null
+  const instNombre = profile.institucion_nombre || user?.institucion?.nombre
+  const instCue = profile.institucion_cue || user?.institucion?.cue
+
+  // 1. Escuela (Directivo / Operador Escolar o usuario con escuela asignada)
+  if (instNombre || role === 'directivo' || role === 'operador_escolar') {
+    return {
+      subtitle: [instNombre && `${instNombre}${instCue ? ` (CUE: ${instCue})` : ''}`, nivelVal].filter(Boolean).join(' • ') || 'Establecimiento Educativo — San Juan',
+      cardTitle: 'Establecimiento Educativo Asignado',
+      cardIcon: '🏫',
+      items: [
+        instNombre && { label: 'Institución escolar', value: instNombre },
+        instCue && { label: 'Número de CUE', value: instCue },
+        nivelVal && { label: 'Nivel educativo', value: nivelVal },
+      ].filter(Boolean),
+      footer: 'Estos datos corresponden a la asignación oficial de tu escuela por el Ministerio de Educación. Si requieres modificarlos, consulta con tu Supervisor o Director de Área.',
+    }
+  }
+
+  // 2. Director de Área
+  if (role === 'director_area') {
+    return {
+      subtitle: `Dirección de Área${nivelVal ? ` • ${nivelVal}` : ''} — Ministerio de Educación`,
+      cardTitle: 'Jurisdicción y Nivel Coordinado',
+      cardIcon: '🏛️',
+      items: [
+        nivelVal && { label: 'Nivel educativo coordinado', value: nivelVal },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Ámbito de gestión', value: 'Coordinación y aprobación de pedidos escolares' },
+      ].filter(Boolean),
+      footer: 'Tu perfil coordina y aprueba las solicitudes de las instituciones y zonas escolares de tu nivel.',
+    }
+  }
+
+  // 3. Supervisor Escolar
+  if (role === 'supervisor') {
+    return {
+      subtitle: `Supervisión Escolar${nivelVal ? ` • ${nivelVal}` : ''} — Ministerio de Educación`,
+      cardTitle: 'Ámbito de Supervisión Escolar',
+      cardIcon: '📋',
+      items: [
+        nivelVal && { label: 'Nivel educativo asignado', value: nivelVal },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Ámbito de gestión', value: 'Supervisión de escuelas y patrimonio escolar' },
+      ].filter(Boolean),
+      footer: 'Esta cuenta supervisa los pedidos, kits asignados y patrimonio escolar de las escuelas de tu zona.',
+    }
+  }
+
+  // 4. Operador de Depósito
+  if (role === 'operador') {
+    return {
+      subtitle: 'Depósito Central de Distribución — Ministerio de Educación',
+      cardTitle: 'Área Operativa Asignada',
+      cardIcon: '📦',
+      items: [
+        { label: 'Área operativa', value: 'Depósito Central de Distribución y Stock' },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Funciones habilitadas', value: 'Recepción de mercadería, armado de remitos y entregas' },
+      ],
+      footer: 'Perfil habilitado para registrar ingresos, egresos, traslados y distribución física de materiales.',
+    }
+  }
+
+  // 5. Área de Compras
+  if (role === 'area_compras') {
+    return {
+      subtitle: 'Área de Compras y Suministros — Ministerio de Educación',
+      cardTitle: 'Área de Compras y Licitaciones',
+      cardIcon: '📑',
+      items: [
+        { label: 'Área operativa', value: 'Compras, Contrataciones y Suministros' },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Funciones habilitadas', value: 'Planillas anuales, armado de licitaciones y proveedores' },
+      ],
+      footer: 'Perfil encargado de consolidar demandas anuales, generar pliegos y seguir adjudicaciones.',
+    }
+  }
+
+  // 6. Administrador / Master
+  if (role === 'admin' || role === 'master') {
+    return {
+      subtitle: 'Administración Central del Sistema — Ministerio de Educación',
+      cardTitle: 'Administración y Gestión Global',
+      cardIcon: '⚙️',
+      items: [
+        { label: 'Nivel de acceso', value: role === 'master' ? 'Acceso Master Total' : 'Administrador del Sistema' },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Funciones habilitadas', value: 'Gestión de usuarios, auditoría, configuración y seguridad' },
+      ],
+      footer: 'Esta cuenta posee facultades completas de administración, configuración del sistema y gestión de accesos.',
+    }
+  }
+
+  // 7. General / Otros
+  return {
+    subtitle: 'Ministerio de Educación — Gobierno de San Juan',
+    cardTitle: 'Dependencia y Rol Institucional',
+    cardIcon: '🏛️',
+    items: [
+      { label: 'Rol institucional', value: ROLE_LABELS[role] || role },
+      { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+      { label: 'Ámbito de acceso', value: 'Monitoreo y consulta de gestión escolar' },
+    ],
+    footer: 'Perfil habilitado para seguimiento y consulta de información en el sistema DEPO.',
+  }
 }
 
 function EyeIcon({ visible }) {
   if (visible) {
     // Eye off (ocultar)
     return (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
         <line x1="1" y1="1" x2="23" y2="23" />
       </svg>
@@ -29,7 +140,7 @@ function EyeIcon({ visible }) {
   }
   // Eye (ver)
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -55,6 +166,7 @@ export default function MiCuenta() {
     apellido: '',
     email: '',
     telefono: '',
+    dni: '',
     nivel_educativo: '',
     institucion_nombre: '',
     institucion_cue: '',
@@ -92,6 +204,7 @@ export default function MiCuenta() {
           apellido: nextUser.apellido || '',
           email: nextUser.email || '',
           telefono: nextUser.telefono || '',
+          dni: nextUser.dni || user?.dni || '',
           nivel_educativo: nextUser.nivel_educativo || nextUser.institucion?.nivel_educativo || '',
           institucion_nombre: nextUser.institucion?.nombre || '',
           institucion_cue: nextUser.institucion?.cue || '',
@@ -109,7 +222,7 @@ export default function MiCuenta() {
     return () => {
       mounted = false
     }
-  }, [logout, token])
+  }, [logout, token, user?.dni])
 
   const handleSaveProfile = async (event) => {
     event.preventDefault()
@@ -125,6 +238,7 @@ export default function MiCuenta() {
           apellido: profile.apellido,
           email: profile.email,
           telefono: profile.telefono,
+          ...(profile.dni ? { dni: profile.dni } : {}),
         }),
       })
 
@@ -216,10 +330,7 @@ export default function MiCuenta() {
     )
   }
 
-  const nivelRaw = profile.nivel_educativo || user?.nivel_educativo || user?.institucion?.nivel_educativo
-  const nivelVal = nivelRaw ? (nivelRaw.toLowerCase().startsWith('nivel') ? nivelRaw : `Nivel ${nivelRaw}`) : null
-  const instNombre = profile.institucion_nombre || user?.institucion?.nombre
-  const instCue = profile.institucion_cue || user?.institucion?.cue
+  const assignment = getUserAssignment(user, profile)
 
   // Iniciales para el avatar
   const inicialNombre = (profile.nombre || user?.nombre || '').trim().charAt(0).toUpperCase()
@@ -247,8 +358,7 @@ export default function MiCuenta() {
               </span>
             </div>
             <p className="cuenta-user-desc">
-              {instNombre ? `${instNombre}${instCue ? ` (CUE: ${instCue})` : ''}` : 'Ministerio de Educación — San Juan'}
-              {nivelVal ? ` • ${nivelVal}` : ''}
+              {assignment.subtitle}
             </p>
           </div>
         </div>
@@ -294,7 +404,7 @@ export default function MiCuenta() {
           <div className="cuenta-card-header">
             <h3 className="cuenta-card-title">Datos Personales y de Contacto</h3>
             <p className="cuenta-card-desc">
-              Aquí puedes revisar y actualizar tu nombre, correo electrónico y teléfono de contacto.
+              Aquí puedes revisar y actualizar tu nombre, apellido, correo electrónico y teléfono de contacto.
             </p>
           </div>
 
@@ -345,7 +455,7 @@ export default function MiCuenta() {
                   placeholder="ejemplo@educacion.sanjuan.gob.ar"
                   required
                 />
-                <span className="cuenta-field-hint">Utilizado para ingresar al sistema y recibir notificaciones.</span>
+                <span className="cuenta-field-hint">Utilizado para ingresar al sistema y recibir notificaciones oficiales.</span>
               </div>
 
               <div className="cuenta-field">
@@ -360,49 +470,48 @@ export default function MiCuenta() {
                   onChange={(e) => setProfile((prev) => ({ ...prev, telefono: e.target.value }))}
                   placeholder="Ej: 264 4123456"
                 />
-                <span className="cuenta-field-hint">Número para comunicaciones de urgencia o entregas.</span>
+                <span className="cuenta-field-hint">Número para comunicaciones directas y avisos de entregas.</span>
               </div>
             </div>
 
-            {/* Ficha institucional informativa (no editable) */}
-            {(instNombre || nivelVal) && (
-              <div className="cuenta-institucion-card" role="region" aria-label="Información institucional asignada">
-                <div className="cuenta-institucion-header">
-                  <span style={{ fontSize: '1.25rem' }}>🏫</span>
-                  <span>Establecimiento Educativo Asignado</span>
-                </div>
-
-                <div className="cuenta-institucion-grid">
-                  {instNombre && (
-                    <div className="cuenta-inst-item">
-                      <span className="cuenta-inst-label">Institución escolar</span>
-                      <span className="cuenta-inst-value">{instNombre}</span>
-                    </div>
-                  )}
-
-                  {instCue && (
-                    <div className="cuenta-inst-item">
-                      <span className="cuenta-inst-label">Número de CUE</span>
-                      <span className="cuenta-inst-value">{instCue}</span>
-                    </div>
-                  )}
-
-                  {nivelVal && (
-                    <div className="cuenta-inst-item">
-                      <span className="cuenta-inst-label">Nivel educativo</span>
-                      <span className="cuenta-inst-value">{nivelVal}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="cuenta-institucion-footer">
-                  <span aria-hidden="true">ℹ️</span>
-                  <span>
-                    Estos datos corresponden a la asignación oficial del Ministerio de Educación. Si necesitas modificarlos, consulta con tu Supervisor o Director de Área.
-                  </span>
-                </div>
+            {profile.dni && (
+              <div className="cuenta-field" style={{ maxWidth: '380px' }}>
+                <label htmlFor="input-dni" className="cuenta-label">
+                  DNI / Documento de Identidad
+                </label>
+                <input
+                  id="input-dni"
+                  type="text"
+                  className="cuenta-input"
+                  value={profile.dni}
+                  readOnly
+                  style={{ background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'not-allowed' }}
+                />
+                <span className="cuenta-field-hint">Documento oficial registrado en el Ministerio de Educación.</span>
               </div>
             )}
+
+            {/* Ficha informativa según el rol y ámbito del usuario */}
+            <div className="cuenta-institucion-card" role="region" aria-label={assignment.cardTitle}>
+              <div className="cuenta-institucion-header">
+                <span style={{ fontSize: '1.25rem' }}>{assignment.cardIcon}</span>
+                <span>{assignment.cardTitle}</span>
+              </div>
+
+              <div className="cuenta-institucion-grid">
+                {assignment.items.map((item, idx) => (
+                  <div key={idx} className="cuenta-inst-item">
+                    <span className="cuenta-inst-label">{item.label}</span>
+                    <span className="cuenta-inst-value">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="cuenta-institucion-footer">
+                <span aria-hidden="true">ℹ️</span>
+                <span>{assignment.footer}</span>
+              </div>
+            </div>
 
             <div>
               <button
@@ -450,7 +559,7 @@ export default function MiCuenta() {
               <span className="cuenta-security-tip-icon" aria-hidden="true">💡</span>
               <div>
                 <strong>Consejo útil:</strong> Puedes presionar el botón del ojo{' '}
-                <span style={{ display: 'inline-flex', verticalAlign: 'middle' }}><EyeIcon visible={false} /></span>{' '}
+                <span style={{ display: 'inline-flex', verticalAlign: 'middle', margin: '0 2px' }}><EyeIcon visible={false} /></span>{' '}
                 al final de cada campo para verificar que escribiste las letras y números sin errores.
               </div>
             </div>

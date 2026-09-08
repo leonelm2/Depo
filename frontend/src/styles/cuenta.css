@@ -287,44 +287,73 @@ label.cuenta-label {
 }
 
 /* ── Campos de Contraseña con Botón de Mostrar/Ocultar ── */
+/* ── Campos de Contraseña con Botón de Mostrar/Ocultar ── */
 .cuenta-password-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 100%;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
 }
 
-.cuenta-password-wrapper input {
+.cuenta-password-wrapper input.cuenta-input {
+  width: 100% !important;
   padding-right: 48px !important;
 }
 
-.cuenta-password-toggle {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  color: #64748b;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 36px;
-  width: 36px;
-  transition: color 0.15s, background 0.15s;
+/* Reset estricto para que el ojo quede dentro del input sin heredar fondo naranja, borde ni padding */
+button.cuenta-password-toggle,
+.cuenta-password-wrapper button.cuenta-password-toggle {
+  position: absolute !important;
+  right: 6px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  color: #64748b !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 5 !important;
+  letter-spacing: normal !important;
+  overflow: visible !important;
 }
 
-.cuenta-password-toggle:hover {
-  color: #0f172a;
-  background: #f1f5f9;
+button.cuenta-password-toggle::before,
+button.cuenta-password-toggle::after,
+.cuenta-password-wrapper button.cuenta-password-toggle::before,
+.cuenta-password-wrapper button.cuenta-password-toggle::after {
+  display: none !important;
+  content: none !important;
 }
 
-.cuenta-password-toggle:focus-visible {
-  outline: 2px solid #ea580c;
-  outline-offset: 2px;
+button.cuenta-password-toggle:hover,
+.cuenta-password-wrapper button.cuenta-password-toggle:hover {
+  background: #f1f5f9 !important;
+  background-color: #f1f5f9 !important;
+  color: #ea580c !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: translateY(-50%) !important;
+}
+
+button.cuenta-password-toggle:focus,
+button.cuenta-password-toggle:focus-visible {
+  background-color: #f8fafc !important;
+  color: #ea580c !important;
+  outline: 2px solid #ea580c !important;
+  outline-offset: 1px !important;
 }
 
 /* ── Banner de Recomendación de Seguridad ── */
