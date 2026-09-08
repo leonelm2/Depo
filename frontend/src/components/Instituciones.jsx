@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import { apiFetch } from '../api.js'
 import { useAuth } from '../context/AuthContext'
+import { MapPin, List, Edit2 } from 'lucide-react'
 import FilterSortButton from './FilterSortButton'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -386,14 +387,14 @@ export default function Instituciones({ supervisorMode = false }) {
           style={{ borderRadius: '8px 8px 0 0', margin: 0, padding: '10px 20px', borderBottom: activeTab === 'listado' ? '2px solid var(--blue)' : 'none' }}
           onClick={() => setActiveTab('listado')}
         >
-          📄 Listado
+          <List size={16} /> Listado
         </button>
         <button 
           className={activeTab === 'mapa' ? '' : 'secondary'}
           style={{ borderRadius: '8px 8px 0 0', margin: 0, padding: '10px 20px', borderBottom: activeTab === 'mapa' ? '2px solid var(--blue)' : 'none' }}
           onClick={() => setActiveTab('mapa')}
         >
-          🗺️ Mapa
+          <MapPin size={16} /> Mapa
         </button>
       </div>
 
@@ -439,7 +440,7 @@ export default function Instituciones({ supervisorMode = false }) {
                           style={{ margin: 0, padding: '4px 8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--dark)' }}
                           title="Asignar Kit"
                         >
-                          ✏️
+                          <Edit2 size={14} />
                         </button>
                       </div>
                     </td>

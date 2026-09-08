@@ -1,5 +1,5 @@
 /* ===== SAN JUAN GOBIERNO — Kit de Marca ===== */
-@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
 :root {
@@ -30,15 +30,15 @@
   --surface-hover: #f8fafc;
 
   /* ── Shadows (real, subtle) ── */
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
-  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.10), 0 10px 10px -5px rgba(15, 23, 42, 0.04);
-  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-modal: 0 25px 50px -12px rgba(15, 23, 42, 0.20);
-  --shadow-sidebar: 4px 0 24px rgba(15, 23, 42, 0.12);
-  --shadow-orange: 0 8px 24px -8px rgba(249, 115, 22, 0.35);
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.04), 0 2px 4px -1px rgba(15, 23, 42, 0.02);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.05), 0 4px 6px -2px rgba(15, 23, 42, 0.02);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.06), 0 10px 10px -5px rgba(15, 23, 42, 0.02);
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-modal: 0 25px 50px -12px rgba(15, 23, 42, 0.15);
+  --shadow-sidebar: 4px 0 24px rgba(15, 23, 42, 0.04);
+  --shadow-orange: 0 8px 24px -8px rgba(249, 115, 22, 0.25);
 
   /* ── Border Radius ── */
   --radius-xs: 4px;
@@ -74,7 +74,7 @@
 /* ── Global reset ── */
 *, *::before, *::after {
   box-sizing: border-box;
-  font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 html {
@@ -113,7 +113,7 @@ body {
 .card {
   width: 100%;
   background: var(--surface-1);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: 28px 32px;
   min-height: 90vh;
@@ -218,19 +218,19 @@ h4 {
 }
 
 h2::after, h3::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--orange);
-  border-radius: var(--radius-pill);
+  display: none;
 }
 
-h3::after {
-  height: 2px;
-  width: 40px;
+h2 {
+  border-bottom: 2px solid #f1f5f9;
+  width: 100%;
+  display: block;
+}
+
+h3 {
+  border-bottom: 1px solid #f1f5f9;
+  width: 100%;
+  display: block;
 }
 
 .subtitle {
@@ -242,7 +242,7 @@ h3::after {
 }
 
 p, td, input, select, button, label {
-  font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* ── Scrollbar ── */
