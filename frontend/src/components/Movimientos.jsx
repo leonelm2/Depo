@@ -1501,17 +1501,30 @@ return (
                               {first.estado_egreso ? first.estado_egreso.charAt(0).toUpperCase() + first.estado_egreso.slice(1) : '-'}
                             </span>
                             {canCreate && first.estado_egreso !== 'entregado' && (
-                              <select 
-                                value={first.estado_egreso || ''} 
-                                onChange={(e) => handleEstadoEgresoChange(first.id, e.target.value)}
-                                style={{
-                                  fontSize: '0.75rem', padding: '2px 4px', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer'
+                              <button
+                                onClick={() => {
+                                  const nextState = first.estado_egreso === 'aceptado' ? 'despachado' : 'entregado';
+                                  handleEstadoEgresoChange(first.id, nextState);
                                 }}
+                                style={{
+                                  fontSize: '0.75rem',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  background: 'rgba(59, 130, 246, 0.1)',
+                                  color: '#2563eb',
+                                  cursor: 'pointer',
+                                  textAlign: 'center',
+                                  fontWeight: 600,
+                                  width: 'fit-content',
+                                  transition: 'background 0.2s',
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
+                                title={first.estado_egreso === 'aceptado' ? 'Pasar a Despachado' : 'Pasar a Entregado'}
                               >
-                                <option value="aceptado" disabled={first.estado_egreso !== 'aceptado'}>Aceptado</option>
-                                <option value="despachado" disabled={first.estado_egreso === 'entregado'}>Despachado</option>
-                                <option value="entregado" disabled={first.estado_egreso === 'aceptado'}>Entregado</option>
-                              </select>
+                                {first.estado_egreso === 'aceptado' ? 'Marcar Despachado' : 'Marcar Entregado'}
+                              </button>
                             )}
                           </div>
                         ) : (
