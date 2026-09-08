@@ -1,0 +1,416 @@
+/* ==========================================================================
+   CUENTA.CSS — Interfaz de "Mi Cuenta" Amigable, Minimalista y Accesible (Senior-Friendly)
+   ========================================================================== */
+
+.cuenta-container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 8px 0 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Encabezado e Identidad del Usuario ── */
+.cuenta-header-card {
+  background: #ffffff;
+  border-radius: var(--radius-xl, 16px);
+  border: 1px solid var(--border, #e2e8f0);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.cuenta-user-profile {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.cuenta-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+  border: 2px solid #fdba74;
+  color: #c2410c;
+  font-size: 1.35rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.15);
+}
+
+.cuenta-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cuenta-user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cuenta-user-name {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.cuenta-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #ffedd5;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.cuenta-user-desc {
+  font-size: 0.95rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ── Pestañas de Navegación ── */
+.cuenta-tabs {
+  display: flex;
+  gap: 12px;
+  border-bottom: 2px solid #e2e8f0;
+  padding: 0 4px;
+}
+
+.cuenta-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #475569;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  border-radius: 10px 10px 0 0;
+  transition: all 0.2s ease;
+  min-height: 52px;
+  font-family: inherit;
+}
+
+.cuenta-tab-btn:hover {
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.cuenta-tab-btn.is-active {
+  color: #ea580c;
+  background: #fff7ed;
+  border-bottom-color: #ea580c;
+  font-weight: 700;
+}
+
+.cuenta-tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+/* ── Tarjeta Principal de Contenido ── */
+.cuenta-card {
+  background: #ffffff;
+  border-radius: var(--radius-xl, 16px);
+  border: 1px solid var(--border, #e2e8f0);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  padding: 32px;
+}
+
+.cuenta-card-header {
+  margin-bottom: 26px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 18px;
+}
+
+.cuenta-card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+}
+
+.cuenta-card-desc {
+  font-size: 0.98rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Formularios y Campos ── */
+.cuenta-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.cuenta-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+}
+
+@media (max-width: 640px) {
+  .cuenta-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cuenta-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Sobrescribir el label global pequeño/uppercase para esta vista */
+.cuenta-field label,
+label.cuenta-label {
+  display: block;
+  font-size: 0.98rem !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  margin: 0 0 4px 0 !important;
+}
+
+.cuenta-field-hint {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.cuenta-input {
+  width: 100%;
+  min-height: 48px !important;
+  padding: 10px 16px !important;
+  font-size: 1rem !important;
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+
+.cuenta-input:hover:not(:disabled) {
+  border-color: #94a3b8 !important;
+}
+
+.cuenta-input:focus {
+  border-color: #ea580c !important;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.15) !important;
+  outline: none !important;
+}
+
+/* ── Ficha Informativa Institucional (Solo Lectura) ── */
+.cuenta-institucion-card {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-left: 5px solid #2563eb;
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 6px 0;
+}
+
+.cuenta-institucion-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1e3a8a;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.cuenta-institucion-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  background: #ffffff;
+  padding: 14px 18px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.cuenta-inst-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cuenta-inst-label {
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cuenta-inst-value {
+  font-size: 1rem;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.cuenta-institucion-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+/* ── Campos de Contraseña con Botón de Mostrar/Ocultar ── */
+.cuenta-password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.cuenta-password-wrapper input {
+  padding-right: 48px !important;
+}
+
+.cuenta-password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  width: 36px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.cuenta-password-toggle:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.cuenta-password-toggle:focus-visible {
+  outline: 2px solid #ea580c;
+  outline-offset: 2px;
+}
+
+/* ── Banner de Recomendación de Seguridad ── */
+.cuenta-security-tip {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #1e40af;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.cuenta-security-tip-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* ── Botón de Acción Principal (Grande y Claro) ── */
+.cuenta-btn-submit {
+  min-height: 50px !important;
+  padding: 0 28px !important;
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  background: #ea580c !important;
+  color: #ffffff !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 3px 10px rgba(234, 88, 12, 0.25) !important;
+  align-self: flex-start;
+}
+
+.cuenta-btn-submit:hover:not(:disabled) {
+  background: #c2410c !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 5px 14px rgba(234, 88, 12, 0.35) !important;
+}
+
+.cuenta-btn-submit:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* ── Mensajes de Éxito / Error Grandes ── */
+.cuenta-alert {
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 0.96rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  line-height: 1.4;
+  animation: cuentaFadeIn 0.3s ease;
+}
+
+@keyframes cuentaFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cuenta-alert-success {
+  background: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  color: #065f46;
+}
+
+.cuenta-alert-error {
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  color: #991b1b;
+}
+
+.cuenta-alert-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
