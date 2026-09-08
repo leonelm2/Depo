@@ -2,19 +2,174 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 
+const ROLE_LABELS = {
+  admin: 'Administrador General',
+  master: 'Administrador Master',
+  supervisor: 'Supervisor Escolar',
+  director_area: 'Director de Área',
+  directivo: 'Directivo Escolar',
+  operador_escolar: 'Operador Escolar',
+  operador: 'Operador de Depósito',
+  area_compras: 'Área de Compras',
+  consulta: 'Usuario de Consulta',
+  control_ministerio: 'Control Ministerio',
+  secretario_administrativo: 'Secretario Administrativo',
+  ministro_financiero: 'Ministro Financiero',
+}
+
+function getUserAssignment(user, profile) {
+  const role = user?.role || 'consulta'
+  const nivelRaw = profile.nivel_educativo || user?.nivel_educativo || user?.institucion?.nivel_educativo
+  const nivelVal = nivelRaw ? (nivelRaw.toLowerCase().startsWith('nivel') ? nivelRaw : `Nivel ${nivelRaw}`) : null
+  const instNombre = profile.institucion_nombre || user?.institucion?.nombre
+  const instCue = profile.institucion_cue || user?.institucion?.cue
+
+  // 1. Escuela (Directivo / Operador Escolar o usuario con escuela asignada)
+  if (instNombre || role === 'directivo' || role === 'operador_escolar') {
+    return {
+      subtitle: [instNombre && `${instNombre}${instCue ? ` (CUE: ${instCue})` : ''}`, nivelVal].filter(Boolean).join(' • ') || 'Establecimiento Educativo — San Juan',
+      cardTitle: 'Establecimiento Educativo Asignado',
+      cardIcon: '🏫',
+      items: [
+        instNombre && { label: 'Institución escolar', value: instNombre },
+        instCue && { label: 'Número de CUE', value: instCue },
+        nivelVal && { label: 'Nivel educativo', value: nivelVal },
+      ].filter(Boolean),
+      footer: 'Estos datos corresponden a la asignación oficial de tu escuela por el Ministerio de Educación. Si requieres modificarlos, consulta con tu Supervisor o Director de Área.',
+    }
+  }
+
+  // 2. Director de Área
+  if (role === 'director_area') {
+    return {
+      subtitle: `Dirección de Área${nivelVal ? ` • ${nivelVal}` : ''} — Ministerio de Educación`,
+      cardTitle: 'Jurisdicción y Nivel Coordinado',
+      cardIcon: '🏛️',
+      items: [
+        nivelVal && { label: 'Nivel educativo coordinado', value: nivelVal },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Ámbito de gestión', value: 'Coordinación y aprobación de pedidos escolares' },
+      ].filter(Boolean),
+      footer: 'Tu perfil coordina y aprueba las solicitudes de las instituciones y zonas escolares de tu nivel.',
+    }
+  }
+
+  // 3. Supervisor Escolar
+  if (role === 'supervisor') {
+    return {
+      subtitle: `Supervisión Escolar${nivelVal ? ` • ${nivelVal}` : ''} — Ministerio de Educación`,
+      cardTitle: 'Ámbito de Supervisión Escolar',
+      cardIcon: '📋',
+      items: [
+        nivelVal && { label: 'Nivel educativo asignado', value: nivelVal },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Ámbito de gestión', value: 'Supervisión de escuelas y patrimonio escolar' },
+      ].filter(Boolean),
+      footer: 'Esta cuenta supervisa los pedidos, kits asignados y patrimonio escolar de las escuelas de tu zona.',
+    }
+  }
+
+  // 4. Operador de Depósito
+  if (role === 'operador') {
+    return {
+      subtitle: 'Depósito Central de Distribución — Ministerio de Educación',
+      cardTitle: 'Área Operativa Asignada',
+      cardIcon: '📦',
+      items: [
+        { label: 'Área operativa', value: 'Depósito Central de Distribución y Stock' },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Funciones habilitadas', value: 'Recepción de mercadería, armado de remitos y entregas' },
+      ],
+      footer: 'Perfil habilitado para registrar ingresos, egresos, traslados y distribución física de materiales.',
+    }
+  }
+
+  // 5. Área de Compras
+  if (role === 'area_compras') {
+    return {
+      subtitle: 'Área de Compras y Suministros — Ministerio de Educación',
+      cardTitle: 'Área de Compras y Licitaciones',
+      cardIcon: '📑',
+      items: [
+        { label: 'Área operativa', value: 'Compras, Contrataciones y Suministros' },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Funciones habilitadas', value: 'Planillas anuales, armado de licitaciones y proveedores' },
+      ],
+      footer: 'Perfil encargado de consolidar demandas anuales, generar pliegos y seguir adjudicaciones.',
+    }
+  }
+
+  // 6. Administrador / Master
+  if (role === 'admin' || role === 'master') {
+    return {
+      subtitle: 'Administración Central del Sistema — Ministerio de Educación',
+      cardTitle: 'Administración y Gestión Global',
+      cardIcon: '⚙️',
+      items: [
+        { label: 'Nivel de acceso', value: role === 'master' ? 'Acceso Master Total' : 'Administrador del Sistema' },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Funciones habilitadas', value: 'Gestión de usuarios, auditoría, configuración y seguridad' },
+      ],
+      footer: 'Esta cuenta posee facultades completas de administración, configuración del sistema y gestión de accesos.',
+    }
+  }
+
+  // 7. General / Otros
+  return {
+    subtitle: 'Ministerio de Educación — Gobierno de San Juan',
+    cardTitle: 'Dependencia y Rol Institucional',
+    cardIcon: '🏛️',
+    items: [
+      { label: 'Rol institucional', value: ROLE_LABELS[role] || role },
+      { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+      { label: 'Ámbito de acceso', value: 'Monitoreo y consulta de gestión escolar' },
+    ],
+    footer: 'Perfil habilitado para seguimiento y consulta de información en el sistema DEPO.',
+  }
+}
+
+function EyeIcon({ visible }) {
+  if (visible) {
+    // Eye off (ocultar)
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+        <line x1="1" y1="1" x2="23" y2="23" />
+      </svg>
+    )
+  }
+  // Eye (ver)
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
 export default function MiCuenta() {
   const { user, token, login, logout } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('datos') // 'datos' | 'seguridad'
+
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
   const [profileMsg, setProfileMsg] = useState({ text: '', type: '' })
   const [passwordMsg, setPasswordMsg] = useState({ text: '', type: '' })
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const [profile, setProfile] = useState({
     nombre: '',
     apellido: '',
     email: '',
     telefono: '',
+    dni: '',
+    nivel_educativo: '',
+    institucion_nombre: '',
+    institucion_cue: '',
   })
 
   const [passwords, setPasswords] = useState({
@@ -38,7 +193,7 @@ export default function MiCuenta() {
 
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          throw new Error(data.error || 'No se pudo cargar la informacion')
+          throw new Error(data.error || 'No se pudo cargar la información de tu perfil')
         }
 
         const nextUser = data.user || {}
@@ -49,13 +204,14 @@ export default function MiCuenta() {
           apellido: nextUser.apellido || '',
           email: nextUser.email || '',
           telefono: nextUser.telefono || '',
+          dni: nextUser.dni || user?.dni || '',
           nivel_educativo: nextUser.nivel_educativo || nextUser.institucion?.nivel_educativo || '',
           institucion_nombre: nextUser.institucion?.nombre || '',
           institucion_cue: nextUser.institucion?.cue || '',
         })
       } catch (err) {
         if (!mounted) return
-        setProfileMsg({ text: err.message || 'Error al cargar', type: 'error' })
+        setProfileMsg({ text: err.message || 'Error al cargar tu información', type: 'error' })
       } finally {
         if (mounted) setLoading(false)
       }
@@ -66,7 +222,7 @@ export default function MiCuenta() {
     return () => {
       mounted = false
     }
-  }, [logout, token])
+  }, [logout, token, user?.dni])
 
   const handleSaveProfile = async (event) => {
     event.preventDefault()
@@ -82,6 +238,7 @@ export default function MiCuenta() {
           apellido: profile.apellido,
           email: profile.email,
           telefono: profile.telefono,
+          ...(profile.dni ? { dni: profile.dni } : {}),
         }),
       })
 
@@ -92,7 +249,7 @@ export default function MiCuenta() {
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setProfileMsg({ text: data.error || 'No se pudo guardar', type: 'error' })
+        setProfileMsg({ text: data.error || 'No se pudieron guardar los cambios', type: 'error' })
         return
       }
 
@@ -100,9 +257,9 @@ export default function MiCuenta() {
         login(token, { ...user, ...data.user })
       }
 
-      setProfileMsg({ text: 'Datos actualizados correctamente', type: 'success' })
+      setProfileMsg({ text: '¡Excelente! Tus datos personales se actualizaron correctamente.', type: 'success' })
     } catch {
-      setProfileMsg({ text: 'Error de conexion', type: 'error' })
+      setProfileMsg({ text: 'Hubo un error de conexión al guardar. Intenta nuevamente.', type: 'error' })
     } finally {
       setSavingProfile(false)
     }
@@ -112,18 +269,23 @@ export default function MiCuenta() {
     event.preventDefault()
     setPasswordMsg({ text: '', type: '' })
 
-    if (!passwords.currentPassword || !passwords.newPassword) {
-      setPasswordMsg({ text: 'Completa la contrasena actual y la nueva', type: 'error' })
+    if (!passwords.currentPassword.trim()) {
+      setPasswordMsg({ text: 'Por favor, ingresa tu contraseña actual.', type: 'error' })
+      return
+    }
+
+    if (!passwords.newPassword.trim()) {
+      setPasswordMsg({ text: 'Por favor, ingresa la nueva contraseña.', type: 'error' })
       return
     }
 
     if (passwords.newPassword.length < 6) {
-      setPasswordMsg({ text: 'La contrasena nueva debe tener al menos 6 caracteres', type: 'error' })
+      setPasswordMsg({ text: 'La nueva contraseña debe tener al menos 6 letras o números.', type: 'error' })
       return
     }
 
     if (passwords.newPassword !== passwords.confirmPassword) {
-      setPasswordMsg({ text: 'La confirmacion no coincide', type: 'error' })
+      setPasswordMsg({ text: 'La confirmación de la contraseña no coincide. Revisa que ambas estén escritas igual.', type: 'error' })
       return
     }
 
@@ -146,128 +308,369 @@ export default function MiCuenta() {
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setPasswordMsg({ text: data.error || 'No se pudo cambiar la contrasena', type: 'error' })
+        setPasswordMsg({ text: data.error || 'No se pudo cambiar la contraseña. Verifica que la contraseña actual sea correcta.', type: 'error' })
         return
       }
 
       setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' })
-      setPasswordMsg({ text: 'Contrasena actualizada', type: 'success' })
+      setPasswordMsg({ text: '¡Listo! Tu contraseña se actualizó con éxito.', type: 'success' })
     } catch {
-      setPasswordMsg({ text: 'Error de conexion', type: 'error' })
+      setPasswordMsg({ text: 'Hubo un error de conexión al cambiar la contraseña.', type: 'error' })
     } finally {
       setSavingPassword(false)
     }
   }
 
   if (loading) {
-    return <p className="dashboard-muted-copy">Cargando mi cuenta...</p>
+    return (
+      <div className="cuenta-container" style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <div className="spinner" style={{ width: 42, height: 42, border: '4px solid #e2e8f0', borderTopColor: '#ea580c', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <p style={{ fontSize: '1.1rem', color: '#475569', fontWeight: 500 }}>Cargando los datos de tu cuenta...</p>
+      </div>
+    )
   }
 
-  const nivelRaw = profile.nivel_educativo || user?.nivel_educativo || user?.institucion?.nivel_educativo
-  const nivelVal = nivelRaw ? (nivelRaw.toLowerCase().startsWith('nivel') ? nivelRaw : `Nivel ${nivelRaw}`) : 'Sin nivel asignado'
-  const instNombre = profile.institucion_nombre || user?.institucion?.nombre
-  const instCue = profile.institucion_cue || user?.institucion?.cue
+  const assignment = getUserAssignment(user, profile)
+
+  // Iniciales para el avatar
+  const inicialNombre = (profile.nombre || user?.nombre || '').trim().charAt(0).toUpperCase()
+  const inicialApellido = (profile.apellido || user?.apellido || '').trim().charAt(0).toUpperCase()
+  const iniciales = (inicialNombre + inicialApellido) || 'U'
+
+  // Nombre de visualización
+  const nombreCompleto = [profile.nombre || user?.nombre, profile.apellido || user?.apellido].filter(Boolean).join(' ') || 'Mi Usuario'
+  const rolEtiqueta = ROLE_LABELS[user?.role] || user?.role || 'Usuario'
 
   return (
-    <div className="dashboard-stack">
-      <div className="dashboard-page-header">
-        <div>
-          <h2>Mi cuenta</h2>
-          <p>Actualiza tus datos personales y la seguridad de acceso.</p>
+    <div className="cuenta-container">
+      {/* ── Cabecera e Identidad ── */}
+      <section className="cuenta-header-card" aria-label="Identidad del usuario">
+        <div className="cuenta-user-profile">
+          <div className="cuenta-avatar" aria-hidden="true">
+            {iniciales}
+          </div>
+          <div className="cuenta-user-info">
+            <div className="cuenta-user-name-row">
+              <h2 className="cuenta-user-name">{nombreCompleto}</h2>
+              <span className="cuenta-role-badge">
+                <span style={{ fontSize: '0.9rem' }}>👤</span>
+                {rolEtiqueta}
+              </span>
+            </div>
+            <p className="cuenta-user-desc">
+              {assignment.subtitle}
+            </p>
+          </div>
         </div>
+      </section>
+
+      {/* ── Pestañas de Navegación ── */}
+      <div className="cuenta-tabs" role="tablist" aria-label="Secciones de mi cuenta">
+        <button
+          type="button"
+          role="tab"
+          id="tab-datos"
+          aria-selected={activeTab === 'datos'}
+          aria-controls="panel-datos"
+          className={`cuenta-tab-btn ${activeTab === 'datos' ? 'is-active' : ''}`}
+          onClick={() => setActiveTab('datos')}
+        >
+          <span className="cuenta-tab-icon" aria-hidden="true">📋</span>
+          <span>Mis Datos Personales</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          id="tab-seguridad"
+          aria-selected={activeTab === 'seguridad'}
+          aria-controls="panel-seguridad"
+          className={`cuenta-tab-btn ${activeTab === 'seguridad' ? 'is-active' : ''}`}
+          onClick={() => setActiveTab('seguridad')}
+        >
+          <span className="cuenta-tab-icon" aria-hidden="true">🔒</span>
+          <span>Seguridad y Contraseña</span>
+        </button>
       </div>
 
-      <div className="dashboard-section-grid">
-        <section className="dashboard-section-card dashboard-section-card--span-6">
-          <div className="dashboard-subsection-header">
-            <h3>Mis datos</h3>
-            <p>Informacion visible de tu perfil.</p>
+      {/* ── PANEL 1: Mis Datos Personales ── */}
+      {activeTab === 'datos' && (
+        <section
+          id="panel-datos"
+          role="tabpanel"
+          aria-labelledby="tab-datos"
+          className="cuenta-card"
+        >
+          <div className="cuenta-card-header">
+            <h3 className="cuenta-card-title">Datos Personales y de Contacto</h3>
+            <p className="cuenta-card-desc">
+              Aquí puedes revisar y actualizar tu nombre, apellido, correo electrónico y teléfono de contacto.
+            </p>
           </div>
 
-          <form onSubmit={handleSaveProfile} className="grid">
-            <div>
-              <label>Nombre</label>
-              <input value={profile.nombre} onChange={(event) => setProfile((prev) => ({ ...prev, nombre: event.target.value }))} />
-            </div>
-            <div>
-              <label>Apellido</label>
-              <input value={profile.apellido} onChange={(event) => setProfile((prev) => ({ ...prev, apellido: event.target.value }))} />
-            </div>
-            <div>
-              <label>Email</label>
-              <input type="email" value={profile.email} onChange={(event) => setProfile((prev) => ({ ...prev, email: event.target.value }))} />
-            </div>
-            <div>
-              <label>Telefono</label>
-              <input value={profile.telefono} onChange={(event) => setProfile((prev) => ({ ...prev, telefono: event.target.value }))} />
-            </div>
-            <div>
-              <label>Nivel educativo</label>
-              <input
-                type="text"
-                readOnly
-                value={nivelVal}
-                style={{ background: '#f8fafc', color: '#334155', fontWeight: 600, cursor: 'not-allowed' }}
-              />
-            </div>
-            {instNombre && (
-              <div>
-                <label>Institución escolar</label>
+          <form onSubmit={handleSaveProfile} className="cuenta-form">
+            <div className="cuenta-grid-2">
+              <div className="cuenta-field">
+                <label htmlFor="input-nombre" className="cuenta-label">
+                  Nombre
+                </label>
                 <input
+                  id="input-nombre"
                   type="text"
-                  readOnly
-                  value={`${instNombre}${instCue ? ` (CUE: ${instCue})` : ''}`}
-                  style={{ background: '#f8fafc', color: '#334155', fontWeight: 600, cursor: 'not-allowed' }}
+                  className="cuenta-input"
+                  value={profile.nombre}
+                  onChange={(e) => setProfile((prev) => ({ ...prev, nombre: e.target.value }))}
+                  placeholder="Ej: María"
+                  required
                 />
               </div>
+
+              <div className="cuenta-field">
+                <label htmlFor="input-apellido" className="cuenta-label">
+                  Apellido
+                </label>
+                <input
+                  id="input-apellido"
+                  type="text"
+                  className="cuenta-input"
+                  value={profile.apellido}
+                  onChange={(e) => setProfile((prev) => ({ ...prev, apellido: e.target.value }))}
+                  placeholder="Ej: González"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="cuenta-grid-2">
+              <div className="cuenta-field">
+                <label htmlFor="input-email" className="cuenta-label">
+                  Correo electrónico
+                </label>
+                <input
+                  id="input-email"
+                  type="email"
+                  className="cuenta-input"
+                  value={profile.email}
+                  onChange={(e) => setProfile((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder="ejemplo@educacion.sanjuan.gob.ar"
+                  required
+                />
+                <span className="cuenta-field-hint">Utilizado para ingresar al sistema y recibir notificaciones oficiales.</span>
+              </div>
+
+              <div className="cuenta-field">
+                <label htmlFor="input-telefono" className="cuenta-label">
+                  Teléfono de contacto
+                </label>
+                <input
+                  id="input-telefono"
+                  type="tel"
+                  className="cuenta-input"
+                  value={profile.telefono}
+                  onChange={(e) => setProfile((prev) => ({ ...prev, telefono: e.target.value }))}
+                  placeholder="Ej: 264 4123456"
+                />
+                <span className="cuenta-field-hint">Número para comunicaciones directas y avisos de entregas.</span>
+              </div>
+            </div>
+
+            {profile.dni && (
+              <div className="cuenta-field" style={{ maxWidth: '380px' }}>
+                <label htmlFor="input-dni" className="cuenta-label">
+                  DNI / Documento de Identidad
+                </label>
+                <input
+                  id="input-dni"
+                  type="text"
+                  className="cuenta-input"
+                  value={profile.dni}
+                  readOnly
+                  style={{ background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'not-allowed' }}
+                />
+                <span className="cuenta-field-hint">Documento oficial registrado en el Ministerio de Educación.</span>
+              </div>
             )}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <button type="submit" disabled={savingProfile}>
-                {savingProfile ? 'Guardando...' : 'Guardar cambios'}
+
+            {/* Ficha informativa según el rol y ámbito del usuario */}
+            <div className="cuenta-institucion-card" role="region" aria-label={assignment.cardTitle}>
+              <div className="cuenta-institucion-header">
+                <span style={{ fontSize: '1.25rem' }}>{assignment.cardIcon}</span>
+                <span>{assignment.cardTitle}</span>
+              </div>
+
+              <div className="cuenta-institucion-grid">
+                {assignment.items.map((item, idx) => (
+                  <div key={idx} className="cuenta-inst-item">
+                    <span className="cuenta-inst-label">{item.label}</span>
+                    <span className="cuenta-inst-value">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="cuenta-institucion-footer">
+                <span aria-hidden="true">ℹ️</span>
+                <span>{assignment.footer}</span>
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={savingProfile}
+                className="cuenta-btn-submit"
+              >
+                <span>💾</span>
+                <span>{savingProfile ? 'Guardando cambios...' : 'Guardar mis cambios'}</span>
               </button>
             </div>
           </form>
 
           {profileMsg.text && (
-            <div className={`msg show ${profileMsg.type === 'success' ? 'msg-success' : 'msg-error'}`}>
-              {profileMsg.text}
+            <div
+              role="alert"
+              className={`cuenta-alert ${profileMsg.type === 'success' ? 'cuenta-alert-success' : 'cuenta-alert-error'}`}
+            >
+              <span className="cuenta-alert-icon" aria-hidden="true">
+                {profileMsg.type === 'success' ? '✅' : '⚠️'}
+              </span>
+              <span>{profileMsg.text}</span>
             </div>
           )}
         </section>
+      )}
 
-        <section className="dashboard-section-card dashboard-section-card--span-6">
-          <div className="dashboard-subsection-header">
-            <h3>Cambiar contrasena</h3>
-            <p>Mantene protegida tu cuenta.</p>
+      {/* ── PANEL 2: Seguridad y Contraseña ── */}
+      {activeTab === 'seguridad' && (
+        <section
+          id="panel-seguridad"
+          role="tabpanel"
+          aria-labelledby="tab-seguridad"
+          className="cuenta-card"
+        >
+          <div className="cuenta-card-header">
+            <h3 className="cuenta-card-title">Cambiar mi Contraseña</h3>
+            <p className="cuenta-card-desc">
+              Por tu tranquilidad y seguridad, puedes cambiar tu contraseña de acceso en cualquier momento.
+            </p>
           </div>
 
-          <form onSubmit={handleChangePassword} className="grid">
-            <div>
-              <label>Contrasena actual</label>
-              <input type="password" value={passwords.currentPassword} onChange={(event) => setPasswords((prev) => ({ ...prev, currentPassword: event.target.value }))} />
+          <form onSubmit={handleChangePassword} className="cuenta-form" autoComplete="off">
+            <div className="cuenta-security-tip">
+              <span className="cuenta-security-tip-icon" aria-hidden="true">💡</span>
+              <div>
+                <strong>Consejo útil:</strong> Puedes presionar el botón del ojo{' '}
+                <span style={{ display: 'inline-flex', verticalAlign: 'middle', margin: '0 2px' }}><EyeIcon visible={false} /></span>{' '}
+                al final de cada campo para verificar que escribiste las letras y números sin errores.
+              </div>
             </div>
-            <div>
-              <label>Contrasena nueva</label>
-              <input type="password" value={passwords.newPassword} onChange={(event) => setPasswords((prev) => ({ ...prev, newPassword: event.target.value }))} />
+
+            <div className="cuenta-field" style={{ maxWidth: '460px' }}>
+              <label htmlFor="input-current-pass" className="cuenta-label">
+                Contraseña actual
+              </label>
+              <div className="cuenta-password-wrapper">
+                <input
+                  id="input-current-pass"
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  className="cuenta-input"
+                  value={passwords.currentPassword}
+                  onChange={(e) => setPasswords((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                  placeholder="Escribe tu contraseña actual"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="cuenta-password-toggle"
+                  onClick={() => setShowCurrentPassword((prev) => !prev)}
+                  title={showCurrentPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                  aria-label={showCurrentPassword ? 'Ocultar contraseña actual' : 'Ver contraseña actual'}
+                >
+                  <EyeIcon visible={showCurrentPassword} />
+                </button>
+              </div>
             </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label>Confirmar contrasena nueva</label>
-              <input type="password" value={passwords.confirmPassword} onChange={(event) => setPasswords((prev) => ({ ...prev, confirmPassword: event.target.value }))} />
+
+            <div className="cuenta-grid-2">
+              <div className="cuenta-field">
+                <label htmlFor="input-new-pass" className="cuenta-label">
+                  Nueva contraseña
+                </label>
+                <div className="cuenta-password-wrapper">
+                  <input
+                    id="input-new-pass"
+                    type={showNewPassword ? 'text' : 'password'}
+                    className="cuenta-input"
+                    value={passwords.newPassword}
+                    onChange={(e) => setPasswords((prev) => ({ ...prev, newPassword: e.target.value }))}
+                    placeholder="Mínimo 6 letras o números"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="cuenta-password-toggle"
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    title={showNewPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                    aria-label={showNewPassword ? 'Ocultar nueva contraseña' : 'Ver nueva contraseña'}
+                  >
+                    <EyeIcon visible={showNewPassword} />
+                  </button>
+                </div>
+                <span className="cuenta-field-hint">Debe contener al menos 6 caracteres.</span>
+              </div>
+
+              <div className="cuenta-field">
+                <label htmlFor="input-confirm-pass" className="cuenta-label">
+                  Confirmar nueva contraseña
+                </label>
+                <div className="cuenta-password-wrapper">
+                  <input
+                    id="input-confirm-pass"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    className="cuenta-input"
+                    value={passwords.confirmPassword}
+                    onChange={(e) => setPasswords((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder="Vuelve a escribir la nueva contraseña"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="cuenta-password-toggle"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    title={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                    aria-label={showConfirmPassword ? 'Ocultar confirmación de contraseña' : 'Ver confirmación de contraseña'}
+                  >
+                    <EyeIcon visible={showConfirmPassword} />
+                  </button>
+                </div>
+                <span className="cuenta-field-hint">Ambas contraseñas deben ser exactamente iguales.</span>
+              </div>
             </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <button type="submit" disabled={savingPassword}>
-                {savingPassword ? 'Guardando...' : 'Cambiar contrasena'}
+
+            <div style={{ marginTop: '8px' }}>
+              <button
+                type="submit"
+                disabled={savingPassword}
+                className="cuenta-btn-submit"
+              >
+                <span>🔑</span>
+                <span>{savingPassword ? 'Actualizando contraseña...' : 'Actualizar mi contraseña'}</span>
               </button>
             </div>
           </form>
 
           {passwordMsg.text && (
-            <div className={`msg show ${passwordMsg.type === 'success' ? 'msg-success' : 'msg-error'}`}>
-              {passwordMsg.text}
+            <div
+              role="alert"
+              className={`cuenta-alert ${passwordMsg.type === 'success' ? 'cuenta-alert-success' : 'cuenta-alert-error'}`}
+            >
+              <span className="cuenta-alert-icon" aria-hidden="true">
+                {passwordMsg.type === 'success' ? '✅' : '⚠️'}
+              </span>
+              <span>{passwordMsg.text}</span>
             </div>
           )}
         </section>
-      </div>
+      )}
     </div>
   )
 }
