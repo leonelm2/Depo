@@ -1,3 +1,5 @@
+import ActionIcon from './ActionIcon'
+
 export default function SelectorTrigger({
   label,
   selectedItem = null,
@@ -66,10 +68,14 @@ export default function SelectorTrigger({
                 border: '1px solid #ffedd5',
                 cursor: 'pointer',
                 minHeight: 'auto',
-                fontWeight: 600
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5
               }}
             >
-              🔄 Cambiar
+              <ActionIcon name="recargar" size={13} />
+              Cambiar
             </button>
             {onClear && (
               <button

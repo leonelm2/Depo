@@ -525,9 +525,10 @@ export default function Usuarios() {
         <div style={{ marginBottom: 24 }}>
           <button
             type="button"
-            style={{ width: 'auto', margin: 0, padding: '10px 18px' }}
+            style={{ width: 'auto', margin: 0, padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: 8 }}
             onClick={openCreateForm}
           >
+            <ActionIcon name="agregar" size={16} />
             {isDirectorArea ? 'Agregar Supervisor' : 'Crear usuario'}
           </button>
         </div>
@@ -569,14 +570,22 @@ export default function Usuarios() {
                       Editar
                     </button>
                   )}
-                  {canChangeRoleForCurrentUser && <button onClick={() => handleChangeRole(u)}>Rol +</button>}
+                  {canChangeRoleForCurrentUser && (
+                    <button onClick={() => handleChangeRole(u)} className="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <ActionIcon name="usuario" size={14} />
+                      Rol +
+                    </button>
+                  )}
                   {canToggleStatus && (
                     <button onClick={() => handleToggleActive(u.id, u.activo)}>
                       {u.activo ? 'Desactivar' : 'Activar'}
                     </button>
                   )}
                   {canDeleteUser && Number(u.id) !== Number(user?.id) && (
-                    <button onClick={() => handleDelete(u.id)}>Eliminar</button>
+                    <button onClick={() => handleDelete(u.id)} className="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: '#fca5a5' }}>
+                      <ActionIcon name="eliminar" size={14} />
+                      Eliminar
+                    </button>
                   )}
                 </div>
               </td>

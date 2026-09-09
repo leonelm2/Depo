@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import HistorialConsumoPanel from '../HistorialConsumoPanel'
+import ActionIcon from '../ui/ActionIcon'
 
 function formatEstado(estado) {
   if (estado === 'aclaracion') return 'Aclaracion solicitada'
@@ -180,8 +181,12 @@ export default function SolicitudDetalleModal({
         )}
 
         <div className="inline-actions sv-modal-actions">
-          <button disabled={disabled || !canAct} onClick={() => onApprove(selected)}>Aceptar solicitud</button>
-          <button disabled={disabled || !canAct} className="sv-btn-rechazar" onClick={submitReject}>Rechazar solicitud</button>
+          <button disabled={disabled || !canAct} onClick={() => onApprove(selected)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <ActionIcon name="aprobar" size={14} /> Aceptar solicitud
+          </button>
+          <button disabled={disabled || !canAct} className="sv-btn-rechazar" onClick={submitReject} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <ActionIcon name="rechazar" size={14} /> Rechazar solicitud
+          </button>
           <button disabled={disabled || !canAct} className="sv-btn-reparar" onClick={submitClarification}>Pedir aclaracion</button>
         </div>
       </aside>

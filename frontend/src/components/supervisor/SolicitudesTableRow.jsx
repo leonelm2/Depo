@@ -1,3 +1,5 @@
+import ActionIcon from '../ui/ActionIcon'
+
 function formatEstado(estado) {
   if (estado === 'aclaracion') return 'Aclaracion solicitada'
   if (estado === 'pendiente_director') return 'Enviado a Director'
@@ -34,7 +36,8 @@ export default function SolicitudesTableRow({ solicitud, onView }) {
         </span>
       </td>
       <td>
-        <button className="secondary sv-btn-ver" onClick={() => onView(solicitud)}>
+        <button className="secondary sv-btn-ver" onClick={() => onView(solicitud)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <ActionIcon name="verdetalle" size={14} />
           Ver detalle
         </button>
       </td>
