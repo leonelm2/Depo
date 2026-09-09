@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import InstitutionSelectorModal from './ui/InstitutionSelectorModal'
 import SelectorTrigger from './ui/SelectorTrigger'
+import ActionIcon from './ui/ActionIcon'
 
 const FALLBACK_NIVELES = ['INICIAL', 'PRIMARIO', 'SECUNDARIO', 'SUPERIOR']
 
@@ -562,7 +563,12 @@ export default function Usuarios() {
               <td>{u.activo ? 'Si' : 'No'}</td>
               <td>
                 <div className="inline-actions">
-                  {canEditUsers && <button onClick={() => openEditModal(u)}>Editar</button>}
+                  {canEditUsers && (
+                    <button onClick={() => openEditModal(u)} className="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <ActionIcon name="editar" size={14} />
+                      Editar
+                    </button>
+                  )}
                   {canChangeRoleForCurrentUser && <button onClick={() => handleChangeRole(u)}>Rol +</button>}
                   {canToggleStatus && (
                     <button onClick={() => handleToggleActive(u.id, u.activo)}>

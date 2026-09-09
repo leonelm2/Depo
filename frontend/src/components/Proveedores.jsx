@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import PrintButton from './PrintButton'
+import ActionIcon from './ui/ActionIcon'
 import FilterSortButton from './FilterSortButton'
 
 export default function Proveedores() {
@@ -276,7 +277,7 @@ export default function Proveedores() {
                   </td>
                   <td>
                     <div className="inline-actions">
-                      {canEdit && <button onClick={() => handleEditOpen(p)} style={{ padding: '6px 10px' }}>✏️</button>}
+                      {canEdit && <button onClick={() => handleEditOpen(p)} className="secondary" title="Editar Proveedor" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ActionIcon name="editar" alt="Editar" size={17} /></button>}
                       {canDelete && <button onClick={() => handleDelete(p.id)} style={{ padding: '6px 10px', background: '#ef4444' }}>🗑️</button>}
                     </div>
                   </td>
@@ -294,7 +295,7 @@ export default function Proveedores() {
         >
           <div style={{ background: 'white', padding: 32, borderRadius: 16, width: 'min(850px, 95%)', maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span>✏️</span> Editar Proveedor
+              <ActionIcon name="editar" size={24} /> Editar Proveedor
             </h2>
             
             <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>

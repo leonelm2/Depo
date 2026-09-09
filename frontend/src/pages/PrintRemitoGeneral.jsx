@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
+import ActionIcon from '../components/ui/ActionIcon'
 
 export default function PrintRemitoGeneral() {
   const { id } = useParams()
@@ -85,7 +86,10 @@ export default function PrintRemitoGeneral() {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="secondary" onClick={() => navigate(-1)}>Volver</button>
-            <button onClick={() => window.print()}>Imprimir</button>
+            <button onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <ActionIcon name="imprimir" size={15} />
+              Imprimir
+            </button>
           </div>
         </div>
 

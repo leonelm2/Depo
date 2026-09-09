@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
+import ActionIcon from './ui/ActionIcon'
 
 export default function DistribucionEscuelas() {
   const { token } = useAuth()
@@ -1062,8 +1063,9 @@ export default function DistribucionEscuelas() {
                         </button>
                       )}
 
-                      <button type="button" className="secondary" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={() => handlePrintLote(lote.lote_id)}>
-                        🖨️ Comprobante
+                      <button type="button" className="secondary" style={{ padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => handlePrintLote(lote.lote_id)}>
+                        <ActionIcon name="imprimir" size={14} />
+                        Comprobante
                       </button>
                     </div>
                   </td>
@@ -1899,11 +1901,12 @@ export default function DistribucionEscuelas() {
             {msg.type === 'success' && loteImprimible && (
               <button
                 type="button"
-                className="primary"
+                className="secondary"
                 onClick={() => handlePrintLote(loteImprimible)}
-                style={{ width: 'auto', margin: 0, padding: '6px 12px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                style={{ width: 'auto', margin: 0, padding: '6px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
-                🖨️ Comprobante de Lote
+                <ActionIcon name="imprimir" size={15} />
+                Comprobante de Lote
               </button>
             )}
             {msg.type === 'success' && valeImprimible && (
@@ -1911,9 +1914,10 @@ export default function DistribucionEscuelas() {
                 type="button"
                 className="primary"
                 onClick={() => handlePrintVale(valeImprimible)}
-                style={{ width: 'auto', margin: 0, padding: '6px 12px', fontSize: '0.85rem', whiteSpace: 'nowrap', background: '#dc2626', borderColor: '#dc2626' }}
+                style={{ width: 'auto', margin: 0, padding: '6px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', background: '#dc2626', borderColor: '#dc2626', display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
-                📋 Imprimir Vale de Reposición
+                <ActionIcon name="imprimir" size={15} />
+                Imprimir Vale de Reposición
               </button>
             )}
           </div>

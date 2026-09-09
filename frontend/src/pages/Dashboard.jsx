@@ -106,13 +106,13 @@ const TABS = [
   { key: 'compras-refuerzos', label: 'Licitaciones Refuerzos', permission: 'planilla.view', rolesAllowed: ['area_compras', 'master'], icon: ClipboardIcon },
   { key: 'compras-adjudicacion', label: 'Adjudicacion y Cierre', permission: 'planilla.manage', rolesAllowed: ['area_compras', 'master'], icon: ShieldIcon },
   { key: 'compras-entregas', label: 'Gestion de Entregas', permission: 'planilla.view', rolesAllowed: ['area_compras', 'master'], icon: TruckIcon },
-  { key: 'deposito-recepcion', label: 'Recepcion Licitacion', permission: 'stock.movement.create', rolesAllowed: ['operador', 'master'], icon: DocumentIcon },
-  { key: 'deposito-distribucion', label: 'Distribucion a Escuelas', permission: 'stock.movement.create', rolesAllowed: ['operador', 'master'], icon: TruckIcon },
-  { key: 'solicitudes-retiro', label: 'Retiros Escolares', permission: 'stock.movement.create', rolesAllowed: ['operador', 'master'], icon: ClipboardIcon },
+  { key: 'deposito-recepcion', label: 'Recepcion Licitacion', permission: 'stock.movement.create', rolesAllowed: ['master'], icon: DocumentIcon }, // Oculto para operador en Fase 1
+  { key: 'deposito-distribucion', label: 'Distribucion a Escuelas', permission: 'stock.movement.create', rolesAllowed: ['master'], icon: TruckIcon }, // Oculto para operador en Fase 1
+  { key: 'solicitudes-retiro', label: 'Retiros Escolares', permission: 'stock.movement.create', rolesAllowed: ['master'], icon: ClipboardIcon }, // Oculto para operador en Fase 1
   { key: 'supervisor', label: 'Patrimonio Escolar', permission: 'pedidos.manage', rolesAllowed: ['supervisor', 'master'], icon: ActivityIcon },
   { key: 'asignar-kit', label: 'Asignar Kit', permission: 'pedidos.manage', rolesAllowed: ['supervisor', 'master'], icon: BoxIcon },
   { key: 'mis-escuelas', label: 'Mis Escuelas', permission: 'instituciones.view', rolesAllowed: ['supervisor', 'master'], icon: BuildingIcon },
-  { key: 'pedidos', label: 'Pedidos Escolares', permission: 'pedidos.view', rolesAllowed: ['director_area', 'supervisor', 'directivo', 'operador_escolar', 'operador', 'area_compras', 'master'], icon: ClipboardIcon },
+  { key: 'pedidos', label: 'Pedidos Escolares', permission: 'pedidos.view', rolesAllowed: ['director_area', 'supervisor', 'directivo', 'operador_escolar', 'area_compras', 'master'], icon: ClipboardIcon }, // Oculto para operador en Fase 1
   { key: 'mi-stock', label: 'Mi Stock y Depósito', permission: 'pedidos.view', rolesAllowed: ['directivo', 'operador_escolar'], icon: BoxIcon },
   { key: 'recepcion-mercaderia', label: 'Recepción de Mercadería', permission: 'pedidos.view', rolesAllowed: ['directivo', 'operador_escolar'], icon: BoxIcon },
   { key: 'deposito-institucion', label: 'Mi Depósito', permission: 'pedidos.view', rolesAllowed: ['master'], hideForRoles: ['directivo', 'operador_escolar'], icon: BuildingIcon },

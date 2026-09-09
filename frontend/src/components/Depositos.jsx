@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
+import ActionIcon from './ui/ActionIcon'
 
 export default function Depositos() {
   const { token, user, hasPermission } = useAuth()
@@ -440,7 +441,10 @@ export default function Depositos() {
       <div className="card" style={{ padding: '24px', marginTop: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h3 style={{ margin: 0 }}>Historial de Traslados</h3>
-          <button type="button" className="secondary" onClick={handlePrintTraslados}>🖨️ Imprimir Historial</button>
+          <button type="button" className="secondary" onClick={handlePrintTraslados} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <ActionIcon name="imprimir" size={15} />
+            Imprimir Historial
+          </button>
         </div>
         <div className="table-responsive">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -467,7 +471,9 @@ export default function Depositos() {
                   <td style={{ padding: '12px 8px' }}>{t.usuario_nombre || '-'}</td>
                   <td style={{ padding: '12px 8px' }}>{new Date(t.created_at).toLocaleDateString()}</td>
                   <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                    <button type="button" className="secondary" onClick={() => handlePrintSingleTraslado(t)} style={{ padding: '4px 8px', fontSize: '0.8rem' }}>🖨️</button>
+                    <button type="button" className="secondary" onClick={() => handlePrintSingleTraslado(t)} style={{ padding: '6px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} title="Imprimir traslado">
+                      <ActionIcon name="imprimir" size={16} />
+                    </button>
                   </td>
                 </tr>
               ))}

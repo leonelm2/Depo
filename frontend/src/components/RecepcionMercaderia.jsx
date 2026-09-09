@@ -1,6 +1,7 @@
 import { useEffect, useState, Fragment } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
+import ActionIcon from './ui/ActionIcon'
 
 function itemKey(loteId, productoId) {
   return `${loteId}:${productoId}`
@@ -542,16 +543,19 @@ export default function RecepcionMercaderia() {
                             type="button"
                             className="secondary"
                             onClick={() => setExpandedHistorialLoteId(isExpanded ? null : lote.lote_id)}
-                            style={{ margin: 0, padding: '6px 12px', fontSize: '0.85rem', width: 'auto', minHeight: 0 }}
+                            style={{ margin: 0, padding: '6px 12px', fontSize: '0.85rem', width: 'auto', minHeight: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                           >
+                            <ActionIcon name="verdetalle" size={15} />
                             {isExpanded ? 'Ocultar Detalle' : 'Ver Detalle'}
                           </button>
                           <button
                             type="button"
+                            className="secondary"
                             onClick={() => printRemito(lote, lote.items)}
-                            style={{ margin: 0, padding: '6px 12px', fontSize: '0.85rem', width: 'auto', minHeight: 0 }}
+                            style={{ margin: 0, padding: '6px 12px', fontSize: '0.85rem', width: 'auto', minHeight: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                           >
-                            🖨️ Reimprimir Remito
+                            <ActionIcon name="imprimir" size={15} />
+                            Reimprimir Remito
                           </button>
                         </div>
                       </td>

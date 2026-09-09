@@ -3,6 +3,7 @@ import Modal from './ui/Modal'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import PrintButton from './PrintButton'
+import ActionIcon from './ui/ActionIcon'
 import FilterSortButton from './FilterSortButton'
 import * as XLSX from 'xlsx'
 
@@ -563,12 +564,12 @@ export default function Productos() {
               
               <td>
                 <div className="inline-actions" style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => loadDetail(p.id)} className="secondary" title="Ver detalle" aria-label="Ver detalle" style={{ width: 'auto', margin: 0, minWidth: 36, padding: '4px 8px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    👁️
+                  <button onClick={() => loadDetail(p.id)} className="secondary" title="Ver detalle" aria-label="Ver detalle" style={{ width: 'auto', margin: 0, minWidth: 36, padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ActionIcon name="verdetalle" alt="Ver detalle" size={17} />
                   </button>
                   {hasPermission('productos.edit') && (
-                    <button onClick={() => handleEdit(p.id)} title="Editar producto" aria-label="Editar producto" style={{ width: 'auto', margin: 0, minWidth: 36, padding: '4px 8px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      ✏️
+                    <button onClick={() => handleEdit(p.id)} className="secondary" title="Editar producto" aria-label="Editar producto" style={{ width: 'auto', margin: 0, minWidth: 36, padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ActionIcon name="editar" alt="Editar producto" size={17} />
                     </button>
                   )}
                   {canDeleteProductos && (

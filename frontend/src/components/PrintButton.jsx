@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import ActionIcon from './ui/ActionIcon'
 
 const MINISTERIO_LOGO_URL = '/faviconmin.png'
 
@@ -70,6 +71,7 @@ export default function PrintButton({ targetRef, title }) {
         cursor: 'pointer',
       }}
     >
+      <ActionIcon name="imprimir" size={15} />
       Imprimir
     </button>
   )

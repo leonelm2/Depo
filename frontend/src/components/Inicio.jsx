@@ -4,6 +4,7 @@ import { printMovimiento } from '../utils/printHelpers'
 import { motion } from 'framer-motion'
 import { apiFetch } from '../api'
 import PrintButton from './PrintButton'
+import ActionIcon from './ui/ActionIcon'
 import {
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
@@ -321,8 +322,9 @@ export default function Inicio({ onNavigate }) {
                           type="button"
                           className="secondary"
                           onClick={() => printMovimiento(movimiento)}
-                          style={{ width: 'auto', margin: 0, padding: '4px 8px', fontSize: '0.8rem' }}
+                          style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                         >
+                          <ActionIcon name="imprimir" size={14} />
                           Imprimir
                         </button>
                       </td>
@@ -444,8 +446,9 @@ export default function Inicio({ onNavigate }) {
                                 type="button"
                                 className="secondary"
                                 onClick={() => printMovimiento(mov)}
-                                style={{ width: 'auto', margin: 0, padding: '4px 8px', fontSize: '0.8rem' }}
+                                style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                               >
+                                <ActionIcon name="imprimir" size={14} />
                                 Imprimir
                               </button>
                             </td>

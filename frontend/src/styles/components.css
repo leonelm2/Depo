@@ -590,6 +590,37 @@ tbody tr:last-child td {
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.10), inset 0 1px 0 rgba(255,255,255,0.90);
 }
 
+/* ── Action Icons (.action-icon) ── */
+.action-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  vertical-align: middle;
+  display: inline-block;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+/* Por defecto en botones oscuros primarios, invertir a blanco */
+button:not(.secondary) .action-icon {
+  filter: brightness(0) invert(1);
+}
+
+/* En botones secundarios o claros, mantener el color negro original */
+button.secondary .action-icon {
+  filter: none;
+}
+
+/* En hover de botones que pasan a fondo naranja o fondo oscuro, asegurar que se vean blancos */
+button:hover .action-icon {
+  filter: brightness(0) invert(1);
+}
+
+/* En botones secundarios con hover claro, mantener tono nítido */
+button.secondary:hover .action-icon {
+  filter: brightness(0) invert(0);
+}
+
+
 /* ── Filter & Sort ── */
 .filter-sort {
   position: relative;

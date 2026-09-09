@@ -3,6 +3,7 @@ import Modal from './ui/Modal'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import PrintButton from './PrintButton'
+import ActionIcon from './ui/ActionIcon'
 import SupervisorSolicitudes from './supervisor/SupervisorSolicitudes'
 import SolicitudesRetiro from './SolicitudesRetiro'
 
@@ -849,8 +850,14 @@ function DepositoPedidos() {
                     )}
                     {user?.role === 'director_area' && (
                       <>
-                        <button onClick={() => setViewingPedido(pedido)} style={{ color: 'white', backgroundColor: '#2563eb' }}>Ver</button>
-                        <button onClick={() => handleImprimirPedido(pedido)} style={{ color: 'white', backgroundColor: '#2563eb' }}>Imprimir</button>
+                        <button onClick={() => setViewingPedido(pedido)} style={{ color: 'white', backgroundColor: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <ActionIcon name="verdetalle" size={14} />
+                          Ver
+                        </button>
+                        <button onClick={() => handleImprimirPedido(pedido)} style={{ color: 'white', backgroundColor: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <ActionIcon name="imprimir" size={14} />
+                          Imprimir
+                        </button>
                       </>
                     )}
                   </div>

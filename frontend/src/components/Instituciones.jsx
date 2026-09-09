@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import { apiFetch } from '../api.js'
 import { useAuth } from '../context/AuthContext'
-import { MapPin, List, Edit2 } from 'lucide-react'
+import { MapPin, List } from 'lucide-react'
+import ActionIcon from './ui/ActionIcon'
 import FilterSortButton from './FilterSortButton'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -440,7 +441,7 @@ export default function Instituciones({ supervisorMode = false }) {
                           style={{ margin: 0, padding: '4px 8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--dark)' }}
                           title="Asignar Kit"
                         >
-                          <Edit2 size={14} />
+                          <ActionIcon name="editar" size={14} />
                         </button>
                       </div>
                     </td>

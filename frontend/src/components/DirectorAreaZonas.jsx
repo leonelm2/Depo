@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '../api'
 import { useAuth } from '../context/AuthContext'
+import ActionIcon from './ui/ActionIcon'
 
 function normalizeText(value) {
   return String(value || '').trim()
@@ -580,8 +581,8 @@ export default function DirectorAreaZonas({ nivelEducativo }) {
         {/* Columna Izquierda: Formulario de Creación/Edición */}
         <section style={{ border: '1px solid var(--border)', borderRadius: 16, padding: 28, background: '#fff', boxShadow: 'var(--shadow-premium)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
-            <h3 style={{ margin: 0, fontSize: '1.25rem' }}>
-              {editingZoneId ? '✏️ Editar Zona' : '➕ Nueva Zona'}
+            <h3 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {editingZoneId ? <><ActionIcon name="editar" size={20} /> Editar Zona</> : '➕ Nueva Zona'}
             </h3>
             <span style={{
               background: '#fff7ed',
@@ -683,10 +684,10 @@ export default function DirectorAreaZonas({ nivelEducativo }) {
                           type="button"
                           className="secondary"
                           onClick={() => startEditZone(zona)}
-                          style={{ margin: 0, minHeight: 'auto', padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4 }}
+                          style={{ margin: 0, minHeight: 'auto', padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
                           title="Editar nombre y escuelas"
                         >
-                          ✏️ <span className="btn-label-text">Editar</span>
+                          <ActionIcon name="editar" size={15} /> <span className="btn-label-text">Editar</span>
                         </button>
                         <button
                           type="button"

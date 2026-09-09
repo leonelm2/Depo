@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import PrintButton from './PrintButton'
+import ActionIcon from './ui/ActionIcon'
 import RetirarPedidoAnual from './RetirarPedidoAnual'
 import { printMovimiento } from '../utils/printHelpers'
 import InstitutionSelectorModal from './ui/InstitutionSelectorModal'
@@ -1539,9 +1540,9 @@ return (
                             onClick={() => printMovimiento(group.items, instituciones)}
                             title="Imprimir movimiento"
                             aria-label="Imprimir movimiento"
-                            style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            🖨️
+                            <ActionIcon name="imprimir" alt="Imprimir movimiento" size={17} />
                           </button>
                           <button
                             type="button"
@@ -1549,9 +1550,9 @@ return (
                             onClick={() => { setDetalleData({ proveedor: proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : (first.tipo === 'egreso' ? first.institucion_nombre : null), deposito: first.deposito_nombre, institucion: institucionCargo, productos: group.items }); setDetalleModalOpen(true) }}
                             title="Ver detalle"
                             aria-label="Ver detalle"
-                            style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            👁️
+                            <ActionIcon name="verdetalle" alt="Ver detalle" size={17} />
                           </button>
                         </div>
                       </td>
@@ -1697,7 +1698,10 @@ return (
               {detalleData.productos.map((p, idx) => (
                 <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
                   <span>{p.producto_nombre || '-'} — Cantidad: {p.cantidad}</span>
-                  <button type="button" className="secondary" onClick={() => printMovimiento(p, instituciones)} style={{ width: 'auto', margin: 0, padding: '4px 8px', fontSize: '0.8rem' }}>Imprimir este producto</button>
+                  <button type="button" className="secondary" onClick={() => printMovimiento(p, instituciones)} style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <ActionIcon name="imprimir" size={14} />
+                    Imprimir este producto
+                  </button>
                 </li>
               ))}
             </ul>

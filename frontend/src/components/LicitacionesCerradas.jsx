@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
+import ActionIcon from './ui/ActionIcon'
 
 function RemitosModal({ lic, token, onClose }) {
   const [remitos, setRemitos] = useState([])
@@ -144,6 +145,7 @@ function RemitosModal({ lic, token, onClose }) {
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        gap: 4,
                         border: '1px solid #e2e8f0',
                         borderRadius: 6,
                         background: '#ffffff',
@@ -156,6 +158,7 @@ function RemitosModal({ lic, token, onClose }) {
                         whiteSpace: 'nowrap'
                       }}
                     >
+                      <ActionIcon name="imprimir" size={13} />
                       Imprimir
                     </button>
                   </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import PrintButton from './PrintButton'
+import ActionIcon from './ui/ActionIcon'
 
 const ESTADO_BADGE = {
   enviada: 'pendiente',
@@ -770,9 +771,10 @@ export default function ComprasPanel({ section = 'pedidos', onNavigate }) {
                         <td style={{ padding: '12px 16px' }}>
                           <button 
                             className="secondary" 
-                            style={{ padding: '6px 12px', fontSize: '0.82rem', borderRadius: 8, margin: 0, width: 'auto' }}
+                            style={{ padding: '6px 12px', fontSize: '0.82rem', borderRadius: 8, margin: 0, width: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                             onClick={() => handleVerDetalle(p.id)}
                           >
+                            <ActionIcon name="verdetalle" size={15} />
                             Ver Detalle
                           </button>
                         </td>

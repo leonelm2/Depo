@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
+import ActionIcon from './ui/ActionIcon'
 
 function emptyForm() {
   return {
@@ -281,6 +282,7 @@ export default function ProductKitsManager() {
                   <div className="inline-actions" style={{ display: 'flex', gap: 8 }}>
                     <button 
                       type="button" 
+                      className="secondary"
                       onClick={() => openEdit(kit)}
                       style={{ 
                         width: 'auto', 
@@ -289,10 +291,13 @@ export default function ProductKitsManager() {
                         fontSize: '0.85rem', 
                         borderRadius: 6, 
                         fontWeight: 600,
-                        cursor: 'pointer' 
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
                       }}
                     >
-                      ✏️ Editar
+                      <ActionIcon name="editar" size={15} /> Editar
                     </button>
                     {kit.activo && (
                       <button 

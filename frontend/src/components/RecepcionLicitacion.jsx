@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
+import ActionIcon from './ui/ActionIcon'
 
 const RECEPCION_ESTADO_LABEL = {
   en_deposito: 'En deposito',
@@ -662,8 +663,9 @@ export default function RecepcionLicitacion() {
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 {!showFotos && (
-                  <button className="secondary" onClick={() => printRemito(detalleRemito)} style={{ padding: '5px 12px', fontSize: '0.85rem' }}>
-                    🖨️ Imprimir
+                  <button className="secondary" onClick={() => printRemito(detalleRemito)} style={{ padding: '5px 12px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <ActionIcon name="imprimir" size={15} />
+                    Imprimir
                   </button>
                 )}
                 <button className="recepcion-modal-close" onClick={closeDetalleRemito}>✕</button>
