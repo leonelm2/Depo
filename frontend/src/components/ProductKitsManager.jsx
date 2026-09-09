@@ -202,7 +202,8 @@ export default function ProductKitsManager() {
             gap: 6
           }}
         >
-          ➕ Crear kit
+          <ActionIcon name="agregar" size={16} />
+          Crear kit
         </button>
       </div>
 
@@ -311,10 +312,13 @@ export default function ProductKitsManager() {
                           fontSize: '0.85rem', 
                           borderRadius: 6, 
                           fontWeight: 600,
-                          cursor: 'pointer' 
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6
                         }}
                       >
-                        🗑️ Eliminar
+                        <ActionIcon name="eliminar" size={15} /> Eliminar
                       </button>
                     )}
                   </div>
@@ -476,7 +480,7 @@ export default function ProductKitsManager() {
                           minHeight: '44px'
                         }}
                       >
-                        🗑️
+                        <ActionIcon name="eliminar" size={16} />
                       </button>
                     </div>
                   ))}
@@ -499,7 +503,7 @@ export default function ProductKitsManager() {
                     cursor: 'pointer'
                   }}
                 >
-                  ➕ Agregar producto
+                  <ActionIcon name="agregar" size={15} /> Agregar producto
                 </button>
               </div>
 
@@ -508,15 +512,17 @@ export default function ProductKitsManager() {
                   type="button" 
                   className="secondary" 
                   onClick={closeModal}
-                  style={{ width: 'auto', margin: 0, padding: '10px 20px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ width: 'auto', margin: 0, padding: '10px 20px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
+                  <ActionIcon name="cancelar" size={14} />
                   Cancelar
                 </button>
                 <button 
                   type="submit" 
                   disabled={saving}
-                  style={{ width: 'auto', margin: 0, padding: '10px 20px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ width: 'auto', margin: 0, padding: '10px 20px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
+                  <ActionIcon name="guardar" size={14} />
                   {saving ? 'Guardando...' : 'Guardar kit'}
                 </button>
               </div>

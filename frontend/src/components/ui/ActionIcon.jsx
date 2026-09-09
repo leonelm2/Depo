@@ -1,9 +1,29 @@
 import React from 'react'
 
 const ICON_MAP = {
+  agregar: '/iconos/boton-agregar.png',
+  nuevo: '/iconos/boton-agregar.png',
+  aprobar: '/iconos/boton-aprobar.png',
+  buscar: '/iconos/boton-buscar.png',
+  filtrar: '/iconos/boton-buscar.png',
+  cancelar: '/iconos/boton-cancelar.png',
+  cerrar: '/iconos/boton-cancelar.png',
   editar: '/iconos/boton-editar.png',
+  eliminar: '/iconos/boton-eliminar.png',
+  borrar: '/iconos/boton-eliminar.png',
+  excel: '/iconos/boton-excel.png',
+  descargar: '/iconos/boton-excel.png',
+  foto: '/iconos/boton-foto.png',
+  guardar: '/iconos/boton-guardar.png',
+  historial: '/iconos/boton-historial.png',
   imprimir: '/iconos/boton-imprimir.png',
+  recargar: '/iconos/boton-recargar.png',
+  actualizar: '/iconos/boton-recargar.png',
+  rechazar: '/iconos/boton-rechazar.png',
+  usuario: '/iconos/boton-usuario.png',
   verdetalle: '/iconos/boton-verdetalle.png',
+  detalle: '/iconos/boton-verdetalle.png',
+  ver: '/iconos/boton-verdetalle.png',
 }
 
 /**

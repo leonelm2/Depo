@@ -456,9 +456,10 @@ export default function Productos() {
           <button
             type="button"
             className="secondary"
-            style={{ width: 'auto', margin: 0, padding: '10px 18px', background: '#f8fafc', color: '#0f172a' }}
+            style={{ width: 'auto', margin: 0, padding: '10px 18px', background: '#f8fafc', color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: 8 }}
             onClick={() => setExportModalOpen(true)}
           >
+            <ActionIcon name="excel" size={16} />
             Exportar a Excel
           </button>
           <PrintButton targetRef={printRef} title="Inventario de Productos" />
@@ -469,17 +470,19 @@ export default function Productos() {
         <div style={{ marginBottom: 24, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="button"
-            style={{ width: 'auto', margin: 0, padding: '10px 18px' }}
+            style={{ width: 'auto', margin: 0, padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: 8 }}
             onClick={() => setFormOpen(true)}
           >
+            <ActionIcon name="agregar" size={16} />
             Crear producto
           </button>
           <button
             type="button"
             className="secondary"
-            style={{ width: 'auto', margin: 0, padding: '10px 18px', background: '#f8fafc', color: '#0f172a' }}
+            style={{ width: 'auto', margin: 0, padding: '10px 18px', background: '#f8fafc', color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: 8 }}
             onClick={() => setImportModalOpen(true)}
           >
+            <ActionIcon name="excel" size={16} />
             Importar Excel
           </button>
         </div>
@@ -573,8 +576,8 @@ export default function Productos() {
                     </button>
                   )}
                   {canDeleteProductos && (
-                    <button onClick={() => handleDelete(p.id)} className="secondary" title="Eliminar producto" aria-label="Eliminar producto" style={{ width: 'auto', margin: 0, minWidth: 36, padding: '4px 8px', fontSize: '1.2rem', color: '#dc2626', borderColor: '#fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      🗑️
+                    <button onClick={() => handleDelete(p.id)} className="secondary" title="Eliminar producto" aria-label="Eliminar producto" style={{ width: 'auto', margin: 0, minWidth: 36, padding: '4px 8px', borderColor: '#fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ActionIcon name="eliminar" alt="Eliminar producto" size={17} />
                     </button>
                   )}
                 </div>

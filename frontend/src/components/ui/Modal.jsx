@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import ActionIcon from './ActionIcon'
 
 export default function Modal({ isOpen, onClose, title, children, maxWidth = 520 }) {
   // Manejo de la tecla Esc
@@ -46,8 +47,9 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 520
                 className="modal-close-btn"
                 onClick={onClose}
                 aria-label="Cerrar modal"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                ✕
+                <ActionIcon name="cancelar" size={13} />
               </button>
             </div>
             <div className="modal-body">

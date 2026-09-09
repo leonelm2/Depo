@@ -582,7 +582,7 @@ export default function DirectorAreaZonas({ nivelEducativo }) {
         <section style={{ border: '1px solid var(--border)', borderRadius: 16, padding: 28, background: '#fff', boxShadow: 'var(--shadow-premium)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
             <h3 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-              {editingZoneId ? <><ActionIcon name="editar" size={20} /> Editar Zona</> : '➕ Nueva Zona'}
+              {editingZoneId ? <><ActionIcon name="editar" size={20} /> Editar Zona</> : <><ActionIcon name="agregar" size={20} /> Nueva Zona</>}
             </h3>
             <span style={{
               background: '#fff7ed',
@@ -693,20 +693,20 @@ export default function DirectorAreaZonas({ nivelEducativo }) {
                           type="button"
                           className="secondary"
                           onClick={() => openSupervisorModal(zona)}
-                          style={{ margin: 0, minHeight: 'auto', padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4 }}
+                          style={{ margin: 0, minHeight: 'auto', padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
                           title="Asignar Supervisor"
                         >
-                          👤 <span className="btn-label-text">Supervisor</span>
+                          <ActionIcon name="usuario" size={15} /> <span className="btn-label-text">Supervisor</span>
                         </button>
                         <button
                           type="button"
                           className="secondary"
                           onClick={() => handleDeleteZone(zona)}
                           disabled={deletingZoneId === zona.id}
-                          style={{ margin: 0, minHeight: 'auto', padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4, borderColor: '#fecaca', color: '#dc2626' }}
+                          style={{ margin: 0, minHeight: 'auto', padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, borderColor: '#fecaca' }}
                           title="Eliminar Zona"
                         >
-                          🗑️ <span className="btn-label-text">Eliminar</span>
+                          <ActionIcon name="eliminar" size={15} /> <span className="btn-label-text">Eliminar</span>
                         </button>
                       </div>
                     </div>
@@ -767,7 +767,9 @@ export default function DirectorAreaZonas({ nivelEducativo }) {
       {modalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="card fade-in" style={{ padding: 28, borderRadius: 16, minWidth: 420, maxWidth: '90%', minHeight: 'auto', boxShadow: 'var(--shadow-premium)' }}>
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '1.25rem' }}>👤 Asignar Supervisor</h4>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ActionIcon name="usuario" size={20} /> Asignar Supervisor
+            </h4>
             <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: 20 }}>Selecciona los supervisores que estarán a cargo de esta zona:</p>
             {modalLoading ? (
               <p style={{ textAlign: 'center', padding: '20px 0', color: 'var(--muted)', fontSize: '0.9rem' }}>Cargando supervisores...</p>
@@ -823,15 +825,17 @@ export default function DirectorAreaZonas({ nivelEducativo }) {
                   setModalOpen(false)
                   setZonaIdCreada(null)
                 }}
-                style={{ margin: 0, padding: '8px 16px' }}
+                style={{ margin: 0, padding: '8px 16px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
+                <ActionIcon name="cancelar" size={14} />
                 Cancelar
               </button>
               <button
                 onClick={handleAssignSupervisores}
                 disabled={modalLoading}
-                style={{ margin: 0, padding: '8px 20px' }}
+                style={{ margin: 0, padding: '8px 20px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
+                <ActionIcon name="guardar" size={14} />
                 Guardar asignación
               </button>
             </div>

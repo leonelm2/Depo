@@ -819,8 +819,8 @@ export default function ComprasPanel({ section = 'pedidos', onNavigate }) {
                       maxWidth: '300px'
                     }}
                   />
-                  <button className="secondary" onClick={handleExportCSV} disabled={!consolidado.length} style={{ padding: '8px 16px', fontSize: '0.85rem', borderRadius: 8, margin: 0, width: 'auto' }}>
-                    📥 Exportar Consolidado (CSV)
+                  <button className="secondary" onClick={handleExportCSV} disabled={!consolidado.length} style={{ padding: '8px 16px', fontSize: '0.85rem', borderRadius: 8, margin: 0, width: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <ActionIcon name="excel" size={15} /> Exportar Consolidado (CSV)
                   </button>
                 </div>
               </div>
@@ -862,8 +862,8 @@ export default function ComprasPanel({ section = 'pedidos', onNavigate }) {
                 📝 Listado Final a Licitar
               </h3>
               {listadoPendienteAnual.length > 0 && (
-                <button className="primary" onClick={() => setShowConfirmPublicar(true)}>
-                  ➕ Crear licitación
+                <button className="primary" onClick={() => setShowConfirmPublicar(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <ActionIcon name="agregar" size={15} /> Crear licitación
                 </button>
               )}
             </div>
@@ -935,8 +935,8 @@ export default function ComprasPanel({ section = 'pedidos', onNavigate }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ margin: 0 }}>🚨 Refuerzos sin stock</h3>
               {listadoPendienteRefuerzo.length > 0 && (
-                <button className="primary" onClick={() => setShowConfirmPublicar(true)}>
-                  ➕ Crear licitación de refuerzo
+                <button className="primary" onClick={() => setShowConfirmPublicar(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <ActionIcon name="agregar" size={15} /> Crear licitación de refuerzo
                 </button>
               )}
             </div>
@@ -1247,7 +1247,9 @@ export default function ComprasPanel({ section = 'pedidos', onNavigate }) {
       {showConfirmPublicar && (
         <div className="sv-modal-overlay">
           <div className="sv-modal">
-            <h2 className="sv-modal-title" style={{ color: 'var(--primary)' }}>➕ ¿Crear nueva licitación?</h2>
+            <h2 className="sv-modal-title" style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ActionIcon name="agregar" size={22} /> ¿Crear nueva licitación?
+            </h2>
             <div className="sv-modal-body">
               <p>
                 {section === 'refuerzos'

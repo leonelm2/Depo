@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { apiFetch, API_URL } from '../api'
 import ProductSelectorModal from './ui/ProductSelectorModal'
 import SelectorTrigger from './ui/SelectorTrigger'
+import ActionIcon from './ui/ActionIcon'
 
 export default function Bajas() {
   const { token, hasPermission } = useAuth()
@@ -340,18 +341,20 @@ export default function Bajas() {
           <button
             type="button"
             className="secondary"
-            style={{ width: 'auto', margin: 0, padding: '10px 18px', fontSize: '0.95rem', minHeight: '40px', display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ width: 'auto', margin: 0, padding: '10px 18px', fontSize: '0.95rem', minHeight: '40px', display: 'flex', alignItems: 'center', gap: 8 }}
             onClick={printReport}
           >
+            <ActionIcon name="imprimir" size={16} />
             Imprimir Reporte
           </button>
           {canCreate && (
             <button
               type="button"
               className="mov-action-btn"
-              style={{ width: 'auto', margin: 0, padding: '10px 18px', fontSize: '0.95rem' }}
+              style={{ width: 'auto', margin: 0, padding: '10px 18px', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: 8 }}
               onClick={openModal}
             >
+              <ActionIcon name="agregar" size={16} />
               Registrar Baja
             </button>
           )}
@@ -462,10 +465,10 @@ export default function Bajas() {
                         style={{
                           background: 'none', border: '1px solid var(--border)', borderRadius: 6,
                           padding: '4px 10px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--orange)',
-                          fontWeight: 600, margin: 0, width: 'auto', minHeight: 0
+                          fontWeight: 600, margin: 0, width: 'auto', minHeight: 0, display: 'inline-flex', alignItems: 'center', gap: 6
                         }}
                       >
-                        📷 Ver
+                        <ActionIcon name="foto" size={15} /> Ver
                       </button>
                     ) : (
                       <span style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>—</span>
@@ -486,9 +489,9 @@ export default function Bajas() {
                         type="button"
                         onClick={() => loadHistorial(b.id)}
                         title="Ver Historial"
-                        style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, width: 'auto', margin: 0, minHeight: 0 }}
+                        style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, width: 'auto', margin: 0, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        🕒
+                        <ActionIcon name="historial" size={15} />
                       </button>
                       {canAuthorize && b.estado === 'pendiente' && (
                         <>
@@ -496,17 +499,17 @@ export default function Bajas() {
                             type="button"
                             title="Aprobar"
                             onClick={() => handleAuthorize(b.id, 'aprobar')}
-                            style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, width: 'auto', margin: 0, minHeight: 0 }}
+                            style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, width: 'auto', margin: 0, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            ✅
+                            <ActionIcon name="aprobar" size={15} />
                           </button>
                           <button
                             type="button"
                             title="Rechazar"
                             onClick={() => handleAuthorize(b.id, 'rechazar')}
-                            style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, width: 'auto', margin: 0, minHeight: 0 }}
+                            style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, width: 'auto', margin: 0, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
-                            ❌
+                            <ActionIcon name="rechazar" size={15} />
                           </button>
                         </>
                       )}
@@ -797,7 +800,9 @@ export default function Bajas() {
               background: '#f8fafc', borderRadius: '14px 14px 0 0',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>🕒 Historial de la Solicitud</h3>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ActionIcon name="historial" size={18} /> Historial de la Solicitud
+              </h3>
               <button
                 type="button"
                 onClick={() => setHistoryModalOpen(false)}

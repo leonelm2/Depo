@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import PrintButton from './PrintButton'
+import ActionIcon from './ui/ActionIcon'
 
 const CATEGORIAS_PATRIMONIO = [
   'Bancos', 'Sillas', 'Escritorios', 'Pizarrones', 'Estantes',
@@ -242,15 +243,27 @@ export default function SupervisorDashboard() {
                           </p>
                           <textarea className="sv-rechazo-input" placeholder={accionTipo === 'rechazar' ? 'Motivo del rechazo...' : 'Indicar taller, plazo estimado...'} value={motivoAccion} onChange={(e) => setMotivoAccion(e.target.value)} rows={2} style={accionTipo === 'reparar' ? { borderColor: '#3b82f6' } : {}} />
                           <div className="inline-actions" style={{ marginTop: 6 }}>
-                            <button onClick={() => confirmarAccion(ticket.id)} className={accionTipo === 'rechazar' ? 'sv-btn-confirmar-rechazo' : 'sv-btn-confirmar-reparar'}>Confirmar</button>
-                            <button onClick={cancelarAccion} className="secondary" style={{ margin: 0, minHeight: 'auto', padding: '6px 12px', fontSize: '0.75rem' }}>Cancelar</button>
+                            <button onClick={() => confirmarAccion(ticket.id)} className={accionTipo === 'rechazar' ? 'sv-btn-confirmar-rechazo' : 'sv-btn-confirmar-reparar'} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <ActionIcon name="guardar" size={13} />
+                              Confirmar
+                            </button>
+                            <button onClick={cancelarAccion} className="secondary" style={{ margin: 0, minHeight: 'auto', padding: '6px 12px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <ActionIcon name="cancelar" size={13} />
+                              Cancelar
+                            </button>
                           </div>
                         </div>
                       ) : (
                         <div className="inline-actions">
-                          <button onClick={() => handleAprobar(ticket.id)} title="Aprobar reemplazo completo">Aprobar</button>
+                          <button onClick={() => handleAprobar(ticket.id)} title="Aprobar reemplazo completo" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <ActionIcon name="aprobar" size={14} />
+                            Aprobar
+                          </button>
                           <button onClick={() => iniciarAccion(ticket.id, 'reparar')} className="sv-btn-reparar" title="Enviar a reparacion">Reparar</button>
-                          <button onClick={() => iniciarAccion(ticket.id, 'rechazar')} className="sv-btn-rechazar" title="Rechazar solicitud">Rechazar</button>
+                          <button onClick={() => iniciarAccion(ticket.id, 'rechazar')} className="sv-btn-rechazar" title="Rechazar solicitud" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <ActionIcon name="rechazar" size={14} />
+                            Rechazar
+                          </button>
                         </div>
                       )}
                     </td>

@@ -230,9 +230,10 @@ export default function Proveedores() {
         <div style={{ marginBottom: 24 }}>
           <button
             type="button"
-            style={{ width: 'auto', margin: 0, padding: '10px 18px' }}
+            style={{ width: 'auto', margin: 0, padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: 8 }}
             onClick={() => setFormOpen(true)}
           >
+            <ActionIcon name="agregar" size={16} />
             Agregar proveedor
           </button>
         </div>
@@ -278,7 +279,11 @@ export default function Proveedores() {
                   <td>
                     <div className="inline-actions">
                       {canEdit && <button onClick={() => handleEditOpen(p)} className="secondary" title="Editar Proveedor" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ActionIcon name="editar" alt="Editar" size={17} /></button>}
-                      {canDelete && <button onClick={() => handleDelete(p.id)} style={{ padding: '6px 10px', background: '#ef4444' }}>🗑️</button>}
+                      {canDelete && (
+                        <button onClick={() => handleDelete(p.id)} className="secondary" title="Eliminar Proveedor" style={{ padding: '6px 10px', borderColor: '#fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <ActionIcon name="eliminar" alt="Eliminar" size={17} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -363,8 +368,14 @@ export default function Proveedores() {
             </div>
 
             <div style={{ display: 'flex', gap: 12, marginTop: 32, justifyContent: 'flex-end' }}>
-              <button className="secondary" onClick={() => setEditModal(null)}>Cancelar</button>
-              <button onClick={handleEditSave} style={{ padding: '10px 24px' }}>Guardar cambios</button>
+              <button className="secondary" onClick={() => setEditModal(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <ActionIcon name="cancelar" size={14} />
+                Cancelar
+              </button>
+              <button onClick={handleEditSave} style={{ padding: '10px 24px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <ActionIcon name="guardar" size={14} />
+                Guardar cambios
+              </button>
             </div>
             {editModal.error && <div className="msg show msg-error" style={{ marginTop: 16 }}>{editModal.error}</div>}
           </div>

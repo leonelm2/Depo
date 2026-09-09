@@ -1132,9 +1132,11 @@ return (
                     width: 40, height: 40, borderRadius: 12,
                     background: 'linear-gradient(135deg, #10b981, #059669)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 18, flexShrink: 0,
+                    flexShrink: 0,
                     boxShadow: '0 4px 12px rgba(16,185,129,0.30)',
-                  }}>➕</div>
+                  }}>
+                    <ActionIcon name="agregar" size={20} />
+                  </div>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1.2 }}>Registrar Ingreso</div>
                     <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
@@ -1900,9 +1902,9 @@ return (
                           type="button"
                           className="secondary"
                           onClick={() => setFotoModalUrl(`${window.location.origin.replace(':5173', ':3000')}${b.foto_path}`)}
-                          style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem' }}
+                          style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                         >
-                          📷 Ver
+                          <ActionIcon name="foto" size={15} /> Ver
                         </button>
                       ) : (
                         <span style={{ color: '#9ca3af' }}>—</span>

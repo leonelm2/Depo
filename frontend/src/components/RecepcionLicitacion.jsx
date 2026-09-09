@@ -580,15 +580,18 @@ export default function RecepcionLicitacion() {
               )}
             </div>
             <div style={{ display: 'flex', gap: 14 }}>
-              <button className="secondary" onClick={() => setDetalle(null)} disabled={saving}>Cancelar</button>
+              <button className="secondary" onClick={() => setDetalle(null)} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <ActionIcon name="cancelar" size={14} /> Cancelar
+              </button>
               {detalle.estado === 'completada' ? null : todoCompleto ? (
                 <button className="primary" onClick={handleCerrarYRemitoGeneral} disabled={saving}
-                  style={{ background: '#16a34a', borderColor: '#16a34a' }}>
-                  ✅ Cerrar Licitación y Generar Remito General
+                  style={{ background: '#16a34a', borderColor: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <ActionIcon name="aprobar" size={16} /> Cerrar Licitación y Generar Remito General
                 </button>
               ) : (
-                <button className="primary" onClick={handleConfirmarIngreso} disabled={saving}>
-                  {saving ? 'Registrando...' : '🚀 Confirmar Ingreso a Stock'}
+                <button className="primary" onClick={handleConfirmarIngreso} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <ActionIcon name="guardar" size={16} />
+                  {saving ? 'Registrando...' : 'Confirmar Ingreso a Stock'}
                 </button>
               )}
             </div>
@@ -727,9 +730,9 @@ export default function RecepcionLicitacion() {
                       <button
                         className="secondary"
                         onClick={() => { setShowFotos(true); setViewingImageIndex(0) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}
                       >
-                        📷 Ver fotos de daño ({detalleRemito.imagenes.length})
+                        <ActionIcon name="foto" size={16} /> Ver fotos de daño ({detalleRemito.imagenes.length})
                       </button>
                     </div>
                   )}

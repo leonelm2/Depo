@@ -326,9 +326,13 @@ export default function Depositos() {
               <div style={{ display: 'flex', gap: '8px' }}>
                 {canMove && (depositoSeleccionado.tipo !== 'capsula' || esAdmin) && (
                   <>
-                    <button className="primary" onClick={() => { setModalType('ingreso'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ padding: '8px 14px', fontSize: '0.85rem' }}>+ Ingreso</button>
+                    <button className="primary" onClick={() => { setModalType('ingreso'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ padding: '8px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <ActionIcon name="agregar" size={14} /> Ingreso
+                    </button>
                     <button className="secondary" onClick={() => { setModalType('egreso'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ padding: '8px 14px', fontSize: '0.85rem' }}>- Egreso</button>
-                    <button className="secondary" onClick={() => { setModalType('traslado'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ padding: '8px 14px', fontSize: '0.85rem' }}>🔄 Traslado</button>
+                    <button className="secondary" onClick={() => { setModalType('traslado'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ padding: '8px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <ActionIcon name="recargar" size={14} /> Traslado
+                    </button>
                   </>
                 )}
               </div>
@@ -506,8 +510,14 @@ export default function Depositos() {
               return <div style={{ marginBottom: '20px', padding: '10px 14px', background: '#f0fdf4', color: '#166534', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, border: '1px solid #bbf7d0' }}>✅ Stock disponible: {disp}</div>;
             })()}
 
-            <h3 style={{ marginTop: 0 }}>
-              {modalType === 'ingreso' ? '➕ Registrar Ingreso Manual' : (modalType === 'egreso' ? '➖ Registrar Egreso Manual' : '🔄 Traslado entre Depósitos')}
+            <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              {modalType === 'ingreso' ? (
+                <><ActionIcon name="agregar" size={20} /> Registrar Ingreso Manual</>
+              ) : modalType === 'egreso' ? (
+                '➖ Registrar Egreso Manual'
+              ) : (
+                <><ActionIcon name="recargar" size={20} /> Traslado entre Depósitos</>
+              )}
             </h3>
             <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '20px' }}>
               Depósito: <strong>{depositoSeleccionado.nombre}</strong>
@@ -534,7 +544,7 @@ export default function Depositos() {
                     const stockText = (modalType === 'egreso' || modalType === 'traslado') ? ` - Disp: ${disp}` : '';
                     return (
                       <option key={p.id} value={p.id}>{p.nombre}{p.marca ? ` - ${p.marca}` : ''} ({p.unidad_medida}){stockText}</option>
-                    )
+                    );
                   })}
                 </select>
               </div>
@@ -581,8 +591,14 @@ export default function Depositos() {
               </div>
 
               <div style={{ marginTop: '12px', display: 'flex', gap: '12px' }}>
-                <button type="submit" className="primary" style={{ flex: 1 }}>Confirmar Operación</button>
-                <button type="button" className="secondary" onClick={() => setModalType(null)}>Cancelar</button>
+                <button type="submit" className="primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <ActionIcon name="guardar" size={15} />
+                  Confirmar Operación
+                </button>
+                <button type="button" className="secondary" onClick={() => setModalType(null)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <ActionIcon name="cancelar" size={15} />
+                  Cancelar
+                </button>
               </div>
             </form>
           </div>
