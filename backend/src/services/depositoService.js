@@ -1316,6 +1316,78 @@ async function reconciliarStock(userId) {
   }
 }
 
+async function registrarDevolucion(depositoId, payload, user) {
+  await ensureDepositosSchema();
+  const depositoIdNum = parseInt(depositoId, 10);
+  const { id_producto, cantidad, mantener_reserva, motivo, id_institucion } = payload;
+  const productoIdNum = parseInt(id_producto, 10);
+  const cantidadNum = parseInt(cantidad, 10);
+  const mantenerReservaBool = mantener_reserva === true || mantener_reserva === 'true';
+
+  if (isNaN(depositoIdNum) || isNaN(productoIdNum) || isNaN(cantidadNum) || cantidadNum <= 0) {
+    throw { status: 400, message: "Datos de devolución inválidos" };
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Verificar depósito
+    const depCheck = await client.query("SELECT * FROM deposito WHERE id_deposito = $1", [depositoIdNum]);
+    if (depCheck.rowCount === 0) throw { status: 404, message: "Depósito no encontrado" };
+
+    // Verificar producto
+    const prodCheck = await client.query("SELECT * FROM producto WHERE id_producto = $1", [productoIdNum]);
+    if (prodCheck.rowCount === 0) throw { status: 404, message: "Producto no encontrado" };
+
+    // 1. Insertar movimiento (tipo 'devolucion')
+    await client.query(`
+      INSERT INTO movimiento_stock (id_producto, cantidad, tipo, id_institucion, motivo, id_usuario, id_deposito)
+      VALUES ($1, $2, 'devolucion', $3, $4, $5, $6)
+    `, [productoIdNum, cantidadNum, id_institucion || null, motivo || "Devolución", user.sub, depositoIdNum]);
+
+    // 2. Incrementar stock general actual
+    await client.query(
+      "UPDATE producto SET stock_actual = COALESCE(stock_actual, 0) + $1 WHERE id_producto = $2",
+      [cantidadNum, productoIdNum]
+    );
+
+    // 3. Incrementar stock en depósito
+    await client.query(
+      `INSERT INTO stock_deposito (id_deposito, id_producto, cantidad) 
+       VALUES ($1, $2, $3)
+       ON CONFLICT (id_deposito, id_producto) 
+       DO UPDATE SET cantidad = stock_deposito.cantidad + $3`,
+      [depositoIdNum, productoIdNum, cantidadNum]
+    );
+
+    // 4. Lógica de mantener reserva
+    if (mantenerReservaBool) {
+      await client.query(
+        "UPDATE producto SET stock_reservado = COALESCE(stock_reservado, 0) + $1 WHERE id_producto = $2",
+        [cantidadNum, productoIdNum]
+      );
+      await client.query(
+        "UPDATE stock_deposito SET reservado = COALESCE(reservado, 0) + $1 WHERE id_deposito = $2 AND id_producto = $3",
+        [cantidadNum, depositoIdNum, productoIdNum]
+      );
+    }
+
+    await client.query("COMMIT");
+    return { 
+      ok: true, 
+      message: mantenerReservaBool 
+        ? "Devolución registrada manteniendo reserva" 
+        : "Devolución registrada, stock liberado" 
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   listDepositos,
   getProductosByDeposito,
@@ -1341,5 +1413,6 @@ module.exports = {
   registrarEgresoMultipleZona,
   getVencimientosProximos,
   diagnosticoStock,
-  reconciliarStock
+  reconciliarStock,
+  registrarDevolucion
 };

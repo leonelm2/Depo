@@ -21,6 +21,7 @@ export default function Movimientos() {
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [ingresoModalOpen, setIngresoModalOpen] = useState(false)
   const [egresoModalOpen, setEgresoModalOpen] = useState(false)
+  const [devolucionModalOpen, setDevolucionModalOpen] = useState(false)
   const [retirarPedidoModalOpen, setRetirarPedidoModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -28,6 +29,8 @@ export default function Movimientos() {
   const [egresoInstModalOpen, setEgresoInstModalOpen] = useState(false)
   const [egresoProdModalOpen, setEgresoProdModalOpen] = useState(false)
   const [ingresoProdModalOpen, setIngresoProdModalOpen] = useState(false)
+  const [devolucionProdModalOpen, setDevolucionProdModalOpen] = useState(false)
+  const [devolucionInstModalOpen, setDevolucionInstModalOpen] = useState(false)
 
   // Detalle modal
   const [detalleModalOpen, setDetalleModalOpen] = useState(false)
@@ -46,6 +49,13 @@ export default function Movimientos() {
   const [loteIngreso, setLoteIngreso] = useState([])
   const [ingresoItem, setIngresoItem] = useState({ productoId: '', cantidad: '', estado: 'nuevo', fechaVencimiento: '', proveedorId: '' })
   const [proveedores, setProveedores] = useState([])
+
+  // Devolucion state
+  const [devolucionInst, setDevolucionInst] = useState('')
+  const [devolucionMotivo, setDevolucionMotivo] = useState('')
+  const [devolucionMantenerReserva, setDevolucionMantenerReserva] = useState(false)
+  const [loteDevolucion, setLoteDevolucion] = useState([])
+  const [devolucionItem, setDevolucionItem] = useState({ productoNombre: '', cantidad: '', estado: 'bueno' })
   // Filtros para la lista de movimientos
   const [filterDesde, setFilterDesde] = useState('')
   const [filterHasta, setFilterHasta] = useState('')
@@ -64,6 +74,7 @@ export default function Movimientos() {
   // Depositos
   const [ingresoDeposito, setIngresoDeposito] = useState('')
   const [egresoDeposito, setEgresoDeposito] = useState('')
+  const [devolucionDeposito, setDevolucionDeposito] = useState('')
 
   const loadProductos = async () => {
     try {
@@ -169,7 +180,8 @@ export default function Movimientos() {
     const centralId = String(depositosDisponibles[0]?.id || 1)
     if (egresoDeposito !== centralId) setEgresoDeposito(centralId)
     if (ingresoDeposito !== centralId) setIngresoDeposito(centralId)
-  }, [depositosDisponibles, egresoModalOpen, ingresoModalOpen])
+    if (devolucionDeposito !== centralId) setDevolucionDeposito(centralId)
+  }, [depositosDisponibles, egresoModalOpen, ingresoModalOpen, devolucionModalOpen])
 
   useEffect(() => {
     const match = instituciones.find(i => i.nombre.toLowerCase() === egresoInst.trim().toLowerCase())
@@ -445,6 +457,101 @@ export default function Movimientos() {
     }
   }
 
+  // Devolucion handlers
+  const addToDevolucion = () => {
+    const inputVal = devolucionItem.productoNombre.trim()
+    const producto = findProducto(inputVal)
+    if (!producto) return setMsg({ text: 'Seleccione un producto válido del catálogo', type: 'error' })
+    const cantidad = parseInt(devolucionItem.cantidad)
+    if (!cantidad || cantidad <= 0) return setMsg({ text: 'Ingrese una cantidad válida', type: 'error' })
+
+    setLoteDevolucion(prev => [...prev, {
+      producto_id: producto.id,
+      nombre: producto.nombre,
+      cantidad,
+      estado: devolucionItem.estado
+    }])
+    setDevolucionItem({ productoNombre: '', cantidad: '', estado: 'bueno' })
+    setMsg({ text: '', type: '' })
+  }
+
+  const removeFromDevolucion = (index) => {
+    setLoteDevolucion(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const updateDevolucionItem = (index, field, value) => {
+    setLoteDevolucion(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
+  }
+
+  const handleDevolucionSubmit = async (e) => {
+    e.preventDefault()
+    setMsg({ text: '', type: '' })
+
+    if (loteDevolucion.length === 0) {
+      setMsg({ text: 'Agregue al menos un producto a la devolución', type: 'error' })
+      return
+    }
+
+    const instMatch = instituciones.find(i => i.nombre.toLowerCase() === devolucionInst.trim().toLowerCase())
+
+    setIsLoading(true)
+    try {
+      for (const item of loteDevolucion) {
+        const res = await apiFetch(`/api/depositos/${devolucionDeposito}/devolucion`, {
+          token,
+          method: 'POST',
+          body: JSON.stringify({
+            id_producto: item.producto_id,
+            cantidad: item.cantidad,
+            motivo: devolucionMotivo.trim() || null,
+            mantener_reserva: devolucionMantenerReserva,
+            id_institucion: instMatch ? instMatch.id : null
+          })
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          setMsg({ text: data.details || data.error || 'No se pudo registrar la devolución', type: 'error' })
+          return
+        }
+      }
+      setDevolucionMotivo('')
+      setDevolucionInst('')
+      setDevolucionMantenerReserva(false)
+      setLoteDevolucion([])
+      setDevolucionDeposito('')
+      setDevolucionModalOpen(false)
+      setMsg({ text: 'Devolución registrada correctamente', type: 'success' })
+      loadMovimientos()
+      loadProductos()
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const openDevolucionModal = (group) => {
+    const first = group.items[0];
+    
+    // Set institucion if available
+    const instName = first.institucion_nombre;
+    setDevolucionInst(instName || '');
+
+    // Set deposito from the first item
+    setDevolucionDeposito(String(first.id_deposito || depositosDisponibles[0]?.id || 1));
+
+    // Reset keeping reservation default
+    setDevolucionMantenerReserva(false);
+
+    // Populate the lot with all items from the egreso
+    const lot = group.items.map(item => ({
+      producto_id: item.id_producto,
+      nombre: item.producto_nombre,
+      cantidad: item.cantidad,
+      estado: 'bueno'
+    }));
+    setLoteDevolucion(lot);
+    
+    setDevolucionModalOpen(true);
+  }
 
 // Baja handlers
 
@@ -613,6 +720,7 @@ return (
             >
               Ingreso
             </button>
+
             <button
               type="button"
               className="mov-action-btn"
@@ -1289,7 +1397,145 @@ return (
         )}
 
 
+        {/* DEVOLUCIÓN */}
+        {devolucionModalOpen && (
+          <div
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.60)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16, overflowY: 'auto'
+            }}
+            onClick={e => { if (e.target === e.currentTarget) setDevolucionModalOpen(false) }}
+          >
+            <div style={{
+              background: '#ffffff', borderRadius: 20, width: 'min(900px, 100%)', maxHeight: '92vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px -12px rgba(15,23,42,0.25)', border: '1px solid #e2e8f0', animation: 'modalSlideUp 0.25s ease-out'
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid #e2e8f0', background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', borderRadius: '20px 20px 0 0', flexShrink: 0
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, #d97706, #b45309)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0, boxShadow: '0 4px 12px rgba(217,119,6,0.30)'
+                  }}>↩️</div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1.2 }}>Devolución de Productos</div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
+                      Depósito destino: <strong>{depositosDisponibles.find(d => String(d.id) === String(devolucionDeposito))?.nombre || 'Central'}</strong>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button" onClick={() => setDevolucionModalOpen(false)}
+                  style={{ background: 'transparent', border: 'none', color: '#64748b', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}
+                >✕</button>
+              </div>
 
+              <div style={{ padding: '20px 24px', flex: 1 }}>
+                <form id="devolucion-form" onSubmit={handleDevolucionSubmit}>
+                  
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', marginBottom: 20 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>
+                      Detalles de la Devolución
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                      <SelectorTrigger
+                        label="Institución de origen (opcional)"
+                        placeholder="Buscar escuela que devuelve..."
+                        selectedItem={instituciones.find(i => i.nombre.toLowerCase() === devolucionInst.trim().toLowerCase()) || (devolucionInst ? { nombre: devolucionInst } : null)}
+                        onClick={() => setDevolucionInstModalOpen(true)}
+                        onClear={() => setDevolucionInst('')}
+                      />
+                    </div>
+                    
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>¿Qué desea hacer con el pedido?</label>
+                      <select value={devolucionMantenerReserva ? 'mantener' : 'liberar'} onChange={e => setDevolucionMantenerReserva(e.target.value === 'mantener')} style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem' }}>
+                        <option value="liberar">Devolver al stock general (El pedido se cancela)</option>
+                        <option value="mantener">Guardar para reintento de envío (Mantener reserva)</option>
+                      </select>
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Motivo de la Devolución (Opcional)</label>
+                      <input
+                        type="text"
+                        placeholder="Ej: El transporte no encontró a nadie..."
+                        value={devolucionMotivo}
+                        onChange={e => setDevolucionMotivo(e.target.value)}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', marginBottom: 20 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>
+                      Lote a Devolver ({loteDevolucion.length})
+                    </div>
+                    {loteDevolucion.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '30px 20px', color: '#94a3b8', fontSize: '0.9rem' }}>
+                        No hay productos en el lote.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {loteDevolucion.map((item, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', padding: '12px 16px', borderRadius: 10 }}>
+                            <div style={{ flex: 1, paddingRight: 16 }}>
+                              <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9rem', marginBottom: 8 }}>{item.nombre}</div>
+                              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Cant:</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.cantidad}
+                                    onChange={e => updateDevolucionItem(i, 'cantidad', parseInt(e.target.value) || 1)}
+                                    style={{ width: '70px', padding: '4px 8px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: '0.875rem' }}
+                                  />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Est:</label>
+                                  <select
+                                    value={item.estado}
+                                    onChange={e => updateDevolucionItem(i, 'estado', e.target.value)}
+                                    style={{ padding: '4px 8px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: '0.875rem' }}
+                                  >
+                                    <option value="bueno">Bueno / Nuevo</option>
+                                    <option value="dañado">Dañado</option>
+                                    <option value="usado">Usado</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFromDevolucion(i)}
+                              style={{ background: '#fee2e2', border: 'none', color: '#ef4444', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', flexShrink: 0 }}
+                              title="Quitar del lote"
+                            >✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </form>
+              </div>
+
+              <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '0 0 20px 20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                  <button type="button" onClick={() => setDevolucionModalOpen(false)} className="secondary">Cancelar</button>
+                  <button
+                    type="button"
+                    onClick={handleDevolucionSubmit}
+                    disabled={loteDevolucion.length === 0}
+                    style={{ background: loteDevolucion.length === 0 ? '#cbd5e1' : 'linear-gradient(135deg, #d97706, #b45309)', color: '#fff', border: 'none', padding: '9px 22px', borderRadius: 10, fontWeight: 700, cursor: loteDevolucion.length === 0 ? 'not-allowed' : 'pointer' }}
+                  >
+                    ✓ Registrar Devolución
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* RETIRAR PEDIDO ANUAL */}
         {retirarPedidoModalOpen && (
@@ -1554,6 +1800,18 @@ return (
                           >
                             <ActionIcon name="verdetalle" alt="Ver detalle" size={17} />
                           </button>
+                          {canCreate && first.tipo === 'egreso' && (
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => openDevolucionModal(group)}
+                              title="Registrar Devolución"
+                              aria-label="Registrar Devolución"
+                              style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706', borderColor: '#fcd34d', background: '#fffbeb' }}
+                            >
+                              ↩️
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1740,6 +1998,26 @@ return (
         setIngresoItem(prev => ({ ...prev, productoId: String(prod.id) }))
       }}
       selectedId={ingresoItem.productoId}
+    />
+
+    <InstitutionSelectorModal
+      isOpen={devolucionInstModalOpen}
+      onClose={() => setDevolucionInstModalOpen(false)}
+      instituciones={instituciones}
+      onSelect={(inst) => {
+        setDevolucionInst(inst.nombre)
+      }}
+      selectedId={instituciones.find(i => i.nombre.toLowerCase() === devolucionInst.trim().toLowerCase())?.id}
+    />
+
+    <ProductSelectorModal
+      isOpen={devolucionProdModalOpen}
+      onClose={() => setDevolucionProdModalOpen(false)}
+      productos={productos}
+      onSelect={(prod) => {
+        setDevolucionItem(prev => ({ ...prev, productoNombre: prod.nombre }))
+      }}
+      selectedId={productos.find(p => p.nombre.toLowerCase() === devolucionItem.productoNombre.trim().toLowerCase())?.id}
     />
   </div>
 )

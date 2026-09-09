@@ -369,6 +369,18 @@ async function reconciliarStock(req, res) {
   }
 }
 
+async function registrarDevolucion(req, res) {
+  try {
+    const { id } = req.params;
+    const result = await depositoService.registrarDevolucion(id, req.body, req.user);
+    return res.json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error("Error al registrar devolución:", err);
+    return res.status(500).json({ error: "No se pudo registrar la devolución" });
+  }
+}
+
 module.exports = {
   listDepositos,
   getProductosByDeposito,
@@ -394,5 +406,6 @@ module.exports = {
   getDetalleDistribucionEscuela,
   registrarSalidaDistribucion,
   diagnosticoStock,
-  reconciliarStock
+  reconciliarStock,
+  registrarDevolucion
 };
