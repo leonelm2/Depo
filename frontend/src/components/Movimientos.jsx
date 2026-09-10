@@ -121,7 +121,20 @@ export default function Movimientos() {
       const res = await apiFetch(`/api/movimientos${qs}`, { token })
       if (res.ok) {
         const data = await res.json()
-        setMovimientos(data.movimientos || [])
+        const realMovimientos = data.movimientos || []
+        
+        // MOCK DATA PARA PRUEBA DE TIMELINE
+        const d = new Date()
+        const mockMovimientos = [
+          { id: 'mock1', tipo: 'ingreso', producto_nombre: 'Notebook Dell Latitude', cantidad: 50, motivo: 'Compra Licitación 01/2026', proveedor_nombre: 'TecnoGlobal S.A.', usuario_nombre: 'Leonel', created_at: new Date(d.getTime() - 1000 * 60 * 30).toISOString() },
+          { id: 'mock2', tipo: 'egreso', producto_nombre: 'Kit Geometría Pizarrón', cantidad: 12, motivo: 'Pedido de urgencia', institucion_nombre: 'Escuela N° 45 "Sarmiento"', cargo_retira: 'Director', fecha_pedido: new Date(d.getTime() - 1000 * 60 * 60 * 48).toISOString(), usuario_nombre: 'Admin', created_at: new Date(d.getTime() - 1000 * 60 * 60 * 2).toISOString(), estado_egreso: 'entregado' },
+          { id: 'mock3', tipo: 'devolucion', producto_nombre: 'Sillas Escolares', cantidad: 4, motivo: 'Llegaron rayadas en el transporte', institucion_nombre: 'Escuela Normal', usuario_nombre: 'Leonel', created_at: new Date(d.getTime() - 1000 * 60 * 60 * 24).toISOString(), estado_producto: 'dañado' },
+          { id: 'mock4', tipo: 'egreso', producto_nombre: 'Marcadores Pizarra (Caja)', cantidad: 30, motivo: 'Reposición cuatrimestral', institucion_nombre: 'Colegio Nacional', cargo_retira: 'Secretario', usuario_nombre: 'Admin', created_at: new Date(d.getTime() - 1000 * 60 * 60 * 72).toISOString(), estado_egreso: 'despachado' },
+          { id: 'mock5', tipo: 'ajuste', producto_nombre: 'Resmas A4', cantidad: -5, motivo: 'Ajuste de inventario', usuario_nombre: 'Leonel', created_at: new Date(d.getTime() - 1000 * 60 * 60 * 96).toISOString() }
+        ]
+        
+        const combinados = [...mockMovimientos, ...realMovimientos].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        setMovimientos(combinados)
       }
     } catch (err) { /* ignore */ }
   }
@@ -1713,21 +1726,11 @@ return (
               <button type="button" onClick={() => { setFilterDesde(''); setFilterHasta(''); setFilterTipo(''); setFilterUsuario(''); setFilterProveedor(''); loadMovimientos({}) }} className="secondary">Limpiar</button>
             </div>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th>Tipo</th>
-                <th>Producto(s)</th>
-                <th>Cantidad</th>
-                <th>Motivo</th>
-                <th>Proveedor / Institución</th>
-                <th>Registrado por</th>
-                <th>Fecha</th>
-                <th>Estado Egreso</th>
-                <th style={{ textAlign: 'center' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div style={{ position: 'relative', paddingLeft: 12, marginTop: 24, marginBottom: 40 }}>
+            {/* Línea vertical conectora */}
+            <div style={{ position: 'absolute', top: 0, bottom: 0, left: 104, width: 2, background: '#e2e8f0', zIndex: 0 }}></div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {(() => {
                 const grouped = [];
                 let currentGroup = null;
@@ -1746,141 +1749,153 @@ return (
 
                 return grouped.map((group, i) => {
                   const first = group.items[0];
-                  const institucionCargo = first.institucion_nombre && first.cargo_retira
-                    ? `${first.institucion_nombre} (${first.cargo_retira})`
-                    : first.institucion_nombre || first.cargo_retira || '-';
-
                   const isMulti = group.items.length > 1;
-                  const proveedoresResumen = [...new Set(group.items.map(item => item.proveedor_nombre).filter(Boolean))];
-
-                  const uniqueEstados = [...new Set(group.items.map(item => item.estado_producto).filter(Boolean))];
-                  const estadoDisplay = uniqueEstados.length === 1 ? uniqueEstados[0] : (uniqueEstados.length > 1 ? 'Varios' : '-');
-
                   const totalCantidad = group.items.reduce((sum, item) => sum + Number(item.cantidad || 0), 0);
-
+                  const proveedoresResumen = [...new Set(group.items.map(item => item.proveedor_nombre).filter(Boolean))];
+                  
                   let proveedorDisplay = '-';
-                  if (first.tipo === 'egreso') {
-                    proveedorDisplay = first.institucion_nombre || '-';
-                  } else if (first.tipo === 'ingreso') {
-                    proveedorDisplay = proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : 'Sin proveedor';
-                  } else {
-                    proveedorDisplay = proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : '-';
-                  }
+                  if (first.tipo === 'egreso') proveedorDisplay = first.institucion_nombre || '-';
+                  else if (first.tipo === 'ingreso') proveedorDisplay = proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : 'Sin proveedor';
+                  else proveedorDisplay = proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : '-';
 
                   const productosDisplay = isMulti
                     ? [...new Set(group.items.map(item => item.producto_nombre).filter(Boolean))].join(', ')
                     : (first.producto_nombre || '-');
 
+                  // Configuración visual según tipo
+                  let iconColor = '#64748b'; let iconBg = '#f1f5f9'; let iconChar = '•'; let borderColor = '#cbd5e1';
+                  if (first.tipo === 'ingreso') { iconColor = '#16a34a'; iconBg = '#dcfce7'; iconChar = '↓'; borderColor = '#bbf7d0'; }
+                  else if (first.tipo === 'egreso') { iconColor = '#dc2626'; iconBg = '#fee2e2'; iconChar = '↑'; borderColor = '#fecaca'; }
+                  else if (first.tipo === 'devolucion') { iconColor = '#2563eb'; iconBg = '#dbeafe'; iconChar = '↺'; borderColor = '#bfdbfe'; }
+                  else if (first.tipo === 'ajuste') { iconColor = '#d97706'; iconBg = '#fef3c7'; iconChar = '±'; borderColor = '#fde68a'; }
+
                   return (
-                    <tr key={first.id || i}>
-                      <td><span className={`badge badge-${first.tipo}`}>{first.tipo}</span></td>
-                      <td style={{ maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={productosDisplay}>{productosDisplay}</td>
-                      <td>{isMulti ? totalCantidad : first.cantidad}</td>
-                      <td>{first.motivo || '-'}</td>
-                      <td>{proveedorDisplay}</td>
-                      <td>{first.usuario_nombre || '-'}</td>
-                      <td>
-                        <div>{first.created_at ? new Date(first.created_at).toLocaleDateString() : '-'}</div>
-                        {first.fecha_pedido && (
-                          <div style={{ fontSize: '0.73rem', color: '#64748b', marginTop: 3 }}>
-                            📅 <strong>Pedido:</strong> {formatFechaCorta(first.fecha_pedido)}
+                    <div key={first.id || i} style={{ display: 'flex', gap: 24, position: 'relative', zIndex: 1, animation: `fadeInUp 0.4s ease-out ${Math.min(i * 0.05, 0.5)}s backwards` }}>
+                      
+                      {/* Fecha a la izquierda */}
+                      <div style={{ width: 65, flexShrink: 0, textAlign: 'right', paddingTop: 6 }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#334155' }}>
+                          {first.created_at ? new Date(first.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }) : '-'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2, fontWeight: 600 }}>
+                          {first.created_at ? new Date(first.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </div>
+                      </div>
+
+                      {/* Nodo Central */}
+                      <div style={{ 
+                        width: 34, height: 34, borderRadius: '50%', background: iconBg, border: `2px solid ${borderColor}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor, fontWeight: 'bold', fontSize: '1.1rem',
+                        boxShadow: '0 0 0 5px #f8fafc', flexShrink: 0, marginTop: 4
+                      }}>
+                        {iconChar}
+                      </div>
+
+                      {/* Tarjeta de Contenido */}
+                      <div style={{ 
+                        flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '16px 20px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', transition: 'transform 0.2s, box-shadow 0.2s',
+                        cursor: 'pointer'
+                      }}
+                      onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                      onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                      onClick={() => { setDetalleData({ proveedor: proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : (first.tipo === 'egreso' ? first.institucion_nombre : null), deposito: first.deposito_nombre, institucion: first.institucion_nombre, fecha_pedido: first.fecha_pedido, fecha_salida_camion: first.fecha_salida_camion, productos: group.items }); setDetalleModalOpen(true) }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: iconColor, background: iconBg, padding: '3px 10px', borderRadius: 12, letterSpacing: '0.5px' }}>
+                                {first.tipo}
+                              </span>
+                              {first.estado_egreso && first.tipo === 'egreso' && (
+                                <span style={{ fontSize: '0.7rem', color: '#64748b', border: '1px solid #cbd5e1', padding: '3px 10px', borderRadius: 12, fontWeight: 600 }}>
+                                  {first.estado_egreso.toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', fontWeight: 800, lineHeight: 1.3 }}>
+                              {productosDisplay}
+                            </h4>
+                            <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500 }}>
+                              <span>👤 {first.usuario_nombre}</span>
+                              <span style={{ color: '#cbd5e1' }}>•</span>
+                              <span>🏢 {proveedorDisplay}</span>
+                            </div>
+                            {first.motivo && (
+                              <div style={{ fontSize: '0.85rem', color: '#475569', marginTop: 8, fontStyle: 'italic', background: '#f8fafc', padding: '6px 12px', borderRadius: 6 }}>
+                                "{first.motivo}"
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {first.fecha_salida_camion && (
-                          <div style={{ fontSize: '0.73rem', color: '#0284c7', marginTop: 2, fontWeight: 600 }}>
-                            🚚 <strong>Salida camión:</strong> {formatFechaCorta(first.fecha_salida_camion)}
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: iconColor }}>
+                              {first.tipo === 'egreso' || (first.tipo === 'ajuste' && totalCantidad < 0) ? '-' : '+'}{Math.abs(isMulti ? totalCantidad : first.cantidad)}
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              Unidades
+                            </div>
                           </div>
-                        )}
-                      </td>
-                      <td>
-                        {first.tipo === 'egreso' ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '3px 8px',
-                              borderRadius: 12,
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              background: first.estado_egreso === 'aceptado' ? '#fef9c3' : first.estado_egreso === 'despachado' ? '#dbeafe' : '#dcfce7',
-                              color: first.estado_egreso === 'aceptado' ? '#854d0e' : first.estado_egreso === 'despachado' ? '#1e40af' : '#166534',
-                              border: `1px solid ${first.estado_egreso === 'aceptado' ? '#fde047' : first.estado_egreso === 'despachado' ? '#bfdbfe' : '#bbf7d0'}`,
-                              width: 'fit-content'
-                            }}>
-                              {first.estado_egreso ? first.estado_egreso.charAt(0).toUpperCase() + first.estado_egreso.slice(1) : '-'}
-                            </span>
-                            {canCreate && first.estado_egreso !== 'entregado' && (
+                        </div>
+
+                        {/* ACCIONES DEL MOVIMIENTO */}
+                        <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={(e) => { e.stopPropagation(); printMovimiento(group.items, instituciones) }}
+                              title="Imprimir movimiento"
+                              style={{ width: 'auto', margin: 0, minWidth: 32, padding: '4px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                            >
+                              <ActionIcon name="imprimir" size={15} /> Imprimir
+                            </button>
+                            {canCreate && first.tipo === 'egreso' && first.estado_egreso !== 'entregado' && (
                               <button
-                                onClick={() => {
+                                type="button"
+                                className="secondary"
+                                onClick={(e) => { e.stopPropagation(); openDevolucionModal(group) }}
+                                title="Registrar Devolución"
+                                style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: '#d97706', borderColor: '#fde68a', background: '#fffbeb' }}
+                              >
+                                ↩️ Devolver
+                              </button>
+                            )}
+                          </div>
+                          
+                          <div>
+                            {canCreate && first.tipo === 'egreso' && first.estado_egreso !== 'entregado' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   const nextState = first.estado_egreso === 'aceptado' ? 'despachado' : 'entregado';
                                   handleEstadoEgresoChange(first.id, nextState);
                                 }}
                                 style={{
                                   fontSize: '0.75rem',
-                                  padding: '4px 8px',
+                                  padding: '4px 10px',
                                   borderRadius: '6px',
                                   border: 'none',
                                   background: 'rgba(59, 130, 246, 0.1)',
                                   color: '#2563eb',
                                   cursor: 'pointer',
-                                  textAlign: 'center',
                                   fontWeight: 600,
-                                  width: 'fit-content',
-                                  transition: 'background 0.2s',
+                                  width: 'fit-content'
                                 }}
-                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'}
-                                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)'}
-                                title={first.estado_egreso === 'aceptado' ? 'Pasar a Despachado' : 'Pasar a Entregado'}
                               >
                                 {first.estado_egreso === 'aceptado' ? 'Marcar Despachado' : 'Marcar Entregado'}
                               </button>
                             )}
                           </div>
-                        ) : (
-                          <span style={{ color: '#9ca3af' }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                          <button
-                            type="button"
-                            className="secondary"
-                            onClick={() => printMovimiento(group.items, instituciones)}
-                            title="Imprimir movimiento"
-                            aria-label="Imprimir movimiento"
-                            style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <ActionIcon name="imprimir" alt="Imprimir movimiento" size={17} />
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary"
-                            onClick={() => { setDetalleData({ proveedor: proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : (first.tipo === 'egreso' ? first.institucion_nombre : null), deposito: first.deposito_nombre, institucion: institucionCargo, fecha_pedido: first.fecha_pedido, fecha_salida_camion: first.fecha_salida_camion, productos: group.items }); setDetalleModalOpen(true) }}
-                            title="Ver detalle"
-                            aria-label="Ver detalle"
-                            style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <ActionIcon name="verdetalle" alt="Ver detalle" size={17} />
-                          </button>
-                          {canCreate && first.tipo === 'egreso' && (
-                            <button
-                              type="button"
-                              className="secondary"
-                              onClick={() => openDevolucionModal(group)}
-                              title="Registrar Devolución"
-                              aria-label="Registrar Devolución"
-                              style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706', borderColor: '#fcd34d', background: '#fffbeb' }}
-                            >
-                              ↩️
-                            </button>
-                          )}
                         </div>
-                      </td>
-                    </tr>
+
+                      </div>
+                    </div>
                   )
                 })
               })()}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </>
       )}
 
