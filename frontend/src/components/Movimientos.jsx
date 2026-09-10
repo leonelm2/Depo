@@ -36,11 +36,27 @@ export default function Movimientos() {
   const [detalleModalOpen, setDetalleModalOpen] = useState(false)
   const [detalleData, setDetalleData] = useState(null)
 
+  const getTodayStr = () => {
+    const d = new Date()
+    const offset = d.getTimezoneOffset()
+    const local = new Date(d.getTime() - (offset * 60 * 1000))
+    return local.toISOString().split('T')[0]
+  }
+
+  const formatFechaCorta = (f) => {
+    if (!f) return ''
+    const parts = String(f).split('T')[0].split('-')
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
+    return String(f)
+  }
+
   // Egreso state
   const [egresoInst, setEgresoInst] = useState('')
   const [egresoCargo, setEgresoCargo] = useState('')
   const [egresoNivel, setEgresoNivel] = useState('')
   const [egresoMotivo, setEgresoMotivo] = useState('')
+  const [egresoFechaPedido, setEgresoFechaPedido] = useState(getTodayStr)
+  const [egresoFechaSalidaCamion, setEgresoFechaSalidaCamion] = useState(getTodayStr)
   const [loteEgreso, setLoteEgreso] = useState([])
   const [egresoItem, setEgresoItem] = useState({ productoNombre: '', cantidad: '', estado: 'nuevo' })
 
@@ -248,6 +264,9 @@ export default function Movimientos() {
             id_producto: item.producto_id,
             cantidad: item.cantidad,
             id_institucion: instMatch.id,
+            cargo_retira: egresoCargo,
+            fecha_pedido: egresoFechaPedido || null,
+            fecha_salida_camion: egresoFechaSalidaCamion || null,
             motivo: egresoCargo + ': ' + egresoMotivo.trim()
           })
         })
@@ -261,6 +280,8 @@ export default function Movimientos() {
       setEgresoCargo('')
       setEgresoNivel('')
       setEgresoMotivo('')
+      setEgresoFechaPedido(getTodayStr())
+      setEgresoFechaSalidaCamion(getTodayStr())
       setLoteEgreso([])
       setEgresoDeposito('')
       setEgresoModalOpen(false)
@@ -312,6 +333,8 @@ export default function Movimientos() {
       tipo: 'egreso',
       institucion_id: instMatch.id,
       cargo_retira: egresoCargo,
+      fecha_pedido: egresoFechaPedido || null,
+      fecha_salida_camion: egresoFechaSalidaCamion || null,
       motivo: egresoMotivo.trim() || null,
       productos: loteEgreso
     }
@@ -332,6 +355,8 @@ export default function Movimientos() {
     setEgresoCargo('')
     setEgresoNivel('')
     setEgresoMotivo('')
+    setEgresoFechaPedido(getTodayStr())
+    setEgresoFechaSalidaCamion(getTodayStr())
     setLoteEgreso([])
     setEgresoModalOpen(false)
     setMsg({ text: 'Egreso registrado correctamente', type: 'success' })
@@ -628,7 +653,9 @@ const handlePrintMovimiento = (movimientoOrGroup) => {
         <div class="info-section">
           <div><strong>CUE de la Institución:</strong> ${cueStr}</div>
           <div><strong>Nombre de la Institución:</strong> ${institucionNombre}</div>
-          ${primer.cargo_retira ? '<div><strong>Retira:</strong> ' + primer.cargo_retira + '</div>' : ''}
+          ${primer.cargo_retira ? '<div><strong>Cargo de quien recibe:</strong> ' + primer.cargo_retira + '</div>' : ''}
+          ${primer.fecha_pedido ? '<div><strong>Fecha Creación del Pedido:</strong> ' + formatFechaCorta(primer.fecha_pedido) + '</div>' : ''}
+          ${primer.fecha_salida_camion ? '<div><strong>Fecha Salida del Camión:</strong> ' + formatFechaCorta(primer.fecha_salida_camion) + '</div>' : ''}
           ${primer.motivo ? '<div><strong>Motivo:</strong> ' + primer.motivo + '</div>' : ''}
         </div>
 
@@ -836,7 +863,7 @@ return (
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Cargo de quien retira</label>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Cargo de quien recibe</label>
                         <select value={egresoCargo} onChange={e => {
                           setEgresoCargo(e.target.value);
                         }} required={!depositos.some(d => d.nombre.toLowerCase() === egresoInst.trim().toLowerCase())} style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}>
@@ -855,6 +882,26 @@ return (
                           readOnly
                           disabled
                           style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', minHeight: 40, background: '#f1f5f9' }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Fecha de Creación del Pedido</label>
+                        <input
+                          type="date"
+                          value={egresoFechaPedido}
+                          onChange={e => setEgresoFechaPedido(e.target.value)}
+                          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Fecha Salida del Camión</label>
+                        <input
+                          type="date"
+                          value={egresoFechaSalidaCamion}
+                          onChange={e => setEgresoFechaSalidaCamion(e.target.value)}
+                          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
                         />
                       </div>
                     </div>
@@ -1687,7 +1734,7 @@ return (
 
                 movimientos.forEach((m) => {
                   const timeStr = m.created_at ? new Date(m.created_at).toISOString().slice(0, 16) : '';
-                  const key = `${m.tipo}|${m.motivo || ''}|${m.institucion_nombre || ''}|${m.cargo_retira || ''}|${m.usuario_nombre || ''}|${timeStr}`;
+                  const key = `${m.tipo}|${m.motivo || ''}|${m.institucion_nombre || ''}|${m.cargo_retira || ''}|${m.fecha_pedido || ''}|${m.fecha_salida_camion || ''}|${m.usuario_nombre || ''}|${timeStr}`;
 
                   if (currentGroup && currentGroup.key === key) {
                     currentGroup.items.push(m);
@@ -1732,7 +1779,19 @@ return (
                       <td>{first.motivo || '-'}</td>
                       <td>{proveedorDisplay}</td>
                       <td>{first.usuario_nombre || '-'}</td>
-                      <td>{first.created_at ? new Date(first.created_at).toLocaleDateString() : '-'}</td>
+                      <td>
+                        <div>{first.created_at ? new Date(first.created_at).toLocaleDateString() : '-'}</div>
+                        {first.fecha_pedido && (
+                          <div style={{ fontSize: '0.73rem', color: '#64748b', marginTop: 3 }}>
+                            📅 <strong>Pedido:</strong> {formatFechaCorta(first.fecha_pedido)}
+                          </div>
+                        )}
+                        {first.fecha_salida_camion && (
+                          <div style={{ fontSize: '0.73rem', color: '#0284c7', marginTop: 2, fontWeight: 600 }}>
+                            🚚 <strong>Salida camión:</strong> {formatFechaCorta(first.fecha_salida_camion)}
+                          </div>
+                        )}
+                      </td>
                       <td>
                         {first.tipo === 'egreso' ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1795,7 +1854,7 @@ return (
                           <button
                             type="button"
                             className="secondary"
-                            onClick={() => { setDetalleData({ proveedor: proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : (first.tipo === 'egreso' ? first.institucion_nombre : null), deposito: first.deposito_nombre, institucion: institucionCargo, productos: group.items }); setDetalleModalOpen(true) }}
+                            onClick={() => { setDetalleData({ proveedor: proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : (first.tipo === 'egreso' ? first.institucion_nombre : null), deposito: first.deposito_nombre, institucion: institucionCargo, fecha_pedido: first.fecha_pedido, fecha_salida_camion: first.fecha_salida_camion, productos: group.items }); setDetalleModalOpen(true) }}
                             title="Ver detalle"
                             aria-label="Ver detalle"
                             style={{ width: 'auto', margin: 0, minWidth: 36, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -1950,7 +2009,13 @@ return (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div><strong>Proveedor:</strong><div>{detalleData.proveedor || '-'}</div></div>
             <div><strong>Depósito:</strong><div>{detalleData.deposito || '-'}</div></div>
-            <div style={{ gridColumn: '1 / -1' }}><strong>Institución / Cargo:</strong><div>{detalleData.institucion || '-'}</div></div>
+            <div style={{ gridColumn: '1 / -1' }}><strong>Institución / Cargo (Recibe):</strong><div>{detalleData.institucion || '-'}</div></div>
+            {detalleData.fecha_pedido && (
+              <div><strong>Fecha de Creación del Pedido:</strong><div>{formatFechaCorta(detalleData.fecha_pedido)}</div></div>
+            )}
+            {detalleData.fecha_salida_camion && (
+              <div><strong>Fecha Salida del Camión:</strong><div>{formatFechaCorta(detalleData.fecha_salida_camion)}</div></div>
+            )}
           </div>
           <div>
             <h4 style={{ marginTop: 0 }}>Productos</h4>
