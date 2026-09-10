@@ -108,7 +108,7 @@ async function registrarIngreso(req, res) {
 async function registrarEgreso(req, res) {
   try {
     const { id } = req.params;
-    const { id_producto, cantidad, id_institucion, motivo } = req.body;
+    const { id_producto, cantidad, id_institucion, motivo, cargo_retira, fecha_pedido, fecha_salida_camion } = req.body;
 
     if (!id_producto || !cantidad) {
       return res.status(400).json({ error: "Producto y cantidad requeridos" });
@@ -120,6 +120,9 @@ async function registrarEgreso(req, res) {
       cantidad,
       id_institucion,
       motivo,
+      cargo_retira,
+      fecha_pedido,
+      fecha_salida_camion,
       user: req.user
     });
     return res.json(result);

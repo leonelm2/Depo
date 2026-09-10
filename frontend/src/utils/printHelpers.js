@@ -18,6 +18,13 @@ export const printMovimiento = (movimientoOrGroup, instituciones = []) => {
   const year = dateObj.getFullYear()
   const fechaStr = `San Juan, ${day} de ${month} del ${year}`
 
+  const formatFechaCorta = (f) => {
+    if (!f) return ''
+    const parts = String(f).split('T')[0].split('-')
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
+    return String(f)
+  }
+
   const rowsHTML = movs.map((m, i) => `<tr>
     <td style="text-align: center;">${i + 1}</td>
     <td style="text-align: center;">${m.cantidad ?? '-'}</td>
@@ -66,7 +73,9 @@ export const printMovimiento = (movimientoOrGroup, instituciones = []) => {
         <div class="info-section">
           <div><strong>CUE de la Institución:</strong> ${cueStr}</div>
           <div><strong>Nombre de la Institución:</strong> ${institucionNombre}</div>
-          ${primer.cargo_retira ? '<div><strong>Retira:</strong> ' + primer.cargo_retira + '</div>' : ''}
+          ${primer.cargo_retira ? '<div><strong>Cargo de quien recibe:</strong> ' + primer.cargo_retira + '</div>' : ''}
+          ${primer.fecha_pedido ? '<div><strong>Fecha Creación del Pedido:</strong> ' + formatFechaCorta(primer.fecha_pedido) + '</div>' : ''}
+          ${primer.fecha_salida_camion ? '<div><strong>Fecha Salida del Camión:</strong> ' + formatFechaCorta(primer.fecha_salida_camion) + '</div>' : ''}
           ${primer.motivo ? '<div><strong>Motivo:</strong> ' + primer.motivo + '</div>' : ''}
         </div>
 
