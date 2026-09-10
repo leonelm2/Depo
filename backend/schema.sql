@@ -73,6 +73,7 @@ CREATE TABLE categoria (
 INSERT INTO categoria (nombre, tipo_bien) VALUES
 ('Insumos de limpieza', 'consumible'),
 ('Papelería/Librería', 'consumible'),
+('Higiene', 'consumible'),
 ('Otros', 'consumible')
 ON CONFLICT DO NOTHING;
 
