@@ -28,6 +28,7 @@
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.26.0",
     "recharts": "^3.8.1",
+    "sonner": "^2.0.8",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

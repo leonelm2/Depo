@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { Toaster } from 'sonner'
 
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
@@ -23,6 +24,7 @@ export default function App() {
 
   return (
     <Suspense fallback={<LoadingFallback />}>
+      <Toaster position="top-right" richColors closeButton />
       <Routes>
         <Route path="/" element={token ? <Navigate to="/dashboard/inicio" replace /> : <Login />} />
         <Route path="/dashboard/:tab" element={token ? <Dashboard /> : <Navigate to="/" replace />} />
