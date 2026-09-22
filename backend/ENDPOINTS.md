@@ -36,6 +36,7 @@ http://localhost:4000
 /api/zones
 /api/entregas
 /api/depositos
+/api/stock-institucion
 ```
 
 ## Healthcheck
@@ -407,6 +408,30 @@ Devuelve:
 }
 ```
 
+### `GET /api/movimientos/bajas`
+
+Filtros: `id_deposito`, `producto_id`, `desde`, `hasta`. Lista el historial de declaraciones de baja / scrap de productos dañados.
+
+### `POST /api/movimientos/baja`
+
+Registra una baja de mercadería con soporte para subida de fotografía como evidencia de rotura/daño (`multipart/form-data`, campo `foto`).
+
+Campos requeridos:
+- `depositoId`
+- `productoId`
+- `totalInspeccionado`
+- `unidadesDanadas`
+- `motivo`
+- `foto` (opcional)
+
+### `POST /api/movimientos/bajas/:id/autorizar`
+
+Autoriza el descarte definitivo de un bien patrimonial o consumible declarado de baja (requiere permiso `bajas.authorize`).
+
+### `GET /api/movimientos/bajas/:id/historial`
+
+Devuelve la trazabilidad histórica de estados por los que ha transitado la baja declarada.
+
 ## Ajustes
 
 ### `GET /api/ajustes`
@@ -619,9 +644,16 @@ Endpoints principales:
 - `POST /api/depositos/mover`
 - `POST /api/depositos/:id/ingreso`
 - `POST /api/depositos/:id/egreso`
+- `POST /api/depositos/:id/devolucion`
+- `GET /api/depositos/traslados`
+- `GET /api/depositos/diagnostico-stock`
+- `POST /api/depositos/reconciliar-stock`
 - `GET /api/depositos/licitacion/recepciones`
 - `GET /api/depositos/licitacion/recepciones/:id`
+- `GET /api/depositos/licitacion/recepciones/:id/remitos`
+- `GET /api/depositos/licitacion/remito-general/:id`
 - `POST /api/depositos/licitacion/registrar-ingreso`
+- `POST /api/depositos/licitacion/danio/imagen`
 - `GET /api/depositos/vencimientos-proximos`
 - `GET /api/depositos/distribucion/pendientes`
 - `GET /api/depositos/distribucion/pendientes/:id`
@@ -637,10 +669,16 @@ Endpoints principales:
 - `POST /api/entregas/solicitudes`
 - `PATCH /api/entregas/solicitudes/:id/aceptar`
 - `GET /api/entregas/solicitudes/pendientes`
+- `GET /api/entregas/solicitudes/entregadas`
 - `GET /api/entregas/solicitudes/:id/comprobante`
 - `POST /api/entregas/solicitudes/:id/entregar`
 - `POST /api/entregas/retirar`
+- `POST /api/entregas/operador-directo`
 - `GET /api/entregas/historial/:id_pedido`
+- `GET /api/entregas/sedes/en-sede`
+- `GET /api/entregas/solicitudes-envio/seguimiento`
+- `GET /api/entregas/solicitudes-envio/seguimiento/:loteId`
+- `PATCH /api/entregas/lote/:loteId/despachar`
 
 ### Solicitudes con modalidad de envio
 
@@ -738,6 +776,17 @@ Compatibilidad adicional:
 - `POST /api/zones`
 - `POST /api/zones/:zoneId/escuelas`
 - `POST /api/zones/:zoneId/supervisores`
+
+## Stock Institución
+
+Gestión y auditoría del stock escolar en poder de las escuelas:
+
+### Endpoints
+
+- `GET /api/stock-institucion`: Lista el stock actual en poder de la institución educativa.
+- `POST /api/stock-institucion/consumo`: Registra consumo interno de insumos escolares.
+- `GET /api/stock-institucion/notificaciones`: Lista notificaciones de stock recibidas por la escuela.
+- `PATCH /api/stock-institucion/notificaciones/:id/leer`: Marca una notificación institucional como leída.
 
 ## Codigos de estado comunes
 

@@ -1,5 +1,14 @@
 # Revision de Documentacion y Mejoras Prioritarias
 
+## Actualización de consistencia documental y Manual Operativo (2026-09-22)
+
+Se ha realizado una auditoría completa de todos los archivos de texto y documentación técnica del repositorio, sincronizándolos con el código fuente y generando el manual de operaciones oficial para el rol Operador:
+- **Alineación de API y Rutas**: Inclusión de rutas de Bajas con fotos, Diagnóstico y Reconciliación de stock, Traslados y módulo escolar (`/api/stock-institucion`) en `backend/ENDPOINTS.md`.
+- **Clarificación de Permisos**: Actualización en `ROLES_Y_PERMISOS.md` y `GUIA_ROLES_SISTEMA.md` sobre las facultades del Operador en catálogo de productos, multidepósito, retiros escolares y distribución provincial.
+- **Manual Operativo en PDF**: Compilación y emisión del documento vectorial `MANUAL_OPERADOR_DEPO.pdf` estructurado con estándares de diseño institucional del Gobierno de San Juan.
+
+---
+
 ## Actualización integral de documentación y testing (2026-06-25)
 
 Se ha completado la redacción del informe técnico final estructurado en 18 capítulos académicos, resolviendo la totalidad de las inconsistencias documentales previas.

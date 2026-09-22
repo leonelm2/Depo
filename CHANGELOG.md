@@ -1,5 +1,11 @@
 # Registro de Cambios - Depo
 
+## [1.7.0] - 2026-09-22
+### Añadido
+- **Manual de Operaciones para Rol Operador (PDF Oficial)**: Guía completa de procedimientos logísticos, multidepósito, trazabilidad de vencimientos, bajas/scrap con fotos, retiros escolares y envíos por departamento.
+- **Sincronización de API en Documentación**: Documentación exhaustiva en `backend/ENDPOINTS.md` de rutas operativas de Bajas (`/api/movimientos/bajas`), Diagnóstico y Reconciliación (`/api/depositos/diagnostico-stock`), Traslados y el módulo escolar (`/api/stock-institucion`).
+- **Refinamiento de Roles y Permisos**: Ajuste en `ROLES_Y_PERMISOS.md` y `GUIA_ROLES_SISTEMA.md` clarificando los límites de eliminación en el catálogo para rol operador y su integración con los almacenes y comprobantes oficiales.
+
 ## [1.6.0] - 2026-05-15
 ### Añadido
 - **Solicitudes con modalidad de envío**: el directivo ahora puede marcar en la solicitud de retiro si desea envío en lugar de retiro presencial.

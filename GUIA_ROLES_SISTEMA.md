@@ -60,27 +60,37 @@ Este documento detalla las capacidades y flujos de trabajo para cada rol dentro 
 ---
 
 ## 5. Operador de Depósito (Logística y Stock)
-**Objetivo**: Control físico de la mercadería y su distribución.
+**Objetivo**: Control físico de la mercadería, trazabilidad de existencias y distribución territorial a las instituciones educativas.
 
 *   **Recepción de Licitación**: 
-    *   Registrar el ingreso de camiones de proveedores.
-    *   Cargar fechas de vencimiento y cantidades recibidas (totales o parciales).
-    *   *Consolidación*: Los productos se reciben agrupados por nombre para agilizar la recepción.
-    *   *Seguridad*: El operador no ve precios, solo cantidades y productos.
-*   **Distribución a Escuelas**: 
-    *   Armar las "salidas" de mercadería hacia cada escuela según lo que se les adjudicó.
-    *   Generar remitos virtuales de entrega.
-*   **Envíos por Departamento (Nuevo)**:
-    *   Vista agrupada por departamento para solicitudes marcadas con envío.
-    *   Pantalla de detalle por departamento con resumen por solicitud: solicitado, ya entregado y pendiente.
-    *   Sección de instituciones faltantes por solicitar retiro para gestión preventiva.
-    *   Confirmación de egreso múltiple por departamento con selección de depósito origen.
-    *   Errores funcionales en confirmación se informan como validaciones (`400`) con mensaje claro.
-*   **Control de Inventario**: 
-    *   Visualizar stock actual por depósito.
-    *   **Detalle de Stock**: Ver en qué depósitos está distribuida la mercadería y sus fechas de vencimiento desde la lista de productos.
-    *   Gestionar movimientos manuales (ajustes por pérdida, rotura, etc.).
-*   **Alertas Tempranas**: Monitorear el widget de vencimientos próximos para evitar desperdicio de alimentos.
+    *   Registrar el ingreso físico de camiones de proveedores tras adjudicación de Compras.
+    *   Cargar números de remito, fechas de vencimiento y cantidades recibidas (totales o parciales).
+    *   *Consolidación*: Los productos se muestran agrupados por nombre y tipo para agilizar la verificación en rampa de descarga.
+    *   *Seguridad*: El operador no ve precios ni datos comerciales; solo cantidades físicas, especificaciones y productos.
+*   **Distribución a Escuelas y Envíos por Departamento**: 
+    *   **Retiro Presencial**: Atención en depósito a directivos o personal escolar autorizado mediante el modal transaccional de entrega con control de remanentes y stock disponible.
+    *   **Envíos por Departamento (Consolidados)**: Tablero de control territorial que agrupa automáticamente las solicitudes de escuelas con modalidad de envío.
+    *   Pantalla de detalle por departamento con desglose tripartito por solicitud: solicitado, ya entregado y pendiente de despacho.
+    *   Gestión preventiva de alertas: sección de instituciones que aún no han tramitado su solicitud de retiro.
+    *   Confirmación de egreso múltiple por departamento seleccionando el depósito origen (con validaciones de negocio `400` estructuradas en caso de stock insuficiente).
+    *   **Armado Directo por Operador**: Posibilidad de confeccionar un envío directo a una o más escuelas seleccionadas sin depender de una solicitud previa del directivo.
+*   **Gestión Multidepósito y Traslados**: 
+    *   Visualizar y conmutar el inventario físico por ubicación: *Depósito Central*, *Centro Cívico*, *Cápsula de Seguridad* y *Desguace (Scrap)*.
+    *   Registrar traslados entre depósitos con generación e impresión del comprobante oficial de traslado firmado por ambas partes.
+*   **Control de Inventario y Productos**: 
+    *   Consulta del catálogo maestro, control de stock mínimo y código de barras/SKU.
+    *   **Detalle de Stock por Depósito**: Modal interactivo que desglosa existencias por almacén y lote de vencimiento.
+    *   Gestión de movimientos manuales (ingresos, egresos y devoluciones con opción de conservar reserva).
+*   **Módulo de Bajas y Descartes (Scrap)**:
+    *   Registro de mercadería dañada o vencida con especificación del total inspeccionado vs. unidades defectuosas (cálculo automático de unidades en buen estado).
+    *   Carga de justificación técnica y evidencia fotográfica obligatoria para bienes patrimoniales o dañados.
+    *   Trazabilidad mediante historial de estados hasta la autorización definitiva.
+*   **Diagnóstico y Reconciliación de Stock**:
+    *   Herramienta de integridad para detectar desviaciones entre el stock global del catálogo (`stock_actual`) y la suma desagregada por depósito.
+    *   Ejecución de reconciliación atómica de inventario con generación automática de registros de auditoría.
+*   **Alertas Tempranas y Dashboard**:
+    *   Monitoreo preventivo de la ventana de vencimientos próximos (60 días) para evitar pérdidas de insumos perecederos y alimentos escolares.
+    *   Seguimiento de KPIs operativos mensuales (ingresos, egresos, ajustes y stock bajo mínimos).
 
 ---
 
