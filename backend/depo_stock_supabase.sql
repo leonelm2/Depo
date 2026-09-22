@@ -2125,7 +2125,8 @@ INSERT INTO public.auditoria (id, usuario_id, entidad, accion, id_registro, camb
 INSERT INTO public.categoria (id_categoria, nombre, tipo_bien) VALUES
 (1, 'Insumos de limpieza', 'consumible'),
 (2, 'Papelería/Librería', 'consumible'),
-(3, 'Otros', 'consumible');
+(3, 'Higiene', 'consumible'),
+(4, 'Otros', 'consumible');
 
 
 

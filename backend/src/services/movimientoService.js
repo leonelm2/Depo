@@ -20,6 +20,8 @@ async function listarMovimientos(queryParams) {
       u.nombre as usuario_nombre,
       u.email as usuario_email,
       m.fecha_movimiento as created_at,
+      m.fecha_pedido,
+      m.fecha_salida_camion,
       m.id_deposito,
       d.nombre as deposito_nombre,
       m.estado_egreso
@@ -110,6 +112,8 @@ async function obtenerMovimiento(id) {
       m.motivo,
       u.nombre as usuario_nombre,
       m.fecha_movimiento as created_at,
+      m.fecha_pedido,
+      m.fecha_salida_camion,
       m.estado_egreso
     FROM movimiento_stock m
     LEFT JOIN producto p ON m.id_producto = p.id_producto
@@ -348,7 +352,7 @@ async function crearMovimientoDirecto(user, body) {
     throw { status: 403, message: "No tenés permisos para realizar movimientos manuales" };
   }
 
-  const { tipo, institucion_id, cargo_retira, proveedor_id, motivo, productos, id_deposito } = body;
+  const { tipo, institucion_id, cargo_retira, proveedor_id, motivo, productos, id_deposito, fecha_pedido, fecha_salida_camion } = body;
 
   if (!tipo || !productos || !Array.isArray(productos) || productos.length === 0) {
     throw { status: 400, message: "Faltan campos obligatorios (tipo, productos array)" };
@@ -361,7 +365,7 @@ async function crearMovimientoDirecto(user, body) {
   // Para egresos, validar institución y cargo
   if (tipo === "egreso") {
     if (!institucion_id || !cargo_retira) {
-      throw { status: 400, message: "Para egresos se requiere institución y cargo de quien retira" };
+      throw { status: 400, message: "Para egresos se requiere institución y cargo de quien recibe" };
     }
   }
 
@@ -445,8 +449,8 @@ async function crearMovimientoDirecto(user, body) {
 
       const movRes = await client.query(
         `INSERT INTO movimiento_stock
-          (id_producto, tipo, cantidad, estado_producto, cargo_retira, id_institucion, id_proveedor, id_usuario, motivo, id_deposito, fecha_movimiento)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+          (id_producto, tipo, cantidad, estado_producto, cargo_retira, id_institucion, id_proveedor, id_usuario, motivo, id_deposito, fecha_movimiento, fecha_pedido, fecha_salida_camion)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, $12)
          RETURNING id_movimiento`,
         [
           prod.producto_id,
@@ -458,7 +462,9 @@ async function crearMovimientoDirecto(user, body) {
           tipo === "ingreso" ? (proveedor_id ? parseInt(proveedor_id, 10) : null) : null,
           user.sub,
           motivo || null,
-          depositoId
+          depositoId,
+          fecha_pedido || null,
+          fecha_salida_camion || null
         ]
       );
 

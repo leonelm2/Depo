@@ -756,6 +756,10 @@ SELECT 'Papelería/Librería', 'consumible'
 WHERE NOT EXISTS (SELECT 1 FROM categoria WHERE nombre = 'Papelería/Librería');
 
 INSERT INTO categoria (nombre, tipo_bien)
+SELECT 'Higiene', 'consumible'
+WHERE NOT EXISTS (SELECT 1 FROM categoria WHERE nombre = 'Higiene');
+
+INSERT INTO categoria (nombre, tipo_bien)
 SELECT 'Otros', 'consumible'
 WHERE NOT EXISTS (SELECT 1 FROM categoria WHERE nombre = 'Otros');
 

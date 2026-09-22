@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
+import { toast } from 'sonner'
 import ActionIcon from './ui/ActionIcon'
 
 function emptyForm() {
@@ -16,7 +17,6 @@ export default function ProductKitsManager() {
   const { token } = useAuth()
   const [kits, setKits] = useState([])
   const [productos, setProductos] = useState([])
-  const [msg, setMsg] = useState({ text: '', type: '' })
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState(emptyForm())
@@ -60,7 +60,7 @@ export default function ProductKitsManager() {
       setProductos(productosData.productos || [])
     } catch (err) {
       setProductos([])
-      setMsg({ text: err.message || 'No se pudieron cargar los datos del kit.', type: 'error' })
+      toast.error(err.message || 'No se pudieron cargar los datos del kit.')
     } finally {
       setLoading(false)
     }
@@ -72,7 +72,6 @@ export default function ProductKitsManager() {
 
   const openCreate = () => {
     setForm(emptyForm())
-    setMsg({ text: '', type: '' })
     setModalOpen(true)
   }
 
@@ -88,7 +87,6 @@ export default function ProductKitsManager() {
           }))
         : [{ producto_id: '', cantidad: '' }]
     })
-    setMsg({ text: '', type: '' })
     setModalOpen(true)
   }
 
@@ -121,7 +119,6 @@ export default function ProductKitsManager() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
-    setMsg({ text: '', type: '' })
 
     const payload = {
       nombre: form.nombre.trim(),
@@ -148,11 +145,11 @@ export default function ProductKitsManager() {
         throw new Error(data.error || 'No se pudo guardar el kit.')
       }
 
-      setMsg({ text: form.id ? 'Kit actualizado correctamente.' : 'Kit creado correctamente.', type: 'success' })
+      toast.success(form.id ? 'Kit actualizado correctamente.' : 'Kit creado correctamente.')
       closeModal()
       loadData()
     } catch (err) {
-      setMsg({ text: err.message || 'No se pudo guardar el kit.', type: 'error' })
+      toast.error(err.message || 'No se pudo guardar el kit.')
     } finally {
       setSaving(false)
     }
@@ -170,10 +167,10 @@ export default function ProductKitsManager() {
       if (!res.ok) {
         throw new Error(data.error || 'No se pudo eliminar el kit.')
       }
-      setMsg({ text: 'Kit desactivado correctamente.', type: 'success' })
+      toast.success('Kit eliminado correctamente.')
       loadData()
     } catch (err) {
-      setMsg({ text: err.message || 'No se pudo eliminar el kit.', type: 'error' })
+      toast.error(err.message || 'No se pudo eliminar el kit.')
     }
   }
 
@@ -207,15 +204,24 @@ export default function ProductKitsManager() {
         </button>
       </div>
 
-      {msg.text && (
-        <div className={`msg show ${msg.type === 'success' ? 'msg-success' : 'msg-error'}`} style={{ marginTop: 16 }}>{msg.text}</div>
-      )}
-
       {loading ? (
-        <p style={{ color: 'var(--muted)', marginTop: 18 }}>Cargando kits...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 20 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="skeleton-pulse" style={{ height: 85, borderRadius: 12, background: '#e2e8f0' }} />
+          ))}
+        </div>
       ) : kits.length === 0 ? (
-        <div className="sv-empty-state" style={{ marginTop: 18 }}>
-          No hay kits configurados todavía.
+        <div className="sv-empty-state" style={{ marginTop: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <div style={{ background: '#f8fafc', padding: 24, borderRadius: '50%' }}>
+            <ActionIcon name="agregar" size={32} />
+          </div>
+          <div>
+            <h4 style={{ margin: 0, color: '#1e3a8a', fontSize: '1.1rem' }}>No hay kits configurados</h4>
+            <p style={{ margin: '4px 0 0', fontSize: '0.9rem' }}>Creá tu primer kit para asignarlo a las escuelas.</p>
+          </div>
+          <button type="button" onClick={openCreate} style={{ width: 'auto' }}>
+            <ActionIcon name="agregar" size={16} /> Crear mi primer kit
+          </button>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 20 }}>
@@ -379,29 +385,10 @@ export default function ProductKitsManager() {
 
       {modalOpen && (
         <div
-          style={{ 
-            position: 'fixed', 
-            inset: 0, 
-            background: 'rgba(15, 23, 42, 0.6)', 
-            backdropFilter: 'blur(8px)',
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            zIndex: 1000, 
-            padding: 16 
-          }}
+          className="modal-overlay"
           onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}
         >
-          <div style={{ 
-            background: '#ffffff', 
-            padding: 32, 
-            borderRadius: 16, 
-            width: '100%',
-            maxWidth: '850px', 
-            maxHeight: '90vh', 
-            overflowY: 'auto',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-          }}>
+          <div className="modal-content" style={{ padding: 32, maxWidth: 850, overflowY: 'auto' }}>
             <h3 style={{ marginTop: 0, color: '#1e3a8a', fontSize: '1.4rem', fontWeight: 800 }}>{form.id ? 'Editar kit' : 'Nuevo kit'}</h3>
             <form onSubmit={handleSubmit} className="grid">
               <div>

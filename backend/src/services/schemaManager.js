@@ -816,6 +816,16 @@ async function initDatabaseSchema() {
       console.warn("[schemaManager] Warning adding egreso states and reserved stock:", err.message);
     }
 
+    // 29. Fechas de egreso (fecha pedido y fecha salida de camión)
+    try {
+      await client.query(`
+        ALTER TABLE movimiento_stock ADD COLUMN IF NOT EXISTS fecha_pedido DATE;
+        ALTER TABLE movimiento_stock ADD COLUMN IF NOT EXISTS fecha_salida_camion DATE;
+      `);
+    } catch (err) {
+      console.warn("[schemaManager] Warning adding fecha_pedido and fecha_salida_camion columns:", err.message);
+    }
+
     console.log("[schemaManager] Database schema and migrations completed successfully!");
   } finally {
     client.release();

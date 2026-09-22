@@ -1271,3 +1271,15 @@ button.secondary:hover .action-icon {
   color: var(--dark);
   line-height: 1.3;
 }
+
+/* ── Skeletons ── */
+.skeleton-pulse {
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+  background-color: var(--surface-2);
+}
+
+@keyframes skeletonPulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}

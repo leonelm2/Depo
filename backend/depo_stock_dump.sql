@@ -2124,7 +2124,8 @@ COPY public.auditoria (id, usuario_id, entidad, accion, id_registro, cambios, cr
 COPY public.categoria (id_categoria, nombre, tipo_bien) FROM stdin;
 1	Insumos de limpieza	consumible
 2	Papelería/Librería	consumible
-3	Otros	consumible
+3	Higiene	consumible
+4	Otros	consumible
 \.
 
 
