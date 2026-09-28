@@ -154,7 +154,9 @@ Entre los modulos presentes hoy en el repositorio:
 - Supervisor, Director de Area y gestion de zonas
 - Compras, licitacion y adjudicacion
 - Recepcion de licitaciones y distribucion a escuelas
-- Instituciones, proveedores, auditoria y patrimonio
+- Bajas y descarte de mercaderia (scrap) con evidencia fotografica
+- Diagnostico y reconciliacion atomica de inventario por depositos
+- Instituciones, proveedores, auditoria, patrimonio y stock escolar
 
 ## Flujo logistico actualizado (Mayo 2026)
 

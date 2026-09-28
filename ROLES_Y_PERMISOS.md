@@ -65,15 +65,17 @@ DIRECTOR_AREA:
 - Dashboard, Pedidos (ver/gestionar), Instituciones
 
 ### Operador
-- Dashboard, Stock (ver/editar/movimientos), Productos (CRUD)
-- Movimientos, Ajustes, Auditoría, Proveedores (CRUD)
-- Operaciones de logística de entregas (retiro y envío por departamento)
+- Dashboard, Stock (ver/editar/movimientos), Productos (ver/crear/editar; borrado restringido a admin/master)
+- Movimientos (ingreso/egreso/devolución/lote/directo), Bajas/Scrap con fotos, Ajustes, Auditoría
+- Proveedores (CRUD completo)
+- Operaciones de logística de entregas (retiros escolares, armado directo y envío consolidado por departamento)
+- Diagnóstico y reconciliación de stock por depósito
 
 ### Consulta
 - Dashboard, Stock, Productos, Movimientos, Ajustes, Auditoría
 
 ### Área Compras
-- Dashboard, Planillas, Stock, Productos, Instituciones, Proveedores
+- Dashboard, Planillas, Stock, Productos, Instituciones, Proveedores, Bajas (autorización)
 
 ## 5. Permisos del Sistema
 
@@ -81,7 +83,7 @@ DIRECTOR_AREA:
 DASHBOARD_VIEW, STOCK_VIEW, STOCK_EDIT, STOCK_MOVEMENT_CREATE
 USERS_READ, USERS_CREATE, USERS_ROLE_UPDATE, USERS_STATUS_UPDATE, USERS_DELETE
 PRODUCTOS_VIEW, PRODUCTOS_CREATE, PRODUCTOS_EDIT, PRODUCTOS_DELETE
-MOVIMIENTOS_VIEW, MOVIMIENTOS_CREATE
+MOVIMIENTOS_VIEW, MOVIMIENTOS_CREATE, BAJAS_AUTHORIZE
 AJUSTES_VIEW, AJUSTES_CREATE
 AUDITORIA_VIEW
 PEDIDOS_VIEW, PEDIDOS_CREATE, PEDIDOS_MANAGE
@@ -122,18 +124,20 @@ PLANILLA_VIEW, PLANILLA_MANAGE, PLANILLA_ENVIAR
 | `/api/auth` | Autenticación (login/register) |
 | `/api/users` | Gestión de usuarios (POST /api/users crea usuario) |
 | `/api/roles` | Listado de roles |
-| `/api/permissions` | Permisos del sistema |
-| `/api/productos` | Catálogo de productos |
-| `/api/movimientos` | Movimientos de stock |
-| `/api/pedidos` | Pedidos de escuelas |
-| `/api/instituciones` | Escuelas/instituciones |
+| `/api/permissions` | Permisos del sistema y catálogo |
+| `/api/productos` | Catálogo de productos y stock detalle |
+| `/api/movimientos` | Movimientos de stock y bajas/descartes con fotos |
+| `/api/pedidos` | Pedidos de escuelas (anuales y refuerzos) |
+| `/api/instituciones` | Escuelas/instituciones y asignaciones |
 | `/api/supervisor` | Funciones de supervisor |
-| `/api/director-area` | Gestión de director de área |
-| `/api/compras` | Planillas de compra |
+| `/api/director-area` | Gestión de director de área y zonas |
+| `/api/compras` | Licitaciones, planillas y adjudicaciones |
 | `/api/auditoria` | Log de auditoría |
-| `/api/dashboard` | Estadísticas |
-| `/api/entregas` | Solicitudes de retiro y envíos por departamento |
-| `/api/depositos` | Stock y operaciones por depósito |
+| `/api/dashboard` | Estadísticas por rol |
+| `/api/entregas` | Solicitudes de retiro, envíos por departamento y entregas |
+| `/api/depositos` | Stock, traslados, recepciones de licitación y diagnóstico |
+| `/api/patrimonio` | Tickets y seguimiento patrimonial |
+| `/api/stock-institucion` | Control de stock a nivel escolar y consumo interno |
 
 ## 7. Estructura de Datos de Usuario
 
