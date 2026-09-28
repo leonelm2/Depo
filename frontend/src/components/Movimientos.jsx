@@ -72,6 +72,7 @@ export default function Movimientos() {
   const [devolucionMantenerReserva, setDevolucionMantenerReserva] = useState(false)
   const [loteDevolucion, setLoteDevolucion] = useState([])
   const [devolucionItem, setDevolucionItem] = useState({ productoNombre: '', cantidad: '', estado: 'bueno' })
+  const [devolucionImagenes, setDevolucionImagenes] = useState([])
   // Filtros para la lista de movimientos
   const [filterDesde, setFilterDesde] = useState('')
   const [filterHasta, setFilterHasta] = useState('')
@@ -543,7 +544,8 @@ export default function Movimientos() {
             cantidad: item.cantidad,
             motivo: devolucionMotivo.trim() || null,
             mantener_reserva: devolucionMantenerReserva,
-            id_institucion: instMatch ? instMatch.id : null
+            id_institucion: instMatch ? instMatch.id : null,
+            imagenes: devolucionImagenes
           })
         })
         if (!res.ok) {
@@ -556,6 +558,7 @@ export default function Movimientos() {
       setDevolucionInst('')
       setDevolucionMantenerReserva(false)
       setLoteDevolucion([])
+      setDevolucionImagenes([])
       setDevolucionDeposito('')
       setDevolucionModalOpen(false)
       setMsg({ text: 'Devolución registrada correctamente', type: 'success' })
@@ -1525,6 +1528,48 @@ return (
                         onChange={e => setDevolucionMotivo(e.target.value)}
                         style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem' }}
                       />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Evidencia Fotográfica (Máx 2)</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files)
+                          if (devolucionImagenes.length + files.length > 2) {
+                            alert("Solo se permiten hasta 2 imágenes.")
+                            return
+                          }
+                          files.forEach(file => {
+                            const reader = new FileReader()
+                            reader.onload = (ev) => {
+                              setDevolucionImagenes(prev => [...prev, {
+                                nombre: file.name,
+                                mime_type: file.type,
+                                datos: ev.target.result
+                              }])
+                            }
+                            reader.readAsDataURL(file)
+                          })
+                        }}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px dashed #cbd5e1', fontSize: '0.875rem', background: '#fff' }}
+                      />
+                      {devolucionImagenes.length > 0 && (
+                        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+                          {devolucionImagenes.map((img, idx) => (
+                            <div key={idx} style={{ position: 'relative', width: 60, height: 60, borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                              <img src={img.datos} alt="evidencia" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <button
+                                type="button"
+                                onClick={() => setDevolucionImagenes(prev => prev.filter((_, i) => i !== idx))}
+                                style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(255,0,0,0.7)', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                              >×</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 

@@ -8,6 +8,7 @@ export const printMovimiento = (movimientoOrGroup, instituciones = []) => {
 
   const institucionMatch = instituciones.find(i => i.nombre === primer.institucion_nombre)
   const cueStr = institucionMatch && institucionMatch.cue ? institucionMatch.cue : '-'
+  const direccionStr = institucionMatch && institucionMatch.direccion ? institucionMatch.direccion : 'No registrada'
 
   const institucionNombre = primer.institucion_nombre || '-'
 
@@ -16,7 +17,11 @@ export const printMovimiento = (movimientoOrGroup, instituciones = []) => {
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
   const month = monthNames[dateObj.getMonth()]
   const year = dateObj.getFullYear()
-  const fechaStr = `San Juan, ${day} de ${month} del ${year}`
+  
+  // Format the time as HH:MM
+  const timeStr = dateObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+  
+  const fechaStr = `San Juan, ${day} de ${month} del ${year} - Hora: ${timeStr}`
 
   const formatFechaCorta = (f) => {
     if (!f) return ''
@@ -73,6 +78,7 @@ export const printMovimiento = (movimientoOrGroup, instituciones = []) => {
         <div class="info-section">
           <div><strong>CUE de la Institución:</strong> ${cueStr}</div>
           <div><strong>Nombre de la Institución:</strong> ${institucionNombre}</div>
+          <div><strong>Dirección de la Institución:</strong> ${direccionStr}</div>
           ${primer.cargo_retira ? '<div><strong>Cargo de quien recibe:</strong> ' + primer.cargo_retira + '</div>' : ''}
           ${primer.fecha_pedido ? '<div><strong>Fecha Creación del Pedido:</strong> ' + formatFechaCorta(primer.fecha_pedido) + '</div>' : ''}
           ${primer.fecha_salida_camion ? '<div><strong>Fecha Salida del Camión:</strong> ' + formatFechaCorta(primer.fecha_salida_camion) + '</div>' : ''}

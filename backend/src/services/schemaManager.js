@@ -110,6 +110,16 @@ async function initDatabaseSchema() {
       await client.query(`
         ALTER TABLE deposito ADD COLUMN IF NOT EXISTS tipo_deposito VARCHAR(40) DEFAULT 'central';
       `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS movimiento_imagen (
+          id SERIAL PRIMARY KEY,
+          id_movimiento INT NOT NULL REFERENCES movimiento_stock(id_movimiento) ON DELETE CASCADE,
+          nombre VARCHAR(255),
+          mime_type VARCHAR(80),
+          datos TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
       // Seed desguace deposit if it doesn't exist
       await client.query(`
         INSERT INTO deposito (nombre, tipo)

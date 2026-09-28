@@ -1341,10 +1341,23 @@ async function registrarDevolucion(depositoId, payload, user) {
     if (prodCheck.rowCount === 0) throw { status: 404, message: "Producto no encontrado" };
 
     // 1. Insertar movimiento (tipo 'devolucion')
-    await client.query(`
+    const movRes = await client.query(`
       INSERT INTO movimiento_stock (id_producto, cantidad, tipo, id_institucion, motivo, id_usuario, id_deposito)
       VALUES ($1, $2, 'devolucion', $3, $4, $5, $6)
+      RETURNING id_movimiento
     `, [productoIdNum, cantidadNum, id_institucion || null, motivo || "Devolución", user.sub, depositoIdNum]);
+
+    const movId = movRes.rows[0].id_movimiento;
+
+    // Guardar imagenes si vienen en payload
+    if (Array.isArray(payload.imagenes) && payload.imagenes.length > 0) {
+      for (const img of payload.imagenes.slice(0, 2)) {
+        await client.query(`
+          INSERT INTO movimiento_imagen (id_movimiento, nombre, mime_type, datos)
+          VALUES ($1, $2, $3, $4)
+        `, [movId, img.nombre || 'evidencia.jpg', img.mime_type || 'image/jpeg', img.datos]);
+      }
+    }
 
     // 2. Incrementar stock general actual
     await client.query(

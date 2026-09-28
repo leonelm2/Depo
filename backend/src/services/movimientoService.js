@@ -96,9 +96,8 @@ async function listarMovimientos(queryParams) {
 
   return await all(query, params);
 }
-
 async function obtenerMovimiento(id) {
-  return await get(`
+  const mov = await get(`
     SELECT 
       m.id_movimiento as id,
       m.id_producto,
@@ -149,6 +148,14 @@ async function obtenerMovimiento(id) {
     ) pr_lic ON m.id_proveedor IS NULL
     WHERE m.id_movimiento = ?
   `, [id]);
+
+  if (mov) {
+    mov.imagenes = await all(
+      `SELECT nombre, mime_type, datos FROM movimiento_imagen WHERE id_movimiento = ?`,
+      [id]
+    );
+  }
+  return mov;
 }
 
 async function resolveDefaultDepositoId(client = pool) {
