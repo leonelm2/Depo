@@ -1116,7 +1116,7 @@ async function updateEstadoPedido(id, data, user) {
           `INSERT INTO stock_deposito (id_deposito, id_producto, cantidad)
            VALUES (1, $2, 0)
            ON CONFLICT (id_deposito, id_producto)
-           DO UPDATE SET cantidad = GREATEST(0, stock_deposito.cantidad - $1)`,
+           DO UPDATE SET cantidad = stock_deposito.cantidad - $1`,
           [cantidad, item.id_producto]
         );
 
