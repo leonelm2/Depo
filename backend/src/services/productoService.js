@@ -350,11 +350,6 @@ async function updateProducto(id, body) {
       updates.push(`requiere_autorizacion = $${paramIndex++}`);
       params.push(Boolean(body.requiere_autorizacion));
     }
-    if (body.stock_actual !== undefined) {
-      updates.push(`stock_actual = $${paramIndex++}`);
-      params.push(parseInt(body.stock_actual) || 0);
-    }
-
     if (updates.length === 0) {
       throw { status: 400, message: "No hay campos para actualizar" };
     }
@@ -365,28 +360,6 @@ async function updateProducto(id, body) {
       `UPDATE producto SET ${updates.join(", ")} WHERE id_producto = $${paramIndex}`,
       params
     );
-
-    // Si se actualizó el stock_actual, sincronizar con el depósito central
-    if (body.stock_actual !== undefined) {
-      const stock_val = parseInt(body.stock_actual) || 0;
-      const centralResult = await client.query(
-        "SELECT id_deposito FROM deposito WHERE COALESCE(tipo, tipo_deposito) = 'central' LIMIT 1"
-      );
-      const central = centralResult.rows[0];
-
-      if (central) {
-        const hasStockDeposito = await hasTable('stock_deposito');
-        if (hasStockDeposito) {
-          await client.query(
-            `INSERT INTO stock_deposito (id_deposito, id_producto, cantidad)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (id_deposito, id_producto)
-             DO UPDATE SET cantidad = EXCLUDED.cantidad`,
-            [central.id_deposito, id, stock_val]
-          );
-        }
-      }
-    }
 
     return { ok: true };
   } finally {
