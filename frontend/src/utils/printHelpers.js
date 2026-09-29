@@ -1,4 +1,4 @@
-export const printMovimiento = (movimientoOrGroup, instituciones = []) => {
+export const printMovimiento = (movimientoOrGroup, instituciones = [], productos = []) => {
   const printWindow = window.open('', '_blank', 'width=800,height=600')
   if (!printWindow) return
 
@@ -7,101 +7,225 @@ export const printMovimiento = (movimientoOrGroup, instituciones = []) => {
   const primer = movs[0];
 
   const institucionMatch = instituciones.find(i => i.nombre === primer.institucion_nombre)
-  const cueStr = institucionMatch && institucionMatch.cue ? institucionMatch.cue : '-'
-  const direccionStr = institucionMatch && institucionMatch.direccion ? institucionMatch.direccion : 'No registrada'
+  const direccionStr = institucionMatch && institucionMatch.direccion ? institucionMatch.direccion : ''
+  const departamentoStr = institucionMatch && institucionMatch.departamento ? institucionMatch.departamento : ''
+  const ubicacionParts = [direccionStr, departamentoStr, 'SAN JUAN'].filter(Boolean)
+  const ubicacionDestino = ubicacionParts.join(' - ') || 'No registrada'
 
   const institucionNombre = primer.institucion_nombre || '-'
+  const depositoOrigen = primer.deposito_nombre || 'DEPOSITO CENTRAL'
 
   const dateObj = primer.created_at ? new Date(primer.created_at) : new Date()
   const day = dateObj.getDate()
-  const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-  const month = monthNames[dateObj.getMonth()]
+  const month = dateObj.getMonth() + 1
   const year = dateObj.getFullYear()
-  
-  // Format the time as HH:MM
-  const timeStr = dateObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-  
-  const fechaStr = `San Juan, ${day} de ${month} del ${year} - Hora: ${timeStr}`
+  const fechaStr = `${day}/${month}/${year}`
 
-  const formatFechaCorta = (f) => {
-    if (!f) return ''
-    const parts = String(f).split('T')[0].split('-')
-    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
-    return String(f)
+
+
+  // Buscar codigo_sku de cada producto
+  const getCodigoProducto = (mov) => {
+    if (mov.codigo_sku) return mov.codigo_sku
+    const prod = productos.find(p =>
+      p.nombre === mov.producto_nombre ||
+      p.id === mov.id_producto ||
+      p.id === mov.producto_id
+    )
+    return prod && prod.codigo_sku ? prod.codigo_sku : '-'
   }
 
-  const rowsHTML = movs.map((m, i) => `<tr>
-    <td style="text-align: center;">${i + 1}</td>
-    <td style="text-align: center;">${m.cantidad ?? '-'}</td>
-    <td>${m.producto_nombre || m.producto || '-'}</td>
-    <td>${m.estado_producto || m.estado || '-'}</td>
+  const rowsHTML = movs.map((m) => `<tr>
+    <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; color: #333;">${getCodigoProducto(m)}</td>
+    <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; color: #333; text-transform: uppercase;">${(m.producto_nombre || m.producto || '-').toUpperCase()}</td>
+    <td style="padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 12px; color: #333; text-align: right;">${Number(m.cantidad || 0).toFixed(2)}</td>
   </tr>`).join('');
+
+  const cantidadItems = movs.length
 
   printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Remito de Egreso #${primer.id || ''}</title>
+        <title>Orden de Dispensación de Productos</title>
         <style>
-          * { box-sizing: border-box; font-family: Arial, sans-serif; }
-          body { margin: 40px; color: #111827; font-size: 14px; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-          .header-left { display: flex; align-items: center; gap: 16px; }
-          .header-left img { height: 60px; width: auto; }
-          .header-text { line-height: 1.4; }
-          .title { text-align: center; font-size: 24px; font-weight: bold; margin: 30px 0; text-decoration: underline; letter-spacing: 1px; }
-          .date { text-align: right; margin-bottom: 30px; font-style: italic; font-size: 15px; }
-          .info-section { margin-bottom: 30px; line-height: 1.8; font-size: 15px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-          th, td { border: 1px solid #000; padding: 10px; text-align: left; }
-          th { background: #f3f4f6; font-weight: bold; text-align: center; }
-          .signatures { display: flex; justify-content: space-around; margin-top: 80px; }
-          .signature-line { border-top: 1px solid #000; padding-top: 8px; text-align: center; width: 250px; }
+          @page {
+            margin: 20mm 15mm 20mm 15mm;
+            size: A4;
+          }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+            color: #222;
+            font-size: 12px;
+            line-height: 1.4;
+            padding: 0;
+          }
+          .page-container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 30px 40px;
+          }
+
+          /* HEADER */
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 0;
+          }
+          .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          .header-left img {
+            height: 42px;
+            width: auto;
+          }
+          .header-left-text {
+            line-height: 1.2;
+          }
+          .header-left-text .gob-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1a1a1a;
+          }
+          .header-left-text .gob-sub {
+            font-size: 10px;
+            color: #666;
+          }
+          .header-left-text .ministerio {
+            font-size: 10px;
+            color: #555;
+            border-left: 1px solid #ccc;
+            padding-left: 8px;
+            margin-left: 8px;
+            display: inline-block;
+          }
+
+
+          /* TÍTULO */
+          .main-title {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: #111;
+            margin: 18px 0 20px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #333;
+            letter-spacing: 0.3px;
+          }
+
+          /* INFO SECTION */
+          .info-section {
+            margin-bottom: 20px;
+            font-size: 12px;
+            line-height: 1.9;
+          }
+          .info-row {
+            display: flex;
+            gap: 12px;
+          }
+          .info-row .info-left {
+            flex: 1;
+          }
+          .info-row .info-right {
+            text-align: right;
+            white-space: nowrap;
+          }
+          .info-section strong {
+            color: #111;
+          }
+
+          /* TABLE */
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+          }
+          thead th {
+            background: #f5f5f5;
+            border-top: 2px solid #333;
+            border-bottom: 2px solid #333;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: #111;
+            text-transform: none;
+          }
+          thead th:last-child {
+            text-align: right;
+          }
+          tbody td {
+            padding: 7px 12px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 12px;
+          }
+          tbody tr:last-child td {
+            border-bottom: 2px solid #333;
+          }
+
+          /* FOOTER INFO */
+          .footer-info {
+            margin-top: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #111;
+          }
+
+          @media print {
+            body { padding: 0; }
+            .page-container { padding: 0; max-width: none; }
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div class="header-left">
-            <img src="/faviconmin.png" alt="Logo" />
-            <div class="header-text">
-              <div style="font-weight: bold; font-size: 18px;">Depósito Central</div>
-              <div style="font-size: 14px; color: #444;">Hipólito Yrigoyen 1515(E) - Santa Lucía 4302361</div>
+        <div class="page-container">
+          
+          <!-- HEADER -->
+          <div class="header">
+            <div class="header-left">
+              <img src="/faviconmin.png" alt="Logo San Juan" />
+              <div class="header-left-text">
+                <div class="gob-name">San Juan</div>
+                <div class="gob-sub">Gobierno</div>
+              </div>
+              <span class="header-left-text ministerio">Ministerio de<br/>Educación</span>
             </div>
           </div>
-          <div style="font-weight: bold; font-size: 18px;">
-            REMITO N° ${primer.id || ''}
+
+          <!-- TÍTULO -->
+          <div class="main-title">Orden de Dispensación de Productos</div>
+
+          <!-- INFORMACIÓN -->
+          <div class="info-section">
+            <div><strong>Fecha:</strong> ${fechaStr}</div>
+            <div><strong>Depósito Origen:</strong> ${depositoOrigen.toUpperCase()}</div>
+            <div><strong>Destino:</strong> ${institucionNombre.toUpperCase()}</div>
+            <div><strong>Ubicación del Destino:</strong> ${ubicacionDestino}</div>
           </div>
-        </div>
 
-        <div class="date">${fechaStr}</div>
+          <!-- TABLA DE PRODUCTOS -->
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 160px;">Código de Producto</th>
+                <th>Descripción del Producto</th>
+                <th style="width: 140px; text-align: right;">Cantidad Dispensada</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHTML}
+            </tbody>
+          </table>
 
-        <div class="info-section">
-          <div><strong>CUE de la Institución:</strong> ${cueStr}</div>
-          <div><strong>Nombre de la Institución:</strong> ${institucionNombre}</div>
-          <div><strong>Dirección de la Institución:</strong> ${direccionStr}</div>
-          ${primer.cargo_retira ? '<div><strong>Cargo de quien recibe:</strong> ' + primer.cargo_retira + '</div>' : ''}
-          ${primer.fecha_pedido ? '<div><strong>Fecha Creación del Pedido:</strong> ' + formatFechaCorta(primer.fecha_pedido) + '</div>' : ''}
-          ${primer.fecha_salida_camion ? '<div><strong>Fecha Salida del Camión:</strong> ' + formatFechaCorta(primer.fecha_salida_camion) + '</div>' : ''}
-          ${primer.motivo ? '<div><strong>Motivo:</strong> ' + primer.motivo + '</div>' : ''}
-        </div>
+          <!-- CANTIDAD DE ITEMS -->
+          <div class="footer-info">
+            Cantidad de Items &nbsp;&nbsp; ${cantidadItems}
+          </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 50px;">Reng</th>
-              <th style="width: 80px;">Cant.</th>
-              <th>Descripción del Producto</th>
-              <th style="width: 120px;">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHTML}
-          </tbody>
-        </table>
-
-        <div class="signatures">
-          <div class="signature-line">Firma de quien entrega</div>
-          <div class="signature-line">Firma de quien recibe</div>
         </div>
       </body>
       </html>
@@ -112,6 +236,5 @@ export const printMovimiento = (movimientoOrGroup, instituciones = []) => {
   setTimeout(() => {
     printWindow.print()
     printWindow.close()
-  }, 300)
+  }, 400)
 }
-
