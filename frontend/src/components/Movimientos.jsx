@@ -1992,9 +1992,8 @@ return (
               {detalleData.productos.map((p, idx) => (
                 <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
                   <span>{p.producto_nombre || '-'} — Cantidad: {p.cantidad}</span>
-<<<<<<< HEAD
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="button" className="secondary" onClick={() => printMovimiento(p, instituciones)} style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <button type="button" className="secondary" onClick={() => printMovimiento(p, instituciones, productos)} style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <ActionIcon name="imprimir" size={14} />
                       Imprimir
                     </button>
@@ -2005,12 +2004,6 @@ return (
                       </button>
                     )}
                   </div>
-=======
-                  <button type="button" className="secondary" onClick={() => printMovimiento(p, instituciones, productos)} style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <ActionIcon name="imprimir" size={14} />
-                    Imprimir este producto
-                  </button>
->>>>>>> 23afc74c433bf686cf482093268b5bf774b440e4
                 </li>
               ))}
             </ul>
