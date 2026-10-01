@@ -96,8 +96,8 @@ async function listPublicInstituciones() {
            i.cue,
            i.nombre,
            i.${nivelColumn} as nivel_educativo,
-           NULLIF(TRIM(d.departamento), '') AS departamento,
-           COALESCE(e.direccion, e.calle || ' ' || e.numero_puerta) AS direccion
+           NULLIF(TRIM(COALESCE(d.departamento, i.departamento)), '') AS departamento,
+           COALESCE(i.direccion, NULLIF(TRIM(COALESCE(d.calle, '') || ' ' || COALESCE(d.numero_puerta, '')), '')) AS direccion
     FROM institucion i
     LEFT JOIN edificio e ON i.id_edificio = e.id_edificio
     LEFT JOIN direccion d ON e.id_direccion = d.id_direccion
@@ -265,10 +265,10 @@ async function listInstituciones(user, query = {}) {
       i.cue,
       i.${nivelColumn} AS nivel,
       e.cui,
-      NULLIF(TRIM(d.departamento), '') AS departamento,
+      NULLIF(TRIM(COALESCE(d.departamento, i.departamento)), '') AS departamento,
       d.latitud,
       d.longitud,
-      COALESCE(e.direccion, e.calle || ' ' || e.numero_puerta) AS direccion,
+      COALESCE(i.direccion, NULLIF(TRIM(COALESCE(d.calle, '') || ' ' || COALESCE(d.numero_puerta, '')), '')) AS direccion,
       i.kit_id,
       ${kitCantidadExpr},
       pk.nombre AS kit_nombre,

@@ -1212,7 +1212,7 @@ function DashboardCharts({ stats }) {
         <div className="chart-container">
           <h4>Distribución de Stock</h4>
           <div className="chart-wrapper">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={250}>
               <PieChart>
                 <Pie
                   data={productData}
@@ -1238,7 +1238,7 @@ function DashboardCharts({ stats }) {
         <div className="chart-container">
           <h4>Movimientos del Mes</h4>
           <div className="chart-wrapper">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={250}>
               <BarChart data={movData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--muted)' }} />

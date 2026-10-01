@@ -836,6 +836,18 @@ async function initDatabaseSchema() {
       console.warn("[schemaManager] Warning adding fecha_pedido and fecha_salida_camion columns:", err.message);
     }
 
+    // 30. Columnas de compatibilidad en edificio
+    try {
+      await client.query(`
+        ALTER TABLE edificio ADD COLUMN IF NOT EXISTS direccion VARCHAR(200);
+        ALTER TABLE edificio ADD COLUMN IF NOT EXISTS calle VARCHAR(150);
+        ALTER TABLE edificio ADD COLUMN IF NOT EXISTS numero_puerta VARCHAR(20);
+        ALTER TABLE edificio ADD COLUMN IF NOT EXISTS departamento VARCHAR(100);
+      `);
+    } catch (err) {
+      console.warn("[schemaManager] Warning adding edificio compatibility columns:", err.message);
+    }
+
     console.log("[schemaManager] Database schema and migrations completed successfully!");
   } finally {
     client.release();
