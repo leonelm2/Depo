@@ -37,6 +37,9 @@ router.get("/bajas", authorizePermissions(PERMISSIONS.MOVIMIENTOS_VIEW), movimie
 // Only match numeric ids to avoid colliding with named routes like `/bajas`
 router.get("/:id(\\d+)", authorizePermissions(PERMISSIONS.MOVIMIENTOS_VIEW), movimientoController.obtenerMovimiento);
 
+// Eliminar un movimiento (sólo admin)
+router.delete("/:id(\\d+)", movimientoController.eliminarMovimiento);
+
 // Crear movimiento
 router.post("/", authorizePermissions(PERMISSIONS.MOVIMIENTOS_CREATE), movimientoController.crearMovimiento);
 

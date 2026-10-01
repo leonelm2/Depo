@@ -118,6 +118,18 @@ async function obtenerHistorialBaja(req, res) {
   }
 }
 
+async function eliminarMovimiento(req, res) {
+  try {
+    const { id } = req.params;
+    await movimientoService.eliminarMovimiento(id, req.user);
+    return res.json({ message: "Movimiento eliminado exitosamente" });
+  } catch (err) {
+    console.error("Error eliminando movimiento:", err);
+    const status = err.status || 500;
+    return res.status(status).json({ error: err.message || "No se pudo eliminar el movimiento" });
+  }
+}
+
 module.exports = {
   listarMovimientos,
   obtenerMovimiento,
@@ -128,5 +140,6 @@ module.exports = {
   registrarBaja,
   listarBajas,
   autorizarBaja,
-  obtenerHistorialBaja
+  obtenerHistorialBaja,
+  eliminarMovimiento
 };

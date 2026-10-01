@@ -13,7 +13,7 @@ const CARGOS = ['director/a', 'vicedirector/a', 'secretario/a', 'rector/a', 'mae
 const MINISTERIO_LOGO_URL = '/faviconmin.png'
 
 export default function Movimientos() {
-  const { token, hasPermission } = useAuth()
+  const { token, hasPermission, user } = useAuth()
   const [movimientos, setMovimientos] = useState([])
   const [productos, setProductos] = useState([])
   const [instituciones, setInstituciones] = useState([])
@@ -124,20 +124,29 @@ export default function Movimientos() {
         const data = await res.json()
         const realMovimientos = data.movimientos || []
         
-        // MOCK DATA PARA PRUEBA DE TIMELINE
-        const d = new Date()
-        const mockMovimientos = [
-          { id: 'mock1', tipo: 'ingreso', producto_nombre: 'Notebook Dell Latitude', cantidad: 50, motivo: 'Compra Licitación 01/2026', proveedor_nombre: 'TecnoGlobal S.A.', usuario_nombre: 'Leonel', created_at: new Date(d.getTime() - 1000 * 60 * 30).toISOString() },
-          { id: 'mock2', tipo: 'egreso', producto_nombre: 'Kit Geometría Pizarrón', cantidad: 12, motivo: 'Pedido de urgencia', institucion_nombre: 'Escuela N° 45 "Sarmiento"', cargo_retira: 'Director', fecha_pedido: new Date(d.getTime() - 1000 * 60 * 60 * 48).toISOString(), usuario_nombre: 'Admin', created_at: new Date(d.getTime() - 1000 * 60 * 60 * 2).toISOString(), estado_egreso: 'entregado' },
-          { id: 'mock3', tipo: 'devolucion', producto_nombre: 'Sillas Escolares', cantidad: 4, motivo: 'Llegaron rayadas en el transporte', institucion_nombre: 'Escuela Normal', usuario_nombre: 'Leonel', created_at: new Date(d.getTime() - 1000 * 60 * 60 * 24).toISOString(), estado_producto: 'dañado' },
-          { id: 'mock4', tipo: 'egreso', producto_nombre: 'Marcadores Pizarra (Caja)', cantidad: 30, motivo: 'Reposición cuatrimestral', institucion_nombre: 'Colegio Nacional', cargo_retira: 'Secretario', usuario_nombre: 'Admin', created_at: new Date(d.getTime() - 1000 * 60 * 60 * 72).toISOString(), estado_egreso: 'despachado' },
-          { id: 'mock5', tipo: 'ajuste', producto_nombre: 'Resmas A4', cantidad: -5, motivo: 'Ajuste de inventario', usuario_nombre: 'Leonel', created_at: new Date(d.getTime() - 1000 * 60 * 60 * 96).toISOString() }
-        ]
-        
-        const combinados = [...mockMovimientos, ...realMovimientos].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        setMovimientos(combinados)
+        setMovimientos(realMovimientos)
       }
     } catch (err) { /* ignore */ }
+  }
+
+  const handleDeleteMovimiento = async (idMovimiento) => {
+    if (!window.confirm("¿Seguro que deseas eliminar este movimiento? Esta acción revertirá el stock y no se puede deshacer.")) return;
+    try {
+      const res = await apiFetch(`/api/movimientos/${idMovimiento}`, {
+        method: "DELETE",
+        token
+      });
+      if (res.ok) {
+        setMsg({ text: "Movimiento eliminado exitosamente", type: "success" });
+        setDetalleModalOpen(false);
+        loadMovimientos();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setMsg({ text: data.error || "No se pudo eliminar el movimiento", type: "error" });
+      }
+    } catch (err) {
+      setMsg({ text: "Error de red al eliminar el movimiento", type: "error" });
+    }
   }
 
   const loadInstituciones = async () => {
@@ -2083,10 +2092,18 @@ return (
               {detalleData.productos.map((p, idx) => (
                 <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
                   <span>{p.producto_nombre || '-'} — Cantidad: {p.cantidad}</span>
-                  <button type="button" className="secondary" onClick={() => printMovimiento(p, instituciones)} style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <ActionIcon name="imprimir" size={14} />
-                    Imprimir este producto
-                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" className="secondary" onClick={() => printMovimiento(p, instituciones)} style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <ActionIcon name="imprimir" size={14} />
+                      Imprimir
+                    </button>
+                    {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'master') && (
+                      <button type="button" onClick={() => handleDeleteMovimiento(p.id)} style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca' }}>
+                        <ActionIcon name="basura" size={14} />
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

@@ -780,6 +780,67 @@ async function obtenerHistorialBaja(id_baja) {
   `, [id_baja]);
 }
 
+async function eliminarMovimiento(idMovimiento, user) {
+  if (user.role !== "admin" && user.role !== "superadmin") {
+    throw { status: 403, message: "No tenés permisos para eliminar movimientos" };
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const movRes = await client.query("SELECT * FROM movimiento_stock WHERE id_movimiento = $1", [idMovimiento]);
+    const mov = movRes.rows[0];
+
+    if (!mov) {
+      throw { status: 404, message: "Movimiento no encontrado" };
+    }
+
+    const { tipo, cantidad, id_producto, id_deposito } = mov;
+    const cantidadNum = parseInt(cantidad, 10);
+
+    // Si es un egreso o ingreso, hay que revertir el stock
+    if (tipo === "egreso") {
+      // Revertir egreso: devolver stock
+      await client.query(
+        "UPDATE producto SET stock_actual = COALESCE(stock_actual, 0) + $1 WHERE id_producto = $2",
+        [cantidadNum, id_producto]
+      );
+      if (id_deposito) {
+        await client.query(
+          `INSERT INTO stock_deposito (id_deposito, id_producto, cantidad)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (id_deposito, id_producto)
+           DO UPDATE SET cantidad = stock_deposito.cantidad + $3`,
+          [id_deposito, id_producto, cantidadNum]
+        );
+      }
+    } else if (tipo === "ingreso") {
+      // Revertir ingreso: quitar stock
+      await client.query(
+        "UPDATE producto SET stock_actual = COALESCE(stock_actual, 0) - $1 WHERE id_producto = $2",
+        [cantidadNum, id_producto]
+      );
+      if (id_deposito) {
+        await client.query(
+          "UPDATE stock_deposito SET cantidad = cantidad - $1 WHERE id_deposito = $2 AND id_producto = $3",
+          [cantidadNum, id_deposito, id_producto]
+        );
+      }
+    }
+
+    await client.query("DELETE FROM movimiento_stock WHERE id_movimiento = $1", [idMovimiento]);
+
+    await client.query("COMMIT");
+    return true;
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch (_) {}
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   listarMovimientos,
   obtenerMovimiento,
@@ -790,5 +851,6 @@ module.exports = {
   registrarBaja,
   listarBajas,
   autorizarBaja,
-  obtenerHistorialBaja
+  obtenerHistorialBaja,
+  eliminarMovimiento
 };
