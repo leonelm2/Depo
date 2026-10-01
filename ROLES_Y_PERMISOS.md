@@ -9,7 +9,9 @@
 | **director_area** | Director de Área - gestión de supervisión | **Sí** |
 | **directivo** | Directivo de institución educativa | No |
 | **supervisor** | Supervisor de patrimonio escolar | **Sí** (vinculado al nivel del Director de Área) |
-| **operador** | Operador de Stock - gestión de inventario | No |
+| **jefe_deposito** | Jefe de Depósito - visualización y gestión integral de todos los depósitos | No |
+| **operador** | Operador de Depósito Central - gestión de inventario y traslados (sin traslados desde Centro Cívico) | No |
+| **operador_civico** | Operador Cívico - gestión de inventario y traslados específicos del depósito Centro Cívico | No |
 | **consulta** | Solo consulta - vista sin modificaciones | No |
 | **area_compras** | Área de compras - gestión de licitaciones | No |
 
@@ -64,12 +66,24 @@ DIRECTOR_AREA:
 ### Supervisor
 - Dashboard, Pedidos (ver/gestionar), Instituciones
 
-### Operador
+### Jefe de Depósito
+- Visualización de **todos los depósitos** (Depósito Central, Centro Cívico, Cápsula, Desguace)
+- Movimientos y traslados sin restricción entre depósitos
+- Stock, Productos (CRUD), Movimientos, Bajas (declarar y autorizar), Auditoría, Ajustes, Proveedores
+
+### Operador (Operador Depósito)
 - Dashboard, Stock (ver/editar/movimientos), Productos (ver/crear/editar; borrado restringido a admin/master)
-- Movimientos (ingreso/egreso/devolución/lote/directo), Bajas/Scrap con fotos, Ajustes, Auditoría
-- Proveedores (CRUD completo)
+- Movimientos (ingreso/egreso/devolución/lote/directo) enfocados en Depósito Central
+- **Restricción de Traslado:** Se excluye la posibilidad de iniciar traslados desde el Centro Cívico (operación delegada al Operador Cívico)
+- Bajas/Scrap con fotos, Ajustes, Auditoría, Proveedores (CRUD completo)
 - Operaciones de logística de entregas (retiros escolares, armado directo y envío consolidado por departamento)
 - Diagnóstico y reconciliación de stock por depósito
+
+### Operador Cívico
+- Dashboard, Stock (ver/editar/movimientos), Productos, Movimientos, Proveedores
+- **Ámbito exclusivo:** Depósito Centro Cívico
+- **Traslados:** Solo puede originar traslados desde su propio depósito (Centro Cívico hacia Depósito Central u otros)
+- Egresos e ingresos directos enfocados en el stock de Centro Cívico
 
 ### Consulta
 - Dashboard, Stock, Productos, Movimientos, Ajustes, Auditoría

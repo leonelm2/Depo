@@ -47,6 +47,13 @@ async function ensureDepositosSchema() {
   // Centralized in schemaManager.js
 }
 
+function isCentroCivicoDep(dep) {
+  if (!dep) return false;
+  const tipo = String(dep.tipo || dep.tipo_deposito || "").toLowerCase();
+  const nombre = String(dep.nombre || "").toLowerCase();
+  return tipo === "centro_civico" || nombre.includes("civico") || nombre.includes("cívico");
+}
+
 async function listDepositos(user = {}) {
   await ensureDepositosSchema();
   const isEscolar = user?.role === "operador_escolar";
@@ -153,6 +160,26 @@ async function getStockByDeposito(id, user) {
 }
 
 async function moverStock({ id_producto, cantidad, origen_id, destino_id, motivo, user }) {
+  await ensureDepositosSchema();
+  const origenDep = await get("SELECT * FROM deposito WHERE id_deposito = $1", [origen_id]);
+  const destinoDep = await get("SELECT * FROM deposito WHERE id_deposito = $1", [destino_id]);
+  if (!origenDep || !destinoDep) {
+    throw { status: 404, message: "Depósito de origen o destino no encontrado" };
+  }
+
+  const role = String(user?.role || "").toLowerCase();
+  if (role === "operador") {
+    // Del rol operador depósito hay que quitar la parte del traslado desde el centro cívico
+    if (isCentroCivicoDep(origenDep)) {
+      throw { status: 403, message: "El rol Operador Depósito no puede trasladar desde el Centro Cívico. Esta operación corresponde al Operador Cívico." };
+    }
+  } else if (role === "operador_civico") {
+    // El operador de centro cívico solo debe tener el suyo (origen debe ser centro cívico)
+    if (!isCentroCivicoDep(origenDep)) {
+      throw { status: 403, message: "El Operador Cívico solo puede realizar traslados desde su propio depósito (Centro Cívico)." };
+    }
+  }
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -226,6 +253,13 @@ async function registrarIngreso({ id, id_producto, cantidad, id_proveedor, motiv
     throw { status: 404, message: "Depósito no encontrado" };
   }
 
+  const role = String(user?.role || "").toLowerCase();
+  if (role === "operador_civico" && !isCentroCivicoDep(deposito)) {
+    throw { status: 403, message: "El Operador Cívico solo opera sobre el depósito Centro Cívico." };
+  } else if (role === "operador" && isCentroCivicoDep(deposito)) {
+    throw { status: 403, message: "Las operaciones directas del Centro Cívico corresponden al Operador Cívico." };
+  }
+
   const producto = await get("SELECT * FROM producto WHERE id_producto = $1", [productoIdNum]);
   if (!producto) {
     throw { status: 404, message: "Producto no encontrado" };
@@ -271,6 +305,13 @@ async function registrarEgreso({ id, id_producto, cantidad, id_institucion, moti
   const deposito = await get("SELECT * FROM deposito WHERE id_deposito = $1", [depositoIdNum]);
   if (!deposito) {
     throw { status: 404, message: "Depósito no encontrado" };
+  }
+
+  const role = String(user?.role || "").toLowerCase();
+  if (role === "operador_civico" && !isCentroCivicoDep(deposito)) {
+    throw { status: 403, message: "El Operador Cívico solo opera sobre el depósito Centro Cívico." };
+  } else if (role === "operador" && isCentroCivicoDep(deposito)) {
+    throw { status: 403, message: "Las operaciones directas del Centro Cívico corresponden al Operador Cívico." };
   }
 
   const stockDep = await get(
@@ -1335,6 +1376,14 @@ async function registrarDevolucion(depositoId, payload, user) {
     // Verificar depósito
     const depCheck = await client.query("SELECT * FROM deposito WHERE id_deposito = $1", [depositoIdNum]);
     if (depCheck.rowCount === 0) throw { status: 404, message: "Depósito no encontrado" };
+    const deposito = depCheck.rows[0];
+
+    const role = String(user?.role || "").toLowerCase();
+    if (role === "operador_civico" && !isCentroCivicoDep(deposito)) {
+      throw { status: 403, message: "El Operador Cívico solo opera sobre el depósito Centro Cívico." };
+    } else if (role === "operador" && isCentroCivicoDep(deposito)) {
+      throw { status: 403, message: "Las operaciones directas del Centro Cívico corresponden al Operador Cívico." };
+    }
 
     // Verificar producto
     const prodCheck = await client.query("SELECT * FROM producto WHERE id_producto = $1", [productoIdNum]);

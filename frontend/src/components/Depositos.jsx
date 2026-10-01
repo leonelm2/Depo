@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import ActionIcon from './ui/ActionIcon'
@@ -18,18 +18,53 @@ export default function Depositos() {
   const [productos, setProductos] = useState([])
   const [form, setForm] = useState({ id_producto: '', cantidad: '', destino_id: '', motivo: '' })
 
-  const canMove = hasPermission('stock.movement.create') || user?.role === 'admin' || user?.role === 'master'
-  const esAdmin = user?.role === 'admin' || user?.role === 'master'
-  const depositosMostrar = depositos
+  const isOperadorCivico = user?.role === 'operador_civico'
+  const isOperadorDeposito = user?.role === 'operador'
+  const esJefeDeposito = user?.role === 'jefe_deposito'
+  const esAdmin = user?.role === 'admin' || user?.role === 'master' || esJefeDeposito
+  const canMove = hasPermission('stock.movement.create') || esAdmin || isOperadorCivico || isOperadorDeposito
+
+  const isCivico = useCallback((d) => {
+    if (!d) return false
+    const tipo = (d.tipo || d.tipo_deposito || '').toLowerCase()
+    const nombre = (d.nombre || '').toLowerCase()
+    return tipo === 'centro_civico' || nombre.includes('civico') || nombre.includes('cívico')
+  }, [])
+
+  const depositosMostrar = useMemo(() => {
+    if (isOperadorCivico) {
+      // El operador de centro cívico solo debe tener el suyo
+      return depositos.filter(isCivico)
+    }
+    if (isOperadorDeposito) {
+      // Al operador de depósito se le quita el centro cívico
+      return depositos.filter(d => !isCivico(d))
+    }
+    // Jefe de depósito, admin y master ven todos los depósitos
+    return depositos
+  }, [depositos, isOperadorCivico, isOperadorDeposito, isCivico])
 
   const loadData = useCallback(async () => {
     try {
       const res = await apiFetch('/api/depositos', { token })
       if (res.ok) {
         const data = await res.json()
-        setDepositos(data.depositos || [])
-        if (data.depositos?.length > 0 && !depositoSeleccionado) {
-          setDepositoSeleccionado(data.depositos[0])
+        const allDeps = data.depositos || []
+        setDepositos(allDeps)
+        
+        const permitidos = isOperadorCivico 
+          ? allDeps.filter(isCivico)
+          : isOperadorDeposito 
+            ? allDeps.filter(d => !isCivico(d))
+            : allDeps
+
+        if (permitidos.length > 0) {
+          setDepositoSeleccionado(prev => {
+            if (!prev || !permitidos.some(d => d.id === prev.id)) {
+              return permitidos[0]
+            }
+            return prev
+          })
         }
       }
       

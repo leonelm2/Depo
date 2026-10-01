@@ -57,7 +57,7 @@ const TEST_USERS = {
 // Roles que el sistema reconoce
 const ALL_ROLES = [
   'admin', 'master', 'director_area', 'supervisor', 'directivo',
-  'area_compras', 'operador', 'operador_escolar', 'control_ministerio', 'consulta'
+  'area_compras', 'jefe_deposito', 'operador', 'operador_civico', 'operador_escolar', 'control_ministerio', 'consulta'
 ];
 
 // Tipos de movimiento válidos

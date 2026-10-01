@@ -848,6 +848,35 @@ async function initDatabaseSchema() {
       console.warn("[schemaManager] Warning adding edificio compatibility columns:", err.message);
     }
 
+    // 31. Roles: operador_civico y jefe_deposito
+    try {
+      await client.query(`
+        ALTER TABLE usuario DROP CONSTRAINT IF EXISTS usuario_role_check;
+        ALTER TABLE usuario ADD CONSTRAINT usuario_role_check CHECK (
+          role IN (
+            'admin', 
+            'master', 
+            'directivo', 
+            'director_area', 
+            'supervisor', 
+            'operador', 
+            'operador_civico',
+            'jefe_deposito',
+            'operador_escolar', 
+            'control_ministerio', 
+            'area_compras', 
+            'secretario_administrativo', 
+            'ministro_financiero', 
+            'consulta'
+          )
+        );
+        INSERT INTO rol (nombre) VALUES ('operador_civico') ON CONFLICT (nombre) DO NOTHING;
+        INSERT INTO rol (nombre) VALUES ('jefe_deposito') ON CONFLICT (nombre) DO NOTHING;
+      `);
+    } catch (err) {
+      console.warn("[schemaManager] Warning updating usuario_role_check and roles:", err.message);
+    }
+
     console.log("[schemaManager] Database schema and migrations completed successfully!");
   } finally {
     client.release();

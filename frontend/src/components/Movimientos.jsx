@@ -208,19 +208,37 @@ export default function Movimientos() {
     loadBajas()
   }, [])
 
+  const isOperadorCivico = user?.role === 'operador_civico'
+  const isOperadorDeposito = user?.role === 'operador'
+  const esJefeDeposito = user?.role === 'jefe_deposito' || user?.role === 'admin' || user?.role === 'master'
+
+  const isCivico = (d) => {
+    if (!d) return false
+    const tipo = (d.tipo || d.tipo_deposito || '').toLowerCase()
+    const nombre = (d.nombre || '').toLowerCase()
+    return tipo === 'centro_civico' || nombre.includes('civico') || nombre.includes('cívico')
+  }
+
   const depositosDisponibles = useMemo(() => {
-    const filtrados = depositos.filter(d => 
+    if (isOperadorCivico) {
+      const civ = depositos.filter(isCivico)
+      return civ.length > 0 ? civ : [{ id: 2, nombre: 'Depósito Centro Cívico', ubicacion: 'Centro Cívico', tipo: 'centro_civico' }]
+    }
+    if (esJefeDeposito) {
+      return depositos.length > 0 ? depositos : [{ id: 1, nombre: 'Depósito Central', ubicacion: 'Casa Central', tipo: 'central' }]
+    }
+    const centr = depositos.filter(d => 
       (d.tipo || d.tipo_deposito) === 'central' || String(d.id) === '1' || String(d.nombre).toLowerCase().includes('central')
     )
-    return filtrados.length > 0 ? filtrados : [{ id: 1, nombre: 'Depósito Central', ubicacion: 'Casa Central' }]
-  }, [depositos])
+    return centr.length > 0 ? centr : [{ id: 1, nombre: 'Depósito Central', ubicacion: 'Casa Central', tipo: 'central' }]
+  }, [depositos, isOperadorCivico, esJefeDeposito])
 
   useEffect(() => {
-    const centralId = String(depositosDisponibles[0]?.id || 1)
-    if (egresoDeposito !== centralId) setEgresoDeposito(centralId)
-    if (ingresoDeposito !== centralId) setIngresoDeposito(centralId)
-    if (devolucionDeposito !== centralId) setDevolucionDeposito(centralId)
-  }, [depositosDisponibles, egresoModalOpen, ingresoModalOpen, devolucionModalOpen])
+    const defaultId = String(depositosDisponibles[0]?.id || (isOperadorCivico ? 2 : 1))
+    if (!depositosDisponibles.some(d => String(d.id) === String(egresoDeposito))) setEgresoDeposito(defaultId)
+    if (!depositosDisponibles.some(d => String(d.id) === String(ingresoDeposito))) setIngresoDeposito(defaultId)
+    if (!depositosDisponibles.some(d => String(d.id) === String(devolucionDeposito))) setDevolucionDeposito(defaultId)
+  }, [depositosDisponibles, egresoModalOpen, ingresoModalOpen, devolucionModalOpen, isOperadorCivico])
 
   useEffect(() => {
     const match = instituciones.find(i => i.nombre.toLowerCase() === egresoInst.trim().toLowerCase())
@@ -230,21 +248,35 @@ export default function Movimientos() {
   const findProducto = (nombre) =>
     productos.find(p => p.nombre.toLowerCase().trim() === (nombre || '').toLowerCase().trim())
 
+  const getStockDisponibleProducto = (prod, depId) => {
+    if (!prod) return 0
+    if (isOperadorCivico) {
+      return Number(prod.stock_centro_civico ?? 0)
+    }
+    if (depId) {
+      const dep = depositos.find(d => String(d.id) === String(depId))
+      if (isCivico(dep)) return Number(prod.stock_centro_civico ?? 0)
+      if (dep?.tipo === 'capsula') return Number(prod.stock_capsula ?? 0)
+    }
+    return Number(prod.stock_central ?? prod.stock_actual ?? 0)
+  }
+
   // Egreso handlers
   const addToEgreso = () => {
     const producto = findProducto(egresoItem.productoNombre)
     if (!producto) return setMsg({ text: 'Seleccione un producto válido de la lista', type: 'error' })
     
-    const stockDisp = Number(producto.stock_central ?? producto.stock_actual ?? 0)
+    const stockDisp = getStockDisponibleProducto(producto, egresoDeposito)
+    const nombreDep = isOperadorCivico ? 'Centro Cívico' : 'Depósito Central'
     if (stockDisp <= 0) {
-      return setMsg({ text: `🚨 ATENCIÓN: No hay stock disponible de "${producto.nombre}" en Depósito Central (Stock: 0)`, type: 'error' })
+      return setMsg({ text: `🚨 ATENCIÓN: No hay stock disponible de "${producto.nombre}" en ${nombreDep} (Stock: 0)`, type: 'error' })
     }
 
     const cantidad = parseInt(egresoItem.cantidad, 10)
     if (!cantidad || cantidad <= 0) return setMsg({ text: 'Ingrese una cantidad válida mayor a 0', type: 'error' })
 
     if (cantidad > stockDisp) {
-      return setMsg({ text: `⚠️ La cantidad a egresar (${cantidad}) supera el stock disponible en Depósito Central (${stockDisp} ${producto.unidad_medida || 'unidades'})`, type: 'error' })
+      return setMsg({ text: `⚠️ La cantidad a egresar (${cantidad}) supera el stock disponible en ${nombreDep} (${stockDisp} ${producto.unidad_medida || 'unidades'})`, type: 'error' })
     }
 
     setLoteEgreso(prev => [...prev, {
@@ -741,8 +773,21 @@ return (
                   }}>➖</div>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1.2 }}>Egreso de Productos</div>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
-                      Depósito de origen: <strong>{depositosDisponibles.find(d => String(d.id) === String(egresoDeposito))?.nombre || 'Central'}</strong>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>Depósito de origen:</span>
+                      {depositosDisponibles.length > 1 ? (
+                        <select
+                          value={egresoDeposito}
+                          onChange={e => setEgresoDeposito(e.target.value)}
+                          style={{ padding: '2px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.8rem', fontWeight: 600 }}
+                        >
+                          {depositosDisponibles.map(d => (
+                            <option key={d.id} value={d.id}>{d.nombre}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <strong>{depositosDisponibles.find(d => String(d.id) === String(egresoDeposito))?.nombre || (isOperadorCivico ? 'Centro Cívico' : 'Central')}</strong>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -869,7 +914,8 @@ return (
                             </div>
                           )
                         }
-                        const stockDisp = Number(selectedProd.stock_central ?? selectedProd.stock_actual ?? 0)
+                        const stockDisp = getStockDisponibleProducto(selectedProd, egresoDeposito)
+                        const nombreDep = isOperadorCivico ? 'Centro Cívico' : (depositos.find(d => String(d.id) === String(egresoDeposito))?.nombre || 'Depósito Central')
                         if (stockDisp > 0) {
                           return (
                             <div style={{
@@ -881,7 +927,7 @@ return (
                               display: 'flex', alignItems: 'center', gap: 6,
                             }}>
                               <span>📦</span>
-                              <span>Stock disponible (Depósito Central): <strong>{stockDisp}</strong> {selectedProd.unidad_medida || 'u.'}</span>
+                              <span>Stock disponible ({nombreDep}): <strong>{stockDisp}</strong> {selectedProd.unidad_medida || 'u.'}</span>
                             </div>
                           )
                         }
@@ -895,7 +941,7 @@ return (
                               display: 'flex', alignItems: 'center', gap: 6,
                             }}>
                             <span>⚠️</span>
-                            <span>Sin stock disponible en Depósito Central</span>
+                            <span>Sin stock disponible en {nombreDep}</span>
                           </div>
                         )
                       })()}
@@ -1111,8 +1157,21 @@ return (
                   </div>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1.2 }}>Registrar Ingreso</div>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
-                      Depósito: <strong>{depositosDisponibles.find(d => String(d.id) === String(ingresoDeposito))?.nombre || 'Central'}</strong>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>Depósito:</span>
+                      {depositosDisponibles.length > 1 ? (
+                        <select
+                          value={ingresoDeposito}
+                          onChange={e => setIngresoDeposito(e.target.value)}
+                          style={{ padding: '2px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.8rem', fontWeight: 600 }}
+                        >
+                          {depositosDisponibles.map(d => (
+                            <option key={d.id} value={d.id}>{d.nombre}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <strong>{depositosDisponibles.find(d => String(d.id) === String(ingresoDeposito))?.nombre || (isOperadorCivico ? 'Centro Cívico' : 'Central')}</strong>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1187,11 +1246,22 @@ return (
                             <option key={`prov-${prov.id}`} value={`prov-${prov.id}`}>{prov.nombre}</option>
                           ))}
                         </optgroup>
-                        <optgroup label="Depósitos (traslado)">
-                          {depositos.filter(d => String(d.id) !== String(ingresoDeposito)).map(d => (
-                            <option key={`dep-${d.id}`} value={`dep-${d.id}`}>{d.nombre}</option>
-                          ))}
-                        </optgroup>
+                        {!isOperadorCivico && (() => {
+                          const trasladosDisponibles = depositos.filter(d => {
+                            if (String(d.id) === String(ingresoDeposito)) return false
+                            // Si es operador de depósito, quitar traslados desde Centro Cívico
+                            if (isOperadorDeposito && isCivico(d)) return false
+                            return true
+                          })
+                          if (trasladosDisponibles.length === 0) return null
+                          return (
+                            <optgroup label="Depósitos (traslado)">
+                              {trasladosDisponibles.map(d => (
+                                <option key={`dep-${d.id}`} value={`dep-${d.id}`}>{d.nombre}</option>
+                              ))}
+                            </optgroup>
+                          )
+                        })()}
                       </select>
                     </div>
                   </div>
@@ -1391,8 +1461,21 @@ return (
                   }}>↩️</div>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1.2 }}>Devolución de Productos</div>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
-                      Depósito destino: <strong>{depositosDisponibles.find(d => String(d.id) === String(devolucionDeposito))?.nombre || 'Central'}</strong>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>Depósito destino:</span>
+                      {depositosDisponibles.length > 1 ? (
+                        <select
+                          value={devolucionDeposito}
+                          onChange={e => setDevolucionDeposito(e.target.value)}
+                          style={{ padding: '2px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.8rem', fontWeight: 600 }}
+                        >
+                          {depositosDisponibles.map(d => (
+                            <option key={d.id} value={d.id}>{d.nombre}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <strong>{depositosDisponibles.find(d => String(d.id) === String(devolucionDeposito))?.nombre || (isOperadorCivico ? 'Centro Cívico' : 'Central')}</strong>
+                      )}
                     </div>
                   </div>
                 </div>

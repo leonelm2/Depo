@@ -27,6 +27,8 @@ async function alterUserConstraint() {
           'director_area', 
           'supervisor', 
           'operador', 
+          'operador_civico',
+          'jefe_deposito',
           'operador_escolar', 
           'control_ministerio', 
           'area_compras', 

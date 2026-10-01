@@ -10,6 +10,8 @@ const ROLE_LABELS = {
   directivo: 'Directivo Escolar',
   operador_escolar: 'Operador Escolar',
   operador: 'Operador de Depósito',
+  operador_civico: 'Operador Cívico',
+  jefe_deposito: 'Jefe de Depósito',
   area_compras: 'Área de Compras',
   consulta: 'Usuario de Consulta',
   control_ministerio: 'Control Ministerio',
@@ -81,6 +83,36 @@ function getUserAssignment(user, profile) {
         { label: 'Funciones habilitadas', value: 'Recepción de mercadería, armado de remitos y entregas' },
       ],
       footer: 'Perfil habilitado para registrar ingresos, egresos, traslados y distribución física de materiales.',
+    }
+  }
+
+  // 4.b. Operador Cívico
+  if (role === 'operador_civico') {
+    return {
+      subtitle: 'Depósito Centro Cívico — Ministerio de Educación',
+      cardTitle: 'Área Operativa Asignada',
+      cardIcon: '🏛️',
+      items: [
+        { label: 'Área operativa', value: 'Depósito Satélite Centro Cívico' },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Funciones habilitadas', value: 'Gestión exclusiva de inventario y traslados de Centro Cívico' },
+      ],
+      footer: 'Perfil habilitado para registrar movimientos y traslados del Depósito Centro Cívico.',
+    }
+  }
+
+  // 4.c. Jefe de Depósito
+  if (role === 'jefe_deposito') {
+    return {
+      subtitle: 'Jefatura de Depósitos y Almacenes — Ministerio de Educación',
+      cardTitle: 'Área de Jefatura Asignada',
+      cardIcon: '🏢',
+      items: [
+        { label: 'Área de jefatura', value: 'Supervisión de todos los depósitos provinciales' },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Funciones habilitadas', value: 'Visibilidad total, gestión integral de existencias y traslados multidepósito' },
+      ],
+      footer: 'Perfil con autorización y control sobre todos los depósitos del sistema.',
     }
   }
 

@@ -6,12 +6,29 @@ import SelectorTrigger from './ui/SelectorTrigger'
 import ActionIcon from './ui/ActionIcon'
 
 export default function Bajas() {
-  const { token, hasPermission } = useAuth()
+  const { token, hasPermission, user } = useAuth()
   const [bajas, setBajas] = useState([])
   const [productos, setProductos] = useState([])
   const [depositos, setDepositos] = useState([])
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [loading, setLoading] = useState(false)
+
+  const isOperadorCivico = user?.role === 'operador_civico'
+  const isOperadorDeposito = user?.role === 'operador'
+  const esJefeDeposito = user?.role === 'jefe_deposito' || user?.role === 'admin' || user?.role === 'master'
+
+  const isCivico = (d) => {
+    if (!d) return false
+    const tipo = (d.tipo || d.tipo_deposito || '').toLowerCase()
+    const nombre = (d.nombre || '').toLowerCase()
+    return tipo === 'centro_civico' || nombre.includes('civico') || nombre.includes('cívico')
+  }
+
+  const depositosBajaDisponibles = depositos.filter(d => {
+    if (isOperadorCivico) return isCivico(d)
+    if (isOperadorDeposito) return !isCivico(d)
+    return true
+  })
 
   // Selector modal
   const [prodModalOpen, setProdModalOpen] = useState(false)
@@ -143,7 +160,8 @@ export default function Bajas() {
   }
 
   const openModal = () => {
-    setForm({ depositoId: '', productoId: '', totalInspeccionado: '', unidadesDanadas: '', motivo: '', fotoFile: null })
+    const defaultDep = depositosBajaDisponibles[0]?.id ? String(depositosBajaDisponibles[0].id) : (isOperadorCivico ? '2' : '1')
+    setForm({ depositoId: defaultDep, productoId: '', totalInspeccionado: '', unidadesDanadas: '', motivo: '', fotoFile: null })
     setStockDisponible(null)
     setMsg({ text: '', type: '' })
     setModalOpen(true)
@@ -564,16 +582,13 @@ export default function Bajas() {
                 <div>
                   <label>Depósito de origen</label>
                   <select
-                    value={form.depositoId || '1'}
+                    value={form.depositoId || (depositosBajaDisponibles[0]?.id ? String(depositosBajaDisponibles[0].id) : (isOperadorCivico ? '2' : '1'))}
                     onChange={e => setForm(prev => ({ ...prev, depositoId: e.target.value }))}
-                    disabled
+                    disabled={!esJefeDeposito && depositosBajaDisponibles.length <= 1}
                   >
-                    {depositos
-                      .filter(d => (d.tipo || d.tipo_deposito) === 'central' || String(d.id) === '1' || String(d.nombre || '').toLowerCase().includes('central'))
-                      .map(d => (
-                        <option key={d.id} value={d.id}>{d.nombre}</option>
-                      ))
-                    }
+                    {depositosBajaDisponibles.map(d => (
+                      <option key={d.id} value={d.id}>{d.nombre}</option>
+                    ))}
                   </select>
                 </div>
 
