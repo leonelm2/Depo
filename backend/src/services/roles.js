@@ -15,45 +15,57 @@ let roleSeededReady = false;
 
 async function ensureRoleTableSeeded() {
   if (roleSeededReady) return;
-  // En Vercel la BD ya está seeded — skip para evitar errores de pool
-  if (process.env.VERCEL) {
-    roleSeededReady = true;
-    return;
-  }
   const defaults = getDefaultRoleNames();
-  const client = await pool.connect();
   try {
-    await client.query("BEGIN");
-    for (const role of defaults) {
-      if (!role) continue;
-      await client.query(
-        "INSERT INTO rol (nombre) VALUES ($1) ON CONFLICT (nombre) DO NOTHING",
-        [role]
-      );
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      for (const role of defaults) {
+        if (!role) continue;
+        await client.query(
+          "INSERT INTO rol (nombre) VALUES ($1) ON CONFLICT (nombre) DO NOTHING",
+          [role]
+        );
+      }
+      await client.query("COMMIT");
+      roleSeededReady = true;
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      console.warn("[ensureRoleTableSeeded] Warning seeding roles table:", err.message);
+    } finally {
+      client.release();
     }
-    await client.query("COMMIT");
-    roleSeededReady = true;
-  } catch (err) {
-    await client.query("ROLLBACK").catch(() => {});
-    console.error("Error seeding roles table:", err);
-    throw err;
-  } finally {
-    client.release();
+  } catch (poolErr) {
+    console.warn("[ensureRoleTableSeeded] Pool connection skipped:", poolErr.message);
   }
 }
 
 async function getAllRoles() {
+  let dbRoles = [];
   try {
     await ensureRoleTableSeeded();
     const rows = await all("SELECT id_rol AS id, nombre FROM rol ORDER BY nombre ASC");
     if (Array.isArray(rows) && rows.length > 0) {
-      return rows;
+      dbRoles = rows;
     }
   } catch (err) {
     console.error("[getAllRoles error]", err.message || err);
   }
 
-  return Object.keys(DEFAULT_ROLE_PERMISSIONS).map((r, idx) => ({ id: idx + 1, nombre: r }));
+  const defaultNames = getDefaultRoleNames();
+  const dbNamesSet = new Set(dbRoles.map((r) => normalizeRoleName(r.nombre)));
+
+  // Asegurar que todos los roles por defecto del sistema estén presentes en el listado
+  const missingRoles = defaultNames
+    .filter((name) => !dbNamesSet.has(name))
+    .map((name, idx) => ({ id: dbRoles.length + idx + 100, nombre: name }));
+
+  const combined = [...dbRoles, ...missingRoles];
+  if (combined.length > 0) {
+    return combined;
+  }
+
+  return defaultNames.map((r, idx) => ({ id: idx + 1, nombre: r }));
 }
 
 async function roleExists(role) {

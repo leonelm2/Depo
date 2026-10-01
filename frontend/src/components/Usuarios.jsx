@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import InstitutionSelectorModal from './ui/InstitutionSelectorModal'
@@ -208,10 +208,13 @@ export default function Usuarios() {
     'consulta'
   ]
 
-  let availableRoles = roles.length ? roles : ALL_SYSTEM_ROLES
-  if (isDirectorArea) {
-    availableRoles = ['supervisor']
-  }
+  const availableRoles = useMemo(() => {
+    if (isDirectorArea) {
+      return ['supervisor']
+    }
+    const set = new Set([...ALL_SYSTEM_ROLES, ...roles])
+    return Array.from(set)
+  }, [isDirectorArea, roles])
 
   const selectedCueModalidad = cueInfo?.modalidades?.find((modalidad) => modalidad.nivel_educativo === form.nivel) || null
 
