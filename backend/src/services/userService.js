@@ -1,6 +1,6 @@
-const { all, get, run } = require("../db.pg");
+const { all, get, run, pool } = require("../db.pg");
 const bcrypt = require("bcryptjs");
-const { roleExists, normalizeRoleName } = require("./roles");
+const { roleExists, normalizeRoleName, ensureRoleConstraintUpdated } = require("./roles");
 const { isAdminLikeRole } = require("../middleware/auth");
 
 function getAuthUserId(req) {
@@ -413,21 +413,51 @@ async function createUser(authUserId, authUserRole, {
   }
 
   const hash = await bcrypt.hash(password, 10);
-  const result = await run(
-    "INSERT INTO usuario (nombre, apellido, email, dni, password, telefono, id_institucion, role, activo, nivel_educativo, director_area_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)",
-    [
-      nombre,
-      apellido || null,
-      emailNormalized,
-      dniNormalized,
-      hash,
-      telefono || null,
-      assignment.institucionId,
-      normalizedRole,
-      assignment.nivelEducativo,
-      assignment.directorAreaId
-    ]
-  );
+  let result;
+  try {
+    result = await run(
+      "INSERT INTO usuario (nombre, apellido, email, dni, password, telefono, id_institucion, role, activo, nivel_educativo, director_area_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)",
+      [
+        nombre,
+        apellido || null,
+        emailNormalized,
+        dniNormalized,
+        hash,
+        telefono || null,
+        assignment.institucionId,
+        normalizedRole,
+        assignment.nivelEducativo,
+        assignment.directorAreaId
+      ]
+    );
+  } catch (insertErr) {
+    if (insertErr?.code === '23514' || String(insertErr?.message || '').includes('usuario_role_check')) {
+      console.warn("[createUser] Falló por usuario_role_check, auto-reparando restricción...");
+      const client = await pool.connect();
+      try {
+        await ensureRoleConstraintUpdated(client);
+      } finally {
+        client.release();
+      }
+      result = await run(
+        "INSERT INTO usuario (nombre, apellido, email, dni, password, telefono, id_institucion, role, activo, nivel_educativo, director_area_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)",
+        [
+          nombre,
+          apellido || null,
+          emailNormalized,
+          dniNormalized,
+          hash,
+          telefono || null,
+          assignment.institucionId,
+          normalizedRole,
+          assignment.nivelEducativo,
+          assignment.directorAreaId
+        ]
+      );
+    } else {
+      throw insertErr;
+    }
+  }
 
   return result.lastID;
 }
@@ -456,16 +486,40 @@ async function updateUserRole(authUserId, authUserRole, targetUserId, { role, in
     fallbackInstitucion: user.id_institucion || null
   });
 
-  await run(
-    "UPDATE usuario SET role = ?, id_institucion = ?, nivel_educativo = ?, director_area_id = ? WHERE id_usuario = ?",
-    [
-      normalizedRole,
-      assignment.institucionId,
-      assignment.nivelEducativo,
-      assignment.directorAreaId,
-      targetUserId
-    ]
-  );
+  try {
+    await run(
+      "UPDATE usuario SET role = ?, id_institucion = ?, nivel_educativo = ?, director_area_id = ? WHERE id_usuario = ?",
+      [
+        normalizedRole,
+        assignment.institucionId,
+        assignment.nivelEducativo,
+        assignment.directorAreaId,
+        targetUserId
+      ]
+    );
+  } catch (updateErr) {
+    if (updateErr?.code === '23514' || String(updateErr?.message || '').includes('usuario_role_check')) {
+      console.warn("[updateUserRole] Falló por usuario_role_check, auto-reparando restricción...");
+      const client = await pool.connect();
+      try {
+        await ensureRoleConstraintUpdated(client);
+      } finally {
+        client.release();
+      }
+      await run(
+        "UPDATE usuario SET role = ?, id_institucion = ?, nivel_educativo = ?, director_area_id = ? WHERE id_usuario = ?",
+        [
+          normalizedRole,
+          assignment.institucionId,
+          assignment.nivelEducativo,
+          assignment.directorAreaId,
+          targetUserId
+        ]
+      );
+    } else {
+      throw updateErr;
+    }
+  }
   return true;
 }
 

@@ -331,7 +331,7 @@ export default function Usuarios() {
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setMsg({ text: data.error || 'No se pudo crear usuario', type: 'error' })
+        setMsg({ text: data.details || data.error || 'No se pudo crear usuario', type: 'error' })
         return
       }
 
@@ -503,7 +503,7 @@ export default function Usuarios() {
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setRoleModal({ ...roleModal, error: data.error || 'No se pudo actualizar rol' })
+        setRoleModal({ ...roleModal, error: data.details || data.error || 'No se pudo actualizar rol' })
         return
       }
 

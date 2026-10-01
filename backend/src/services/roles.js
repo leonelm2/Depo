@@ -13,6 +13,36 @@ function getDefaultRoleNames() {
 
 let roleSeededReady = false;
 
+async function ensureRoleConstraintUpdated(clientOrPool) {
+  const runner = clientOrPool || pool;
+  try {
+    const checkRes = await runner.query(
+      "SELECT pg_get_constraintdef(oid) as def FROM pg_constraint WHERE conname = 'usuario_role_check'"
+    );
+    const constraintDef = checkRes.rows[0]?.def || "";
+    const defaults = getDefaultRoleNames();
+    const allRoles = Array.from(new Set([
+      ...defaults,
+      'admin', 'master', 'directivo', 'director_area', 'supervisor',
+      'operador', 'operador_civico', 'jefe_deposito', 'operador_escolar',
+      'control_ministerio', 'area_compras', 'secretario_administrativo',
+      'ministro_financiero', 'consulta'
+    ]));
+
+    const missingRole = allRoles.some(r => !constraintDef.includes(`'${r}'`));
+    if (!constraintDef || missingRole) {
+      const rolesListSql = allRoles.map(r => `'${r}'`).join(", ");
+      await runner.query(`
+        ALTER TABLE usuario DROP CONSTRAINT IF EXISTS usuario_role_check;
+        ALTER TABLE usuario ADD CONSTRAINT usuario_role_check CHECK (role IN (${rolesListSql}));
+      `);
+      console.log("[roles] Restricción usuario_role_check actualizada exitosamente con roles:", allRoles.join(", "));
+    }
+  } catch (err) {
+    console.warn("[ensureRoleConstraintUpdated] Warning updating usuario_role_check:", err.message);
+  }
+}
+
 async function ensureRoleTableSeeded() {
   if (roleSeededReady) return;
   const defaults = getDefaultRoleNames();
@@ -28,6 +58,10 @@ async function ensureRoleTableSeeded() {
         );
       }
       await client.query("COMMIT");
+
+      // Asegurar que la restricción CHECK de la tabla usuario incluya los nuevos roles
+      await ensureRoleConstraintUpdated(client);
+
       roleSeededReady = true;
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
@@ -112,5 +146,6 @@ module.exports = {
   roleExists,
   createRole,
   ensureRoleTableSeeded,
+  ensureRoleConstraintUpdated,
   normalizeRoleName,
 };

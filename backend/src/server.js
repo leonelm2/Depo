@@ -198,9 +198,22 @@ app.use('/uploads', (req, res) => {
 // --- 5. Rate limiting ---
 app.use("/api", apiLimiter);
 
-// --- 6. Health check ---
+// --- 6. Health check & Migrations ---
 app.get("/api/health", (req, res) => {
   res.json({ ok: true });
+});
+
+app.get("/api/migrate-now", async (req, res) => {
+  try {
+    const { initDatabaseSchema } = require("./services/schemaManager");
+    const { ensureRbacSchemaAndSeed } = require("./services/rbac");
+    await ensureRbacSchemaAndSeed();
+    await initDatabaseSchema();
+    return res.json({ ok: true, message: "Migraciones y esquema de base de datos ejecutados exitosamente." });
+  } catch (err) {
+    console.error("[migrate-now error]", err);
+    return res.status(500).json({ ok: false, error: err.message, stack: err.stack });
+  }
 });
 
 // --- 7. API Routes ---
