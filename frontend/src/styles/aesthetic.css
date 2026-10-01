@@ -1,0 +1,68 @@
+/* ===== AESTHETIC TWEAKS (Premium UI) ===== */
+
+/* 1. Fondo de la app con gradiente súper sutil para dar profundidad */
+body {
+  background: radial-gradient(circle at top right, rgba(234, 88, 12, 0.03), transparent 40%),
+              radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.03), transparent 40%),
+              var(--surface-2);
+}
+
+/* 2. Banner de bienvenida con degradado Premium */
+.dashboard-banner {
+  background: linear-gradient(135deg, var(--orange) 0%, var(--orange-hover) 100%) !important;
+  position: relative;
+  overflow: hidden;
+}
+.dashboard-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* 3. Sombras premium en Cards para efecto "flotante" */
+.card, .dashboard-stat-card, .table-container, .movimiento-card {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover, .dashboard-stat-card:hover, .movimiento-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -5px rgba(0, 0, 0, 0.08), 0 10px 12px -6px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* 4. Botones interactivos (Hover lift) */
+button:not(.ghost) {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+button:not(.ghost):hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+}
+
+/* 5. Inputs y Selects más amplios y con foco Premium */
+input, select, textarea {
+  padding: 11px 14px !important; /* Más amplitud */
+  transition: all 0.2s ease !important;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--orange) !important;
+  box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.15) !important;
+}
+
+/* 6. Animación suave al cambiar de pestaña */
+.tab-content, .movimientos-list {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 7. Íconos de Timeline con Resplandor (Glow) */
+.timeline-icon.ingreso {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+.timeline-icon.egreso {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
