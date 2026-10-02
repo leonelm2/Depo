@@ -537,6 +537,7 @@ export default function Productos() {
                 {(() => {
                   const stock = getProductoStock(p)
                   const minimo = p.stock_minimo ?? 0
+                  const venceProximo = vencimientosProximos?.has(Number(p.id))
                   if (stock <= 0) {
                     return (
                       <span style={{
