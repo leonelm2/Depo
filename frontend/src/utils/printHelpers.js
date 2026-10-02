@@ -10,10 +10,14 @@ export const printMovimiento = (movimientoOrGroup, instituciones = [], productos
   const direccionStr = institucionMatch && institucionMatch.direccion ? institucionMatch.direccion : ''
   const departamentoStr = institucionMatch && institucionMatch.departamento ? institucionMatch.departamento : ''
   const ubicacionParts = [direccionStr, departamentoStr, 'SAN JUAN'].filter(Boolean)
-  const ubicacionDestino = ubicacionParts.join(' - ') || 'No registrada'
+  const ubicacionDestino = primer.dependencia_destino
+    ? 'Edificio Centro Cívico'
+    : (ubicacionParts.join(' - ') || 'No registrada')
 
-  const institucionNombre = primer.institucion_nombre || '-'
-  const depositoOrigen = primer.deposito_nombre || 'DEPOSITO CENTRAL'
+  const institucionNombre = primer.dependencia_destino
+    ? `Centro Cívico - ${primer.dependencia_destino}`
+    : (primer.institucion_nombre || '-')
+  const depositoOrigen = primer.deposito_nombre || (primer.dependencia_destino ? 'CENTRO CÍVICO' : 'DEPOSITO CENTRAL')
 
   const dateObj = primer.created_at ? new Date(primer.created_at) : new Date()
   const day = dateObj.getDate()
@@ -204,6 +208,7 @@ export const printMovimiento = (movimientoOrGroup, instituciones = [], productos
             <div><strong>Fecha:</strong> ${fechaStr}</div>
             <div><strong>Depósito Origen:</strong> ${depositoOrigen.toUpperCase()}</div>
             <div><strong>Destino:</strong> ${institucionNombre.toUpperCase()}</div>
+            ${primer.cargo_retira ? `<div><strong>Receptor:</strong> ${primer.cargo_retira}</div>` : ''}
             <div><strong>Ubicación del Destino:</strong> ${ubicacionDestino}</div>
           </div>
 

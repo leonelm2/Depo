@@ -8,7 +8,9 @@ export default function ProductSelectorModal({
   onSelect,
   selectedId = null,
   title = "Seleccionar Producto del Catálogo",
-  showStock = true
+  showStock = true,
+  getStock = null,
+  stockLabel = null
 }) {
   const [search, setSearch] = useState('')
   const [selectedMarca, setSelectedMarca] = useState('todas')
@@ -141,7 +143,7 @@ export default function ProductSelectorModal({
           ) : (
             filtered.map(prod => {
               const isSelected = selectedId && String(prod.id) === String(selectedId)
-              const stockVal = Number(prod.stock_central ?? prod.stock_actual ?? prod.stock ?? 0)
+              const stockVal = getStock ? getStock(prod) : Number(prod.stock_central ?? prod.stock_actual ?? prod.stock ?? 0)
               const sku = prod.codigo_sku || prod.sku
 
               return (
@@ -237,7 +239,7 @@ export default function ProductSelectorModal({
                         }}>
                           {stockVal} u.
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Stock Depósito</div>
+                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{stockLabel || 'Stock Depósito'}</div>
                       </div>
                     )}
 

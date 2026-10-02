@@ -12,6 +12,44 @@ const ESTADOS_PRODUCTO = ['nuevo', 'usado', 'dañado', 'reparado']
 const CARGOS = ['director/a', 'vicedirector/a', 'secretario/a', 'rector/a', 'maestro/a a cargo']
 const MINISTERIO_LOGO_URL = '/faviconmin.png'
 
+const DEPENDENCIAS_CENTRO_CIVICO = [
+  'Mesa de Entradas y Salidas',
+  'Despacho Ministerial',
+  'Secretaría de Educación',
+  'Subsecretaría de Planeamiento Educativo',
+  'Subsecretaría Administrativa y Financiera',
+  'Dirección de Educación Inicial',
+  'Dirección de Educación Primaria',
+  'Dirección de Educación Secundaria',
+  'Dirección de Educación Técnica y Formación Profesional',
+  'Dirección de Educación Superior',
+  'Dirección de Educación Especial',
+  'Dirección de Educación Privada',
+  'Dirección de Gabinetes Interdisciplinarios',
+  'Dirección de Infraestructura Escolar',
+  'Dirección de Recursos Humanos / Personal',
+  'Dirección de Sistemas e Informática',
+  'Área de Compras y Contrataciones',
+  'Contaduría / Rendición de Cuentas',
+  'Tesorería General',
+  'Asesoría Letrada',
+  'Supervisión Escolar (Sede Centro Cívico)',
+  'Mantenimiento y Servicios Generales',
+  'Otra Dependencia / Área...'
+]
+
+const CARGOS_CENTRO_CIVICO = [
+  'Jefe/a de Área / Departamento',
+  'Director/a',
+  'Subdirector/a',
+  'Secretario/a',
+  'Administrativo/a',
+  'Personal de Servicio',
+  'Técnico/a / Asesor/a',
+  'Mesa de Entradas',
+  'Otro'
+]
+
 export default function Movimientos() {
   const { token, hasPermission, user } = useAuth()
   const [movimientos, setMovimientos] = useState([])
@@ -59,6 +97,12 @@ export default function Movimientos() {
   const [egresoFechaSalidaCamion, setEgresoFechaSalidaCamion] = useState(getTodayStr)
   const [loteEgreso, setLoteEgreso] = useState([])
   const [egresoItem, setEgresoItem] = useState({ productoNombre: '', cantidad: '', estado: 'nuevo' })
+
+  // Egreso Centro Cívico state
+  const [egresoDependencia, setEgresoDependencia] = useState('')
+  const [egresoDependenciaOtra, setEgresoDependenciaOtra] = useState('')
+  const [egresoPisoOficina, setEgresoPisoOficina] = useState('')
+  const [egresoPersonaRecibe, setEgresoPersonaRecibe] = useState('')
 
   // Ingreso state
   const [ingresoMotivo, setIngresoMotivo] = useState('')
@@ -261,6 +305,13 @@ export default function Movimientos() {
     return Number(prod.stock_central ?? prod.stock_actual ?? 0)
   }
 
+  const productosParaEgreso = useMemo(() => {
+    if (isOperadorCivico) {
+      return productos.filter(p => Number(p.stock_centro_civico ?? p.stock_total ?? 0) > 0)
+    }
+    return productos
+  }, [productos, isOperadorCivico])
+
   // Egreso handlers
   const addToEgreso = () => {
     const producto = findProducto(egresoItem.productoNombre)
@@ -275,8 +326,12 @@ export default function Movimientos() {
     const cantidad = parseInt(egresoItem.cantidad, 10)
     if (!cantidad || cantidad <= 0) return setMsg({ text: 'Ingrese una cantidad válida mayor a 0', type: 'error' })
 
-    if (cantidad > stockDisp) {
-      return setMsg({ text: `⚠️ La cantidad a egresar (${cantidad}) supera el stock disponible en ${nombreDep} (${stockDisp} ${producto.unidad_medida || 'unidades'})`, type: 'error' })
+    const yaAgregado = loteEgreso
+      .filter(item => item.producto_id === producto.id)
+      .reduce((sum, item) => sum + Number(item.cantidad || 0), 0)
+
+    if (cantidad + yaAgregado > stockDisp) {
+      return setMsg({ text: `⚠️ La cantidad total a egresar (${cantidad + yaAgregado}) supera el stock disponible en ${nombreDep} (${stockDisp} ${producto.unidad_medida || 'unidades'})`, type: 'error' })
     }
 
     setLoteEgreso(prev => [...prev, {
@@ -302,7 +357,66 @@ export default function Movimientos() {
 
     setIsLoading(true)
     try {
-    // Si hay deposito seleccionado y NO es un traslado (es para institución), usar la API de depositos
+      // 1. FLUJO ESPECIAL OPERADOR CÍVICO (Egreso entre dependencias/áreas del Centro Cívico)
+      if (isOperadorCivico) {
+        const destFinal = egresoDependencia === 'Otra Dependencia / Área...'
+          ? egresoDependenciaOtra.trim()
+          : egresoDependencia.trim()
+
+        if (!destFinal) {
+          setMsg({ text: 'Debe seleccionar o especificar la dependencia o área de destino', type: 'error' })
+          return
+        }
+
+        if (!egresoPersonaRecibe.trim()) {
+          setMsg({ text: 'Ingrese el nombre de la persona que retira o recibe', type: 'error' })
+          return
+        }
+
+        const detalleReceptor = [
+          egresoPersonaRecibe.trim(),
+          egresoCargo ? `(${egresoCargo})` : '',
+          egresoPisoOficina ? `- ${egresoPisoOficina.trim()}` : ''
+        ].filter(Boolean).join(' ')
+
+        const payload = {
+          tipo: 'egreso',
+          id_deposito: 2,
+          dependencia_destino: destFinal,
+          cargo_retira: detalleReceptor,
+          fecha_pedido: egresoFechaPedido || null,
+          motivo: egresoMotivo.trim() || `Entrega interna a ${destFinal}`,
+          productos: loteEgreso
+        }
+
+        const res = await apiFetch('/api/movimientos/directo', {
+          token,
+          method: 'POST',
+          body: JSON.stringify(payload)
+        })
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          setMsg({ text: data.error || 'Error al registrar egreso en Centro Cívico', type: 'error' })
+          return
+        }
+
+        setEgresoDependencia('')
+        setEgresoDependenciaOtra('')
+        setEgresoPisoOficina('')
+        setEgresoPersonaRecibe('')
+        setEgresoCargo('')
+        setEgresoMotivo('')
+        setEgresoFechaPedido(getTodayStr())
+        setLoteEgreso([])
+        setEgresoModalOpen(false)
+        setMsg({ text: 'Egreso a dependencia registrado correctamente', type: 'success' })
+        loadMovimientos()
+        loadProductos()
+        return
+      }
+
+      // 2. FLUJO REGULAR (Depósito Central, escuelas o traslados)
     const destDeposito = depositos.find(d => d.nombre.toLowerCase() === egresoInst.trim().toLowerCase())
 
     if (egresoDeposito && !destDeposito) {
@@ -772,7 +886,9 @@ return (
                     boxShadow: '0 4px 12px rgba(225,29,72,0.30)',
                   }}>➖</div>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1.2 }}>Egreso de Productos</div>
+                    <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1.2 }}>
+                      {isOperadorCivico ? '🏛️ Egreso a Dependencias - Centro Cívico' : 'Egreso de Productos'}
+                    </div>
                     <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span>Depósito de origen:</span>
                       {depositosDisponibles.length > 1 ? (
@@ -818,63 +934,159 @@ return (
                     marginBottom: 20,
                   }}>
                     <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>
-                      Destino del Egreso
+                      {isOperadorCivico ? '🏛️ Destino del Egreso (Dependencias Centro Cívico)' : 'Destino del Egreso'}
                     </div>
 
-                    <div style={{ marginBottom: 12 }}>
-                      <SelectorTrigger
-                        label="Institución o Depósito Destino"
-                        placeholder="Buscar escuela o depósito..."
-                        selectedItem={instituciones.find(i => i.nombre.toLowerCase() === egresoInst.trim().toLowerCase()) || (egresoInst ? { nombre: egresoInst, departamento: egresoNivel ? `Nivel: ${egresoNivel}` : '' } : null)}
-                        onClick={() => setEgresoInstModalOpen(true)}
-                        onClear={() => { setEgresoInst(''); setEgresoNivel('') }}
-                        required
-                      />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Cargo de quien recibe</label>
-                        <select value={egresoCargo} onChange={e => {
-                          setEgresoCargo(e.target.value);
-                        }} required={!depositos.some(d => d.nombre.toLowerCase() === egresoInst.trim().toLowerCase())} style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}>
-                          <option value="">Seleccionar cargo...</option>
-                          {CARGOS.map(c => (
-                            <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-                          ))}
-                        </select>
+                    {isOperadorCivico ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                            Dependencia o Área Destino *
+                          </label>
+                          <select
+                            value={egresoDependencia}
+                            onChange={e => setEgresoDependencia(e.target.value)}
+                            required
+                            style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                          >
+                            <option value="">Seleccione dependencia o área del Centro Cívico...</option>
+                            {DEPENDENCIAS_CENTRO_CIVICO.map(dep => (
+                              <option key={dep} value={dep}>{dep}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {egresoDependencia === 'Otra Dependencia / Área...' && (
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                              Nombre de la Dependencia o Área *
+                            </label>
+                            <input
+                              type="text"
+                              value={egresoDependenciaOtra}
+                              onChange={e => setEgresoDependenciaOtra(e.target.value)}
+                              placeholder="Ej: Dirección de Educación Inicial - Supervisión"
+                              required
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                            />
+                          </div>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                              Persona que retira / recibe *
+                            </label>
+                            <input
+                              type="text"
+                              value={egresoPersonaRecibe}
+                              onChange={e => setEgresoPersonaRecibe(e.target.value)}
+                              placeholder="Ej: Lic. María González (DNI / Legajo)"
+                              required
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                              Cargo / Función en la Dependencia
+                            </label>
+                            <select
+                              value={egresoCargo}
+                              onChange={e => setEgresoCargo(e.target.value)}
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                            >
+                              <option value="">Seleccionar cargo/función...</option>
+                              {CARGOS_CENTRO_CIVICO.map(c => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                              Ubicación interna (Piso / Núcleo / Oficina)
+                            </label>
+                            <input
+                              type="text"
+                              value={egresoPisoOficina}
+                              onChange={e => setEgresoPisoOficina(e.target.value)}
+                              placeholder="Ej: Piso 2 - Núcleo 3 - Of. 204"
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                              Fecha de Entrega / Despacho
+                            </label>
+                            <input
+                              type="date"
+                              value={egresoFechaPedido}
+                              onChange={e => setEgresoFechaPedido(e.target.value)}
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Nivel Educativo</label>
-                        <input
-                          type="text"
-                          value={egresoNivel}
-                          placeholder="Se cargará automáticamente"
-                          readOnly
-                          disabled
-                          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', minHeight: 40, background: '#f1f5f9' }}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Fecha de Creación del Pedido</label>
-                        <input
-                          type="date"
-                          value={egresoFechaPedido}
-                          onChange={e => setEgresoFechaPedido(e.target.value)}
-                          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Fecha Salida del Camión</label>
-                        <input
-                          type="date"
-                          value={egresoFechaSalidaCamion}
-                          onChange={e => setEgresoFechaSalidaCamion(e.target.value)}
-                          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
-                        />
-                      </div>
-                    </div>
+                    ) : (
+                      <>
+                        <div style={{ marginBottom: 12 }}>
+                          <SelectorTrigger
+                            label="Institución o Depósito Destino"
+                            placeholder="Buscar escuela o depósito..."
+                            selectedItem={instituciones.find(i => i.nombre.toLowerCase() === egresoInst.trim().toLowerCase()) || (egresoInst ? { nombre: egresoInst, departamento: egresoNivel ? `Nivel: ${egresoNivel}` : '' } : null)}
+                            onClick={() => setEgresoInstModalOpen(true)}
+                            onClear={() => { setEgresoInst(''); setEgresoNivel('') }}
+                            required
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Cargo de quien recibe</label>
+                            <select value={egresoCargo} onChange={e => {
+                              setEgresoCargo(e.target.value);
+                            }} required={!depositos.some(d => d.nombre.toLowerCase() === egresoInst.trim().toLowerCase())} style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}>
+                              <option value="">Seleccionar cargo...</option>
+                              {CARGOS.map(c => (
+                                <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Nivel Educativo</label>
+                            <input
+                              type="text"
+                              value={egresoNivel}
+                              placeholder="Se cargará automáticamente"
+                              readOnly
+                              disabled
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', minHeight: 40, background: '#f1f5f9' }}
+                            />
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Fecha de Creación del Pedido</label>
+                            <input
+                              type="date"
+                              value={egresoFechaPedido}
+                              onChange={e => setEgresoFechaPedido(e.target.value)}
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Fecha Salida del Camión</label>
+                            <input
+                              type="date"
+                              value={egresoFechaSalidaCamion}
+                              onChange={e => setEgresoFechaSalidaCamion(e.target.value)}
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Add item section */}
@@ -902,7 +1114,7 @@ return (
                         if (!inputVal) {
                           return (
                             <div style={{ marginTop: 6, fontSize: '0.78rem', color: '#64748b' }}>
-                              ℹ️ Busque un producto para verificar su stock en Depósito Central.
+                              ℹ️ Busque un producto para verificar su stock en {isOperadorCivico ? 'Centro Cívico' : 'Depósito Central'}.
                             </div>
                           )
                         }
@@ -1052,7 +1264,7 @@ return (
                       type="text"
                       value={egresoMotivo}
                       onChange={e => setEgresoMotivo(e.target.value)}
-                      placeholder="Ej: Entrega a escuela, donación, traslado..."
+                      placeholder={isOperadorCivico ? "Ej: Solicitud interna de suministros, insumos para reunión..." : "Ej: Entrega a escuela, donación, traslado..."}
                       style={{ width: '100%', padding: '9px 14px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', minHeight: 40 }}
                     />
                   </div>
@@ -1095,7 +1307,7 @@ return (
                       boxShadow: loteEgreso.length === 0 ? 'none' : '0 4px 12px rgba(225,29,72,0.30)',
                     }}
                   >
-                    ✓ Registrar Egreso
+                    {isOperadorCivico ? '✓ Registrar Egreso a Dependencia' : '✓ Registrar Egreso'}
                   </button>
                 </div>
               </div>
@@ -1774,7 +1986,7 @@ return (
 
                 movimientos.forEach((m) => {
                   const timeStr = m.created_at ? new Date(m.created_at).toISOString().slice(0, 16) : '';
-                  const key = `${m.tipo}|${m.motivo || ''}|${m.institucion_nombre || ''}|${m.cargo_retira || ''}|${m.fecha_pedido || ''}|${m.fecha_salida_camion || ''}|${m.usuario_nombre || ''}|${timeStr}`;
+                  const key = `${m.tipo}|${m.motivo || ''}|${m.dependencia_destino || ''}|${m.institucion_nombre || ''}|${m.cargo_retira || ''}|${m.fecha_pedido || ''}|${m.fecha_salida_camion || ''}|${m.usuario_nombre || ''}|${timeStr}`;
 
                   if (currentGroup && currentGroup.key === key) {
                     currentGroup.items.push(m);
@@ -1791,9 +2003,13 @@ return (
                   const proveedoresResumen = [...new Set(group.items.map(item => item.proveedor_nombre).filter(Boolean))];
                   
                   let proveedorDisplay = '-';
-                  if (first.tipo === 'egreso') proveedorDisplay = first.institucion_nombre || '-';
-                  else if (first.tipo === 'ingreso') proveedorDisplay = proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : 'Sin proveedor';
-                  else proveedorDisplay = proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : '-';
+                  if (first.tipo === 'egreso') {
+                    proveedorDisplay = first.dependencia_destino ? `🏛️ ${first.dependencia_destino}` : (first.institucion_nombre || '-');
+                  } else if (first.tipo === 'ingreso') {
+                    proveedorDisplay = proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : 'Sin proveedor';
+                  } else {
+                    proveedorDisplay = proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : '-';
+                  }
 
                   const productosDisplay = isMulti
                     ? [...new Set(group.items.map(item => item.producto_nombre).filter(Boolean))].join(', ')
@@ -1836,7 +2052,16 @@ return (
                       }}
                       onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
                       onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                      onClick={() => { setDetalleData({ proveedor: proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : (first.tipo === 'egreso' ? first.institucion_nombre : null), deposito: first.deposito_nombre, institucion: first.institucion_nombre, fecha_pedido: first.fecha_pedido, fecha_salida_camion: first.fecha_salida_camion, productos: group.items }); setDetalleModalOpen(true) }}
+                      onClick={() => { setDetalleData({
+                        proveedor: proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : (first.tipo === 'egreso' ? (first.dependencia_destino ? `🏛️ ${first.dependencia_destino}` : first.institucion_nombre) : null),
+                        deposito: first.deposito_nombre,
+                        institucion: first.dependencia_destino ? `Centro Cívico - ${first.dependencia_destino}` : first.institucion_nombre,
+                        dependencia_destino: first.dependencia_destino,
+                        cargo_retira: first.cargo_retira,
+                        fecha_pedido: first.fecha_pedido,
+                        fecha_salida_camion: first.fecha_salida_camion,
+                        productos: group.items
+                      }); setDetalleModalOpen(true) }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                           <div>
@@ -2061,11 +2286,17 @@ return (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div><strong>Proveedor:</strong><div>{detalleData.proveedor || '-'}</div></div>
             <div><strong>Depósito:</strong><div>{detalleData.deposito || '-'}</div></div>
-            <div style={{ gridColumn: '1 / -1' }}><strong>Institución / Cargo (Recibe):</strong><div>{detalleData.institucion || '-'}</div></div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <strong>{detalleData.dependencia_destino ? 'Dependencia / Responsable Receptor:' : 'Institución / Cargo (Recibe):'}</strong>
+              <div>{detalleData.institucion || '-'} {detalleData.cargo_retira ? `— ${detalleData.cargo_retira}` : ''}</div>
+            </div>
             {detalleData.fecha_pedido && (
-              <div><strong>Fecha de Creación del Pedido:</strong><div>{formatFechaCorta(detalleData.fecha_pedido)}</div></div>
+              <div>
+                <strong>{detalleData.dependencia_destino ? 'Fecha de Entrega:' : 'Fecha de Creación del Pedido:'}</strong>
+                <div>{formatFechaCorta(detalleData.fecha_pedido)}</div>
+              </div>
             )}
-            {detalleData.fecha_salida_camion && (
+            {detalleData.fecha_salida_camion && !detalleData.dependencia_destino && (
               <div><strong>Fecha Salida del Camión:</strong><div>{formatFechaCorta(detalleData.fecha_salida_camion)}</div></div>
             )}
           </div>
@@ -2110,11 +2341,14 @@ return (
     <ProductSelectorModal
       isOpen={egresoProdModalOpen}
       onClose={() => setEgresoProdModalOpen(false)}
-      productos={productos}
+      productos={productosParaEgreso}
       onSelect={(prod) => {
         setEgresoItem(prev => ({ ...prev, productoNombre: prod.nombre }))
       }}
       selectedId={productos.find(p => p.nombre.toLowerCase() === egresoItem.productoNombre.trim().toLowerCase())?.id}
+      title={isOperadorCivico ? "Seleccionar Producto (Centro Cívico)" : "Seleccionar Producto del Catálogo"}
+      getStock={(p) => getStockDisponibleProducto(p, egresoDeposito)}
+      stockLabel={isOperadorCivico ? "Stock Centro Cívico" : "Stock Depósito"}
     />
 
     <ProductSelectorModal

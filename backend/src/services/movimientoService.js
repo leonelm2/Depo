@@ -2,7 +2,19 @@ const { all, get, run, pool } = require("../db.pg");
 
 const TIPOS_MOVIMIENTO = ["ingreso", "egreso", "ajuste", "devolucion"];
 
-async function listarMovimientos(queryParams) {
+let dependenciaColReady = false;
+async function ensureDependenciaCol() {
+  if (dependenciaColReady) return;
+  try {
+    await pool.query("ALTER TABLE movimiento_stock ADD COLUMN IF NOT EXISTS dependencia_destino VARCHAR(255)");
+    dependenciaColReady = true;
+  } catch (e) {
+    console.warn("[ensureDependenciaCol] Warning:", e.message);
+  }
+}
+
+async function listarMovimientos(queryParams, user = null) {
+  await ensureDependenciaCol();
   const { producto_id, id_deposito, tipo, desde, hasta, usuario, proveedor, limit = 50, offset = 0 } = queryParams;
 
   let query = `
@@ -14,7 +26,8 @@ async function listarMovimientos(queryParams) {
       m.cantidad,
       m.estado_producto,
       m.cargo_retira,
-      i.nombre as institucion_nombre,
+      COALESCE(i.nombre, m.dependencia_destino) as institucion_nombre,
+      m.dependencia_destino,
       COALESCE(pr.nombre, pr_lic.proveedor_nombre) as proveedor_nombre,
       m.motivo,
       u.nombre as usuario_nombre,
@@ -78,6 +91,31 @@ async function listarMovimientos(queryParams) {
     params.push(id_deposito);
   }
 
+  if (desde) {
+    query += ` AND m.fecha_movimiento >= $${paramIndex++}::timestamp`;
+    params.push(desde);
+  }
+
+  if (hasta) {
+    query += ` AND m.fecha_movimiento <= ($${paramIndex++}::date + interval '1 day')`;
+    params.push(hasta);
+  }
+
+  if (usuario) {
+    query += ` AND (u.nombre ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex})`;
+    paramIndex++;
+    params.push(`%${String(usuario).trim()}%`);
+  }
+
+  const isCivico = user && String(user.role).toLowerCase() === "operador_civico";
+  const isOperadorCentral = user && String(user.role).toLowerCase() === "operador";
+
+  if (isCivico) {
+    query += ` AND (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR m.id_deposito = 2 OR m.dependencia_destino IS NOT NULL)`;
+  } else if (isOperadorCentral) {
+    query += ` AND NOT (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR m.id_deposito = 2 OR m.dependencia_destino IS NOT NULL)`;
+  }
+
   if (proveedor) {
     const proveedorStr = String(proveedor).trim();
     if (proveedorStr) {
@@ -97,6 +135,7 @@ async function listarMovimientos(queryParams) {
   return await all(query, params);
 }
 async function obtenerMovimiento(id) {
+  await ensureDependenciaCol();
   const mov = await get(`
     SELECT 
       m.id_movimiento as id,
@@ -106,7 +145,8 @@ async function obtenerMovimiento(id) {
       m.cantidad,
       m.estado_producto,
       m.cargo_retira,
-      i.nombre as institucion_nombre,
+      COALESCE(i.nombre, m.dependencia_destino) as institucion_nombre,
+      m.dependencia_destino,
       COALESCE(pr.nombre, pr_lic.proveedor_nombre) as proveedor_nombre,
       m.motivo,
       u.nombre as usuario_nombre,
@@ -359,7 +399,7 @@ async function crearMovimientoDirecto(user, body) {
     throw { status: 403, message: "No tenés permisos para realizar movimientos manuales" };
   }
 
-  const { tipo, institucion_id, cargo_retira, proveedor_id, motivo, productos, id_deposito, fecha_pedido, fecha_salida_camion } = body;
+  const { tipo, institucion_id, cargo_retira, proveedor_id, motivo, productos, id_deposito, fecha_pedido, fecha_salida_camion, dependencia_destino, area_destino } = body;
 
   if (!tipo || !productos || !Array.isArray(productos) || productos.length === 0) {
     throw { status: 400, message: "Faltan campos obligatorios (tipo, productos array)" };
@@ -369,10 +409,17 @@ async function crearMovimientoDirecto(user, body) {
     throw { status: 400, message: `Tipo inválido. Valores válidos: ${TIPOS_MOVIMIENTO.join(", ")}` };
   }
 
-  // Para egresos, validar institución y cargo
+  // Para egresos, validar según rol
+  const isCivico = String(user?.role || "").toLowerCase() === "operador_civico";
   if (tipo === "egreso") {
-    if (!institucion_id || !cargo_retira) {
-      throw { status: 400, message: "Para egresos se requiere institución y cargo de quien recibe" };
+    if (isCivico) {
+      if (!dependencia_destino && !body.dependencia && !motivo) {
+        throw { status: 400, message: "Para egresos del Centro Cívico se requiere indicar la dependencia o área de destino" };
+      }
+    } else {
+      if (!institucion_id || !cargo_retira) {
+        throw { status: 400, message: "Para egresos se requiere institución y cargo de quien recibe" };
+      }
     }
   }
 
@@ -393,7 +440,18 @@ async function crearMovimientoDirecto(user, body) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const depositoId = id_deposito ? parseInt(id_deposito, 10) : await resolveDefaultDepositoId(client);
+    await ensureDependenciaCol();
+
+    let depositoId = id_deposito ? parseInt(id_deposito, 10) : await resolveDefaultDepositoId(client);
+    if (isCivico) {
+      const civDep = await client.query("SELECT id_deposito FROM deposito WHERE tipo = 'centro_civico' OR tipo_deposito = 'centro_civico' OR nombre ILIKE '%civico%' LIMIT 1");
+      depositoId = civDep.rows[0]?.id_deposito || 2;
+    } else if (String(user?.role || "").toLowerCase() === "operador") {
+      const civCheck = await client.query("SELECT id_deposito FROM deposito WHERE id_deposito = $1 AND (tipo = 'centro_civico' OR tipo_deposito = 'centro_civico' OR nombre ILIKE '%civico%')", [depositoId]);
+      if (civCheck.rows.length > 0) {
+        throw { status: 403, message: "Las operaciones directas del Centro Cívico corresponden al Operador Cívico." };
+      }
+    }
 
     // Insertar movimientos y actualizar stock
     const ids = [];
@@ -454,10 +512,15 @@ async function crearMovimientoDirecto(user, body) {
         );
       }
 
+      const finalDependencia = dependencia_destino || body.dependencia || null;
+      const finalMotivo = isCivico && finalDependencia
+        ? (motivo && motivo.includes(finalDependencia) ? motivo : `[Centro Cívico - ${finalDependencia}] ${motivo || 'Egreso a dependencia'}`)
+        : (motivo || null);
+
       const movRes = await client.query(
         `INSERT INTO movimiento_stock
-          (id_producto, tipo, cantidad, estado_producto, cargo_retira, id_institucion, id_proveedor, id_usuario, motivo, id_deposito, fecha_movimiento, fecha_pedido, fecha_salida_camion)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, $12)
+          (id_producto, tipo, cantidad, estado_producto, cargo_retira, id_institucion, id_proveedor, id_usuario, motivo, id_deposito, fecha_movimiento, fecha_pedido, fecha_salida_camion, dependencia_destino)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, $12, $13)
          RETURNING id_movimiento`,
         [
           prod.producto_id,
@@ -465,13 +528,14 @@ async function crearMovimientoDirecto(user, body) {
           cantidadNum,
           prod.estado,
           tipo === "egreso" ? cargo_retira : null,
-          tipo === "egreso" ? institucion_id : null,
+          tipo === "egreso" ? (institucion_id ? parseInt(institucion_id, 10) : null) : null,
           tipo === "ingreso" ? (proveedor_id ? parseInt(proveedor_id, 10) : null) : null,
           user.sub,
-          motivo || null,
+          finalMotivo,
           depositoId,
           fecha_pedido || null,
-          fecha_salida_camion || null
+          fecha_salida_camion || null,
+          finalDependencia
         ]
       );
 

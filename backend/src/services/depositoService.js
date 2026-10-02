@@ -295,7 +295,7 @@ async function registrarIngreso({ id, id_producto, cantidad, id_proveedor, motiv
   return { ok: true, message: "Ingreso registrado" };
 }
 
-async function registrarEgreso({ id, id_producto, cantidad, id_institucion, motivo, cargo_retira, fecha_pedido, fecha_salida_camion, user }) {
+async function registrarEgreso({ id, id_producto, cantidad, id_institucion, motivo, cargo_retira, fecha_pedido, fecha_salida_camion, dependencia_destino, user }) {
   await ensureDepositosSchema();
   const productoIdNum = parseInt(id_producto, 10);
   const cantidadNum = parseInt(cantidad, 10);
@@ -331,10 +331,14 @@ async function registrarEgreso({ id, id_producto, cantidad, id_institucion, moti
     }
   }
 
+  const finalMotivo = (role === "operador_civico" && dependencia_destino)
+    ? `[Centro Cívico - ${dependencia_destino}] ${motivo || 'Egreso a dependencia'}`
+    : (motivo || "Egreso de depósito");
+
   await run(`
-    INSERT INTO movimiento_stock (id_producto, cantidad, tipo, id_institucion, cargo_retira, motivo, id_usuario, id_deposito, estado_egreso, fecha_pedido, fecha_salida_camion)
-    VALUES ($1, $2, 'egreso', $3, $4, $5, $6, $7, 'aceptado', $8, $9)
-  `, [productoIdNum, cantidadNum, institucionIdNum, cargo_retira || null, motivo || "Egreso de depósito", user.sub, depositoIdNum, fecha_pedido || null, fecha_salida_camion || null]);
+    INSERT INTO movimiento_stock (id_producto, cantidad, tipo, id_institucion, cargo_retira, motivo, id_usuario, id_deposito, estado_egreso, fecha_pedido, fecha_salida_camion, dependencia_destino)
+    VALUES ($1, $2, 'egreso', $3, $4, $5, $6, $7, 'aceptado', $8, $9, $10)
+  `, [productoIdNum, cantidadNum, institucionIdNum, cargo_retira || null, finalMotivo, user.sub, depositoIdNum, fecha_pedido || null, fecha_salida_camion || null, dependencia_destino || null]);
 
   await run(
     "UPDATE stock_deposito SET reservado = reservado + $1 WHERE id_deposito = $2 AND id_producto = $3",

@@ -59,12 +59,26 @@ async function getProductos(user) {
       query += " AND (p.requiere_autorizacion = FALSE OR p.requiere_autorizacion IS NULL)";
     }
 
+    const isCivico = user?.role === "operador_civico";
     query += `
       GROUP BY p.id_producto, p.nombre, p.unidad_medida, p.stock_actual, p.stock_minimo, p.id_categoria, p.codigo_sku, p.marca, p.precio_unitario, p.ubicacion_estante, p.descripcion, p.es_perecedero, p.requiere_autorizacion, c.nombre
-      ORDER BY p.id_producto DESC
     `;
+
+    if (isCivico) {
+      query += ` HAVING COALESCE(SUM(CASE WHEN ${tipoExpr} = 'centro_civico' THEN sd.cantidad ELSE 0 END), 0) > 0`;
+    }
+
+    query += ` ORDER BY p.id_producto DESC`;
     
     productos = await all(query, params);
+
+    if (isCivico) {
+      productos = productos.map(p => ({
+        ...p,
+        stock_total: p.stock_centro_civico,
+        deposito: 'Centro Cívico'
+      }));
+    }
   } else {
     let query = `
       SELECT
@@ -93,6 +107,9 @@ async function getProductos(user) {
     
     if (isEscolar) {
       query += " AND (p.requiere_autorizacion = FALSE OR p.requiere_autorizacion IS NULL)";
+    }
+    if (user?.role === "operador_civico") {
+      query += " AND 1=0";
     }
     
     query += " ORDER BY p.id_producto DESC";

@@ -366,8 +366,17 @@ export default function Productos() {
 
   const printRef = useRef(null)
 
+  const isOperadorCivico = user?.role === 'operador_civico'
+
+  const getProductoStock = (producto) => {
+    if (isOperadorCivico) {
+      return Number(producto.stock_centro_civico ?? producto.stock_total ?? 0)
+    }
+    return Number(producto.stock_total ?? producto.stock_actual ?? 0)
+  }
+
   const getProductoEstado = (producto) => {
-    const stock = producto.stock_total ?? producto.stock_actual ?? 0
+    const stock = getProductoStock(producto)
     const minimo = producto.stock_minimo ?? 0
     if (stock <= 0 || (minimo > 0 && stock <= minimo)) return 'stock_bajo'
     if (vencimientosProximos.has(Number(producto.id))) return 'vence_proximo'
@@ -379,13 +388,18 @@ export default function Productos() {
 
     return [...productos]
       .filter((producto) => {
+        // Operador cívico solo ve productos disponibles en Centro Cívico
+        if (isOperadorCivico && getProductoStock(producto) <= 0) {
+          return false
+        }
+
         const matchesSearch = !search || [
           producto.nombre,
           producto.codigo_sku,
           producto.marca,
           producto.unidad_medida,
           producto.ubicacion_estante,
-          producto.deposito,
+          isOperadorCivico ? 'Centro Cívico' : producto.deposito,
           producto.categoria_nombre,
         ].some((value) => String(value || '').toLowerCase().includes(search))
 
@@ -394,13 +408,13 @@ export default function Productos() {
           (!filterEstado || getProductoEstado(producto) === filterEstado)
       })
       .sort((a, b) => {
-        if (sortBy === 'stock_desc') return Number(b.stock_total ?? b.stock_actual ?? 0) - Number(a.stock_total ?? a.stock_actual ?? 0)
-        if (sortBy === 'stock_asc') return Number(a.stock_total ?? a.stock_actual ?? 0) - Number(b.stock_total ?? b.stock_actual ?? 0)
+        if (sortBy === 'stock_desc') return getProductoStock(b) - getProductoStock(a)
+        if (sortBy === 'stock_asc') return getProductoStock(a) - getProductoStock(b)
         if (sortBy === 'categoria_asc') return String(a.categoria_nombre || '').localeCompare(String(b.categoria_nombre || ''), 'es', { sensitivity: 'base' })
         if (sortBy === 'deposito_asc') return String(a.deposito || '').localeCompare(String(b.deposito || ''), 'es', { sensitivity: 'base' })
         return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', { sensitivity: 'base' })
       })
-  }, [productos, searchText, filterCategoria, filterEstado, sortBy, vencimientosProximos])
+  }, [productos, searchText, filterCategoria, filterEstado, sortBy, vencimientosProximos, isOperadorCivico])
 
   const productoFilterCount = [searchText.trim(), filterCategoria, filterEstado].filter(Boolean).length
 
@@ -501,7 +515,7 @@ export default function Productos() {
               <th>Marca</th>
               <th>Categoría</th>
               <th>Ubicación</th>
-              <th>Stock Total</th>
+              <th>{isOperadorCivico ? 'Stock Centro Cívico' : 'Stock Total'}</th>
               <th>Estado</th>
               <th style={{ background: '#f8fafc', width: '130px' }}>Acciones</th>
             </tr>
@@ -523,10 +537,10 @@ export default function Productos() {
               <td>{p.marca || '-'}</td>
               <td>{p.categoria_nombre || '-'}</td>
               <td>{p.ubicacion_estante || '-'}</td>
-              <td><strong>{p.stock_total ?? 0}</strong> <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{p.unidad_medida || 'un'}</span></td>
+              <td><strong>{getProductoStock(p)}</strong> <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{p.unidad_medida || 'un'}</span></td>
               <td>
                 {(() => {
-                  const stock = p.stock_total ?? p.stock_actual ?? 0
+                  const stock = getProductoStock(p)
                   const minimo = p.stock_minimo ?? 0
                   const stockBajo = stock <= 0 || (minimo > 0 && stock <= minimo)
                   const venceProximo = vencimientosProximos.has(Number(p.id))
@@ -777,26 +791,32 @@ export default function Productos() {
             </div>
 
             <h4 style={{ marginBottom: 12 }}>📦 Distribución por Depósito</h4>
-            {detailModal.depositos?.length === 0 ? (
-              <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>No hay stock registrado en ningún depósito.</p>
-            ) : (
-              <table style={{ marginBottom: 24 }}>
-                <thead>
-                  <tr style={{ background: '#f1f5f9' }}>
-                    <th>Depósito</th>
-                    <th style={{ textAlign: 'right' }}>Cantidad</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detailModal.depositos.map((d, idx) => (
-                    <tr key={idx}>
-                      <td>{d.deposito}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--blue)' }}>{d.cantidad}</td>
+            {(() => {
+              const deps = isOperadorCivico
+                ? (detailModal.depositos || []).filter(d => (d.deposito || '').toLowerCase().includes('civico') || (d.deposito || '').toLowerCase().includes('cívico'))
+                : (detailModal.depositos || [])
+              if (deps.length === 0) {
+                return <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>No hay stock registrado{isOperadorCivico ? ' en el Centro Cívico' : ' en ningún depósito'}.</p>
+              }
+              return (
+                <table style={{ marginBottom: 24 }}>
+                  <thead>
+                    <tr style={{ background: '#f1f5f9' }}>
+                      <th>Depósito</th>
+                      <th style={{ textAlign: 'right' }}>Cantidad</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                  </thead>
+                  <tbody>
+                    {deps.map((d, idx) => (
+                      <tr key={idx}>
+                        <td>{d.deposito}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--blue)' }}>{d.cantidad}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+            })()}
 
             <h4 style={{ marginBottom: 12 }}>📅 Fechas de Vencimiento</h4>
             {detailModal.vencimientos?.length === 0 ? (

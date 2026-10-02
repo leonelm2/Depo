@@ -877,6 +877,16 @@ async function initDatabaseSchema() {
       console.warn("[schemaManager] Warning updating usuario_role_check and roles:", err.message);
     }
 
+    // 32. Dependencia y Área de destino en movimiento_stock para Centro Cívico
+    try {
+      await client.query(`
+        ALTER TABLE movimiento_stock ADD COLUMN IF NOT EXISTS dependencia_destino VARCHAR(255);
+        ALTER TABLE movimiento_stock ADD COLUMN IF NOT EXISTS area_destino VARCHAR(255);
+      `);
+    } catch (err) {
+      console.warn("[schemaManager] Warning adding dependencia_destino to movimiento_stock:", err.message);
+    }
+
     console.log("[schemaManager] Database schema and migrations completed successfully!");
   } finally {
     client.release();
