@@ -1,7 +1,55 @@
 const { all, get, run, pool } = require("../db.pg");
 const { columnExists, tableExists: hasTable } = require("../utils/schemaCache");
 
+let orphanHealingDone = false;
+async function healOrphanProducts() {
+  if (orphanHealingDone) return;
+  try {
+    const hasSd = await hasTable('stock_deposito');
+    if (!hasSd) return;
+
+    // 1. Asignar cualquier producto huérfano sin stock_deposito al Depósito Centro Cívico
+    await run(`
+      INSERT INTO stock_deposito (id_deposito, id_producto, cantidad)
+      SELECT 
+        (SELECT id_deposito FROM deposito WHERE tipo = 'centro_civico' OR tipo_deposito = 'centro_civico' OR nombre ILIKE '%civico%' OR id_deposito = 2 ORDER BY id_deposito ASC LIMIT 1),
+        p.id_producto,
+        COALESCE(p.stock_actual, 0)
+      FROM producto p
+      LEFT JOIN stock_deposito sd ON sd.id_producto = p.id_producto
+      WHERE sd.id_producto IS NULL
+      ON CONFLICT (id_deposito, id_producto) DO NOTHING
+    `);
+
+    // 2. Corregir cualquier producto con stock inicial creado por operador_civico que fue asignado a central
+    await run(`
+      UPDATE stock_deposito sd
+      SET id_deposito = (SELECT id_deposito FROM deposito WHERE tipo = 'centro_civico' OR tipo_deposito = 'centro_civico' OR nombre ILIKE '%civico%' OR id_deposito = 2 ORDER BY id_deposito ASC LIMIT 1)
+      FROM movimiento_stock ms
+      JOIN usuario u ON ms.id_usuario = u.id_usuario
+      WHERE sd.id_producto = ms.id_producto
+        AND sd.id_deposito = (SELECT id_deposito FROM deposito WHERE tipo = 'central' OR tipo_deposito = 'central' OR id_deposito = 1 ORDER BY id_deposito ASC LIMIT 1)
+        AND u.role = 'operador_civico'
+        AND ms.motivo = 'Stock inicial catálogo'
+    `);
+
+    await run(`
+      UPDATE movimiento_stock ms
+      SET id_deposito = (SELECT id_deposito FROM deposito WHERE tipo = 'centro_civico' OR tipo_deposito = 'centro_civico' OR nombre ILIKE '%civico%' OR id_deposito = 2 ORDER BY id_deposito ASC LIMIT 1)
+      FROM usuario u
+      WHERE ms.id_usuario = u.id_usuario
+        AND u.role = 'operador_civico'
+        AND ms.motivo = 'Stock inicial catálogo'
+    `);
+
+    orphanHealingDone = true;
+  } catch (err) {
+    console.warn('[healOrphanProducts error]', err.message);
+  }
+}
+
 async function getProductos(user) {
+  await healOrphanProducts();
   const isEscolar = user.role === "operador_escolar";
   const [hasStockDeposito, hasDeposito, hasTipo, hasTipoDeposito] = await Promise.all([
     hasTable('stock_deposito'),
@@ -64,7 +112,13 @@ async function getProductos(user) {
     `;
 
     if (isCivico) {
-      query += ` HAVING COALESCE(SUM(CASE WHEN ${tipoExpr} = 'centro_civico' OR d.id_deposito = 2 OR d.nombre ILIKE '%civico%' THEN sd.cantidad ELSE 0 END), 0) > 0`;
+      query += ` HAVING COUNT(CASE WHEN ${tipoExpr} = 'centro_civico' OR d.id_deposito = 2 OR d.nombre ILIKE '%civico%' THEN 1 ELSE NULL END) > 0
+                    OR EXISTS (
+                      SELECT 1 FROM movimiento_stock ms 
+                      JOIN deposito d_ms ON d_ms.id_deposito = ms.id_deposito 
+                      WHERE ms.id_producto = p.id_producto 
+                        AND (${tipoExpr.replace(/d\./g, 'd_ms.')} = 'centro_civico' OR ms.id_deposito = 2 OR d_ms.nombre ILIKE '%civico%')
+                    )`;
     }
 
     query += ` ORDER BY p.id_producto DESC`;
@@ -248,34 +302,35 @@ async function createProducto(user, body) {
 
     const newId = insertResult.rows[0].id_producto;
 
-    // Sincronizar con Depósito Central si hay stock inicial
-    if (stock_actual_val > 0) {
-      const centralResult = await client.query(
-        "SELECT id_deposito FROM deposito WHERE COALESCE(tipo, tipo_deposito) = 'central' LIMIT 1"
-      );
-      const central = centralResult.rows[0];
+    // Asociar al depósito correspondiente (Centro Cívico para operador_civico, Central para otros)
+    const isCivico = user?.role === "operador_civico";
+    const targetDepResult = await client.query(
+      isCivico
+        ? "SELECT id_deposito FROM deposito WHERE COALESCE(tipo, tipo_deposito) = 'centro_civico' OR id_deposito = 2 OR nombre ILIKE '%civico%' ORDER BY id_deposito ASC LIMIT 1"
+        : "SELECT id_deposito FROM deposito WHERE COALESCE(tipo, tipo_deposito) = 'central' OR id_deposito = 1 ORDER BY id_deposito ASC LIMIT 1"
+    );
+    const targetDep = targetDepResult.rows[0];
 
-      if (central) {
-        // Verificar si existe la tabla stock_deposito
-        const hasStockDeposito = await hasTable('stock_deposito');
-        if (hasStockDeposito) {
-          await client.query(
-            `INSERT INTO stock_deposito (id_deposito, id_producto, cantidad)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (id_deposito, id_producto)
-             DO UPDATE SET cantidad = EXCLUDED.cantidad`,
-            [central.id_deposito, newId, stock_actual_val]
-          );
-        }
+    if (targetDep) {
+      const hasStockDeposito = await hasTable('stock_deposito');
+      if (hasStockDeposito) {
+        await client.query(
+          `INSERT INTO stock_deposito (id_deposito, id_producto, cantidad)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (id_deposito, id_producto)
+           DO UPDATE SET cantidad = EXCLUDED.cantidad`,
+          [targetDep.id_deposito, newId, stock_actual_val]
+        );
+      }
 
-        // Verificar si existe la tabla movimiento_stock
+      if (stock_actual_val > 0) {
         const hasMovimientoStock = await hasTable('movimiento_stock');
         if (hasMovimientoStock) {
           const userId = user.id_usuario || user.sub || user.id || null;
           await client.query(
             `INSERT INTO movimiento_stock (id_producto, tipo, cantidad, motivo, id_usuario, id_deposito)
              VALUES ($1, 'ingreso', $2, 'Stock inicial catálogo', $3, $4)`,
-            [newId, stock_actual_val, userId, central.id_deposito]
+            [newId, stock_actual_val, userId, targetDep.id_deposito]
           );
         }
       }
@@ -467,11 +522,14 @@ async function importarProductosMasivo(user, productosArray) {
       tipoExpr = "tipo_deposito";
     }
 
-    // Verificar repositorio central y tablas de stock antes de empezar
-    const centralResult = await client.query(
-      `SELECT id_deposito FROM deposito WHERE ${tipoExpr} = 'central' LIMIT 1`
+    // Verificar depósito destino (Centro Cívico para operador_civico, Central para otros) y tablas de stock antes de empezar
+    const isCivicoBulk = user?.role === "operador_civico";
+    const targetDepResult = await client.query(
+      isCivicoBulk
+        ? `SELECT id_deposito FROM deposito WHERE ${tipoExpr} = 'centro_civico' OR id_deposito = 2 OR nombre ILIKE '%civico%' ORDER BY id_deposito ASC LIMIT 1`
+        : `SELECT id_deposito FROM deposito WHERE ${tipoExpr} = 'central' OR id_deposito = 1 ORDER BY id_deposito ASC LIMIT 1`
     );
-    const central = centralResult.rows[0];
+    const targetDep = targetDepResult.rows[0];
     const hasStockDeposito = await hasTable('stock_deposito');
     const hasMovimientoStock = await hasTable('movimiento_stock');
     const userId = user.id_usuario || user.sub || user.id || null;
@@ -516,21 +574,21 @@ async function importarProductosMasivo(user, productosArray) {
         const newId = insertResult.rows[0].id_producto;
 
         // Stock
-        if (stock_actual_val > 0 && central) {
+        if (targetDep) {
           if (hasStockDeposito) {
             await client.query(
               `INSERT INTO stock_deposito (id_deposito, id_producto, cantidad)
                VALUES ($1, $2, $3)
                ON CONFLICT (id_deposito, id_producto)
                DO UPDATE SET cantidad = stock_deposito.cantidad + EXCLUDED.cantidad`,
-              [central.id_deposito, newId, stock_actual_val]
+              [targetDep.id_deposito, newId, stock_actual_val]
             );
           }
-          if (hasMovimientoStock) {
+          if (stock_actual_val > 0 && hasMovimientoStock) {
             await client.query(
               `INSERT INTO movimiento_stock (id_producto, tipo, cantidad, motivo, id_usuario, id_deposito)
                VALUES ($1, 'ingreso', $2, 'Importación inicial masiva', $3, $4)`,
-              [newId, stock_actual_val, userId, central.id_deposito]
+              [newId, stock_actual_val, userId, targetDep.id_deposito]
             );
           }
         }

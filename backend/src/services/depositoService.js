@@ -162,7 +162,7 @@ async function getStockByDeposito(id, user) {
   let stockQuery;
 
   if (isCivico) {
-    // Para el Centro Cívico: SOLO mostrar los productos que existen en el Centro Cívico (con existencias o movimientos en dicho depósito)
+    // Para el Centro Cívico: SOLO mostrar los productos que existen en el Centro Cívico (asignados o con movimientos en dicho depósito)
     stockQuery = `
       SELECT 
         p.id_producto as id,
@@ -171,8 +171,8 @@ async function getStockByDeposito(id, user) {
         p.requiere_autorizacion,
         true as en_civico
       FROM producto p
-      JOIN stock_deposito sd ON sd.id_producto = p.id_producto AND sd.id_deposito = $1
-      WHERE sd.cantidad > 0 
+      LEFT JOIN stock_deposito sd ON sd.id_producto = p.id_producto AND sd.id_deposito = $1
+      WHERE sd.id_deposito = $1 
          OR EXISTS (
            SELECT 1 FROM movimiento_stock ms 
            WHERE ms.id_producto = p.id_producto AND ms.id_deposito = $1

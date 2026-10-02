@@ -388,11 +388,6 @@ export default function Productos() {
 
     return [...productos]
       .filter((producto) => {
-        // Operador cívico solo ve productos disponibles en Centro Cívico
-        if (isOperadorCivico && getProductoStock(producto) <= 0) {
-          return false
-        }
-
         const matchesSearch = !search || [
           producto.nombre,
           producto.codigo_sku,
@@ -542,9 +537,18 @@ export default function Productos() {
                 {(() => {
                   const stock = getProductoStock(p)
                   const minimo = p.stock_minimo ?? 0
-                  const stockBajo = stock <= 0 || (minimo > 0 && stock <= minimo)
-                  const venceProximo = vencimientosProximos.has(Number(p.id))
-                  if (stockBajo) {
+                  if (stock <= 0) {
+                    return (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db',
+                        borderRadius: 4, padding: '2px 8px', fontWeight: 600, fontSize: 11
+                      }}>
+                        Sin stock
+                      </span>
+                    )
+                  }
+                  if (minimo > 0 && stock <= minimo) {
                     return (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 5,

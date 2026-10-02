@@ -887,6 +887,39 @@ async function initDatabaseSchema() {
       console.warn("[schemaManager] Warning adding dependencia_destino to movimiento_stock:", err.message);
     }
 
+    // 33. Sincronización y asignación de productos huérfanos / creados por Operador Cívico
+    try {
+      await client.query(`
+        INSERT INTO stock_deposito (id_deposito, id_producto, cantidad)
+        SELECT 
+          (SELECT id_deposito FROM deposito WHERE tipo = 'centro_civico' OR tipo_deposito = 'centro_civico' OR nombre ILIKE '%civico%' OR id_deposito = 2 ORDER BY id_deposito ASC LIMIT 1),
+          p.id_producto,
+          COALESCE(p.stock_actual, 0)
+        FROM producto p
+        LEFT JOIN stock_deposito sd ON sd.id_producto = p.id_producto
+        WHERE sd.id_producto IS NULL
+        ON CONFLICT (id_deposito, id_producto) DO NOTHING;
+
+        UPDATE stock_deposito sd
+        SET id_deposito = (SELECT id_deposito FROM deposito WHERE tipo = 'centro_civico' OR tipo_deposito = 'centro_civico' OR nombre ILIKE '%civico%' OR id_deposito = 2 ORDER BY id_deposito ASC LIMIT 1)
+        FROM movimiento_stock ms
+        JOIN usuario u ON ms.id_usuario = u.id_usuario
+        WHERE sd.id_producto = ms.id_producto
+          AND sd.id_deposito = (SELECT id_deposito FROM deposito WHERE tipo = 'central' OR tipo_deposito = 'central' OR id_deposito = 1 ORDER BY id_deposito ASC LIMIT 1)
+          AND u.role = 'operador_civico'
+          AND ms.motivo = 'Stock inicial catálogo';
+
+        UPDATE movimiento_stock ms
+        SET id_deposito = (SELECT id_deposito FROM deposito WHERE tipo = 'centro_civico' OR tipo_deposito = 'centro_civico' OR nombre ILIKE '%civico%' OR id_deposito = 2 ORDER BY id_deposito ASC LIMIT 1)
+        FROM usuario u
+        WHERE ms.id_usuario = u.id_usuario
+          AND u.role = 'operador_civico'
+          AND ms.motivo = 'Stock inicial catálogo';
+      `);
+    } catch (err) {
+      console.warn("[schemaManager] Warning in step 33 (sync orphan products to civico):", err.message);
+    }
+
     console.log("[schemaManager] Database schema and migrations completed successfully!");
   } finally {
     client.release();
