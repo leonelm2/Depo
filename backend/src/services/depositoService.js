@@ -56,14 +56,23 @@ function isCentroCivicoDep(dep) {
 
 async function listDepositos(user = {}) {
   await ensureDepositosSchema();
-  const isEscolar = user?.role === "operador_escolar";
+  const role = String(user?.role || '').toLowerCase();
+  const isEscolar = role === "operador_escolar";
+  const isCivico = role === "operador_civico";
+  const isOperador = role === "operador";
+
+  const hasTipoDeposito = await columnExists('deposito', 'tipo_deposito');
+  const tipoExpr = hasTipoDeposito ? 'COALESCE(d.tipo, d.tipo_deposito)' : 'd.tipo';
+
   let query = `
     SELECT 
       d.id_deposito as id,
+      d.id_deposito,
       d.nombre,
       d.descripcion,
       d.ubicacion,
-      d.tipo as tipo,
+      ${tipoExpr} as tipo,
+      ${tipoExpr} as tipo_deposito,
       d.activo,
       d.deposito_padre_id,
       dp.nombre as nombre_padre
@@ -74,9 +83,12 @@ async function listDepositos(user = {}) {
 
   if (isEscolar) {
     query += " AND d.id_deposito IN (1, 2)";
+  } else if (isCivico) {
+    query += " AND (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR d.id_deposito = 2)";
+  } else if (isOperador) {
+    query += " AND NOT (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR d.id_deposito = 2)";
   }
 
-  const hasTipoDeposito = await columnExists('deposito', 'tipo_deposito');
   const orderExpr = hasTipoDeposito ? 'COALESCE(d.tipo, d.tipo_deposito)' : 'd.tipo';
   query += ` ORDER BY ${orderExpr}, d.id_deposito`;
 
@@ -84,10 +96,26 @@ async function listDepositos(user = {}) {
 }
 
 async function getProductosByDeposito(id) {
+  const dep = await get("SELECT * FROM deposito WHERE id_deposito = $1", [id]);
+  const isCivico = isCentroCivicoDep(dep);
+
+  if (isCivico) {
+    return await all(
+      `SELECT p.id_producto as id, p.nombre, p.unidad_medida, COALESCE(sd.cantidad, 0) as cantidad
+       FROM producto p
+       JOIN stock_deposito sd ON sd.id_producto = p.id_producto AND sd.id_deposito = $1
+       WHERE sd.cantidad > 0 
+          OR EXISTS (SELECT 1 FROM movimiento_stock ms WHERE ms.id_producto = p.id_producto AND ms.id_deposito = $1)
+       ORDER BY p.nombre`,
+      [id]
+    );
+  }
+
   return await all(
     `SELECT p.id_producto as id, p.nombre, p.unidad_medida, COALESCE(sd.cantidad, 0) as cantidad
      FROM producto p
-     LEFT JOIN stock_deposito sd ON sd.id_producto = p.id_producto AND sd.id_deposito = ?`,
+     LEFT JOIN stock_deposito sd ON sd.id_producto = p.id_producto AND sd.id_deposito = $1
+     ORDER BY p.nombre`,
     [id]
   );
 }
@@ -112,11 +140,11 @@ async function getStockPorProducto(user) {
 }
 
 async function getStockByDeposito(id, user) {
-  const isEscolar = user.role === "operador_escolar";
+  const isEscolar = user?.role === "operador_escolar";
   const hasTipoDeposito = await columnExists('deposito', 'tipo_deposito');
   const tipoExpr = hasTipoDeposito ? 'COALESCE(tipo, tipo_deposito)' : 'tipo';
   const deposito = await get(
-    `SELECT id_deposito, nombre, descripcion, ubicacion, ${tipoExpr} as tipo, activo, deposito_padre_id 
+    `SELECT id_deposito, id_deposito as id, nombre, descripcion, ubicacion, ${tipoExpr} as tipo, ${tipoExpr} as tipo_deposito, activo, deposito_padre_id 
      FROM deposito WHERE id_deposito = $1`, 
     [id]
   );
@@ -129,18 +157,29 @@ async function getStockByDeposito(id, user) {
   }
 
   const isPadre = deposito.tipo === "central";
-  let stockQuery = `
-    SELECT 
-      p.id_producto as id,
-      p.nombre, p.unidad_medida,
-      COALESCE(sd.cantidad, 0) as cantidad
-    FROM producto p
-    LEFT JOIN stock_deposito sd ON sd.id_producto = p.id_producto 
-      AND sd.id_deposito = $1
-    WHERE p.id_producto > 0
-  `;
+  const isCivico = isCentroCivicoDep(deposito) || String(user?.role || '').toLowerCase() === 'operador_civico';
 
-  if (isPadre) {
+  let stockQuery;
+
+  if (isCivico) {
+    // Para el Centro Cívico: SOLO mostrar los productos que existen en el Centro Cívico (con existencias o movimientos en dicho depósito)
+    stockQuery = `
+      SELECT 
+        p.id_producto as id,
+        p.nombre, p.unidad_medida,
+        COALESCE(sd.cantidad, 0) as cantidad,
+        p.requiere_autorizacion,
+        true as en_civico
+      FROM producto p
+      JOIN stock_deposito sd ON sd.id_producto = p.id_producto AND sd.id_deposito = $1
+      WHERE sd.cantidad > 0 
+         OR EXISTS (
+           SELECT 1 FROM movimiento_stock ms 
+           WHERE ms.id_producto = p.id_producto AND ms.id_deposito = $1
+         )
+      ORDER BY p.nombre
+    `;
+  } else if (isPadre) {
     stockQuery = `
       SELECT 
         p.id_producto as id,
@@ -150,8 +189,21 @@ async function getStockByDeposito(id, user) {
       FROM producto p
       LEFT JOIN stock_deposito sd ON sd.id_producto = p.id_producto AND sd.id_deposito = $1
       LEFT JOIN stock_deposito sd_caps ON sd_caps.id_producto = p.id_producto 
-        AND sd_caps.id_deposito = (SELECT id_deposito FROM deposito WHERE tipo = 'capsula')
+        AND sd_caps.id_deposito = (SELECT id_deposito FROM deposito WHERE tipo = 'capsula' LIMIT 1)
       GROUP BY p.id_producto, p.nombre, p.unidad_medida, sd_caps.id_deposito
+      ORDER BY p.nombre
+    `;
+  } else {
+    stockQuery = `
+      SELECT 
+        p.id_producto as id,
+        p.nombre, p.unidad_medida,
+        COALESCE(sd.cantidad, 0) as cantidad,
+        p.requiere_autorizacion
+      FROM producto p
+      JOIN stock_deposito sd ON sd.id_producto = p.id_producto AND sd.id_deposito = $1
+      WHERE sd.cantidad > 0
+      ORDER BY p.nombre
     `;
   }
 

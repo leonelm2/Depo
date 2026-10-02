@@ -39,11 +39,10 @@ async function getProductos(user) {
         c.nombre as categoria_nombre,
         COALESCE(SUM(sd.cantidad), 0) as stock_total,
         COALESCE(SUM(CASE WHEN ${tipoExpr} = 'central' OR d.id_deposito = 1 THEN sd.cantidad ELSE 0 END), 0) as stock_central,
-        COALESCE(SUM(CASE WHEN ${tipoExpr} = 'centro_civico' THEN sd.cantidad ELSE 0 END), 0) as stock_centro_civico,
+        COALESCE(SUM(CASE WHEN ${tipoExpr} = 'centro_civico' OR d.id_deposito = 2 OR d.nombre ILIKE '%civico%' THEN sd.cantidad ELSE 0 END), 0) as stock_centro_civico,
         COALESCE(SUM(CASE WHEN ${tipoExpr} = 'capsula' THEN sd.cantidad ELSE 0 END), 0) as stock_capsula,
         CASE
-          WHEN COALESCE(SUM(CASE WHEN ${tipoExpr} = 'central' OR d.id_deposito = 1 THEN sd.cantidad ELSE 0 END), 0) > 0 THEN 'Depósito Central'
-          WHEN COALESCE(SUM(CASE WHEN ${tipoExpr} = 'centro_civico' THEN sd.cantidad ELSE 0 END), 0) > 0 THEN 'Centro Cívico'
+          WHEN COALESCE(SUM(CASE WHEN ${tipoExpr} = 'centro_civico' OR d.id_deposito = 2 OR d.nombre ILIKE '%civico%' THEN sd.cantidad ELSE 0 END), 0) > 0 THEN 'Centro Cívico'
           WHEN COALESCE(SUM(CASE WHEN ${tipoExpr} = 'capsula' THEN sd.cantidad ELSE 0 END), 0) > 0 THEN 'Cápsula'
           ELSE 'Depósito Central'
         END as deposito
@@ -65,7 +64,7 @@ async function getProductos(user) {
     `;
 
     if (isCivico) {
-      query += ` HAVING COALESCE(SUM(CASE WHEN ${tipoExpr} = 'centro_civico' THEN sd.cantidad ELSE 0 END), 0) > 0`;
+      query += ` HAVING COALESCE(SUM(CASE WHEN ${tipoExpr} = 'centro_civico' OR d.id_deposito = 2 OR d.nombre ILIKE '%civico%' THEN sd.cantidad ELSE 0 END), 0) > 0`;
     }
 
     query += ` ORDER BY p.id_producto DESC`;

@@ -26,9 +26,10 @@ export default function Depositos() {
 
   const isCivico = useCallback((d) => {
     if (!d) return false
+    const id = Number(d.id || d.id_deposito || 0)
     const tipo = (d.tipo || d.tipo_deposito || '').toLowerCase()
     const nombre = (d.nombre || '').toLowerCase()
-    return tipo === 'centro_civico' || nombre.includes('civico') || nombre.includes('cívico')
+    return id === 2 || tipo === 'centro_civico' || nombre.includes('civico') || nombre.includes('cívico')
   }, [])
 
   const depositosMostrar = useMemo(() => {
@@ -60,7 +61,8 @@ export default function Depositos() {
 
         if (permitidos.length > 0) {
           setDepositoSeleccionado(prev => {
-            if (!prev || !permitidos.some(d => d.id === prev.id)) {
+            const prevId = prev?.id || prev?.id_deposito
+            if (!prev || !permitidos.some(d => (d.id || d.id_deposito) === prevId)) {
               return permitidos[0]
             }
             return prev
@@ -76,15 +78,16 @@ export default function Depositos() {
     } catch (err) {
       console.error('Error loading initial data:', err)
     }
-  }, [token, depositoSeleccionado])
+  }, [token, isOperadorCivico, isOperadorDeposito, isCivico])
 
   const loadStockYMovimientos = useCallback(async () => {
-    if (!depositoSeleccionado?.id) return
+    const depId = depositoSeleccionado?.id || depositoSeleccionado?.id_deposito
+    if (!depId) return
     setLoading(true)
     try {
       const [stockRes, movRes, trasladosRes] = await Promise.all([
-        apiFetch(`/api/depositos/${depositoSeleccionado.id}/stock`, { token }),
-        apiFetch(`/api/movimientos?id_deposito=${depositoSeleccionado.id}&limit=10`, { token }),
+        apiFetch(`/api/depositos/${depId}/stock`, { token }),
+        apiFetch(`/api/movimientos?id_deposito=${depId}&limit=10`, { token }),
         apiFetch(`/api/depositos/traslados`, { token })
       ])
       
@@ -108,6 +111,23 @@ export default function Depositos() {
     setLoading(false)
   }, [token, depositoSeleccionado])
 
+  const stockMostrar = useMemo(() => {
+    if (isCivico(depositoSeleccionado) || isOperadorCivico) {
+      return stock.filter(s => Number(s.cantidad) > 0 || s.en_civico)
+    }
+    return stock
+  }, [stock, depositoSeleccionado, isCivico, isOperadorCivico])
+
+  const productosOpciones = useMemo(() => {
+    if (modalType === 'egreso' || modalType === 'traslado') {
+      return stockMostrar.filter(s => Number(s.cantidad) > 0)
+    }
+    if (isCivico(depositoSeleccionado) || isOperadorCivico) {
+      return productos.length > 0 ? productos : stockMostrar
+    }
+    return productos
+  }, [modalType, stockMostrar, productos, depositoSeleccionado, isCivico, isOperadorCivico])
+
   useEffect(() => {
     loadData()
   }, [loadData])
@@ -119,6 +139,12 @@ export default function Depositos() {
   const handleAction = async (e) => {
     e.preventDefault()
     setMsg({ text: '', type: '' })
+
+    const depId = depositoSeleccionado?.id || depositoSeleccionado?.id_deposito
+    if (!depId) {
+      setMsg({ text: 'No hay depósito seleccionado', type: 'error' })
+      return
+    }
 
     if (!form.id_producto || !form.cantidad) {
       setMsg({ text: 'Producto y cantidad requeridos', type: 'error' })
@@ -134,7 +160,7 @@ export default function Depositos() {
     }
 
     try {
-      let endpoint = `/api/depositos/${depositoSeleccionado.id}/${modalType}`
+      let endpoint = `/api/depositos/${depId}/${modalType}`
       let body = {
         id_producto: parseInt(form.id_producto),
         cantidad: parseInt(form.cantidad),
@@ -145,7 +171,7 @@ export default function Depositos() {
         endpoint = '/api/depositos/mover'
         body = {
           ...body,
-          origen_id: depositoSeleccionado.id,
+          origen_id: depId,
           destino_id: parseInt(form.destino_id)
         }
         if (!form.destino_id) {
@@ -325,30 +351,35 @@ export default function Depositos() {
 
       {/* Selector de Depósitos con Diseño Premium */}
       <div className="deposito-tabs" style={{ display: 'flex', gap: '12px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '8px' }}>
-        {depositosMostrar.map(d => (
-          <button
-            key={d.id}
-            onClick={() => setDepositoSeleccionado(d)}
-            style={{
-              padding: '12px 20px',
-              borderRadius: '12px',
-              border: '2px solid',
-              borderColor: depositoSeleccionado?.id === d.id ? 'var(--primary)' : 'transparent',
-              background: depositoSeleccionado?.id === d.id ? 'var(--primary-light, #eff6ff)' : 'white',
-              color: depositoSeleccionado?.id === d.id ? 'var(--primary)' : 'var(--dark)',
-              fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            {getTipoLabel(d.tipo, d.nombre)}
-          </button>
-        ))}
+        {depositosMostrar.map(d => {
+          const dId = d.id || d.id_deposito
+          const selId = depositoSeleccionado?.id || depositoSeleccionado?.id_deposito
+          const isSelected = selId === dId
+          return (
+            <button
+              key={dId}
+              onClick={() => setDepositoSeleccionado(d)}
+              style={{
+                padding: '12px 20px',
+                borderRadius: '12px',
+                border: '2px solid',
+                borderColor: isSelected ? 'var(--primary)' : 'transparent',
+                background: isSelected ? 'var(--primary-light, #eff6ff)' : 'white',
+                color: isSelected ? 'var(--primary)' : 'var(--dark)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {getTipoLabel(d.tipo, d.nombre)}
+            </button>
+          )
+        })}
       </div>
 
       {depositoSeleccionado && (
@@ -393,7 +424,7 @@ export default function Depositos() {
                     </tr>
                   </thead>
                   <tbody>
-                    {stock.map(s => {
+                    {stockMostrar.map(s => {
                       const isLow = s.cantidad < 10 && s.cantidad > 0
                       const isZero = s.cantidad === 0
                       return (
@@ -420,10 +451,10 @@ export default function Depositos() {
                         </tr>
                       )
                     })}
-                    {stock.length === 0 && (
+                    {stockMostrar.length === 0 && (
                       <tr>
                         <td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
-                          No se encontraron productos vinculados.
+                          No se encontraron productos registrados en este depósito.
                         </td>
                       </tr>
                     )}
@@ -574,7 +605,7 @@ export default function Depositos() {
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}
                 >
                   <option value="">Seleccionar producto</option>
-                  {productos.map(p => {
+                  {productosOpciones.map(p => {
                     const disp = stock.find(s => s.id === p.id)?.cantidad || 0;
                     const stockText = (modalType === 'egreso' || modalType === 'traslado') ? ` - Disp: ${disp}` : '';
                     return (
@@ -594,9 +625,11 @@ export default function Depositos() {
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}
                   >
                     <option value="">Seleccionar destino</option>
-                    {depositos.filter(d => d.id !== depositoSeleccionado.id).map(d => (
-                      <option key={d.id} value={d.id}>{d.nombre}</option>
-                    ))}
+                    {depositos
+                      .filter(d => (d.id || d.id_deposito) !== (depositoSeleccionado.id || depositoSeleccionado.id_deposito))
+                      .map(d => (
+                        <option key={d.id || d.id_deposito} value={d.id || d.id_deposito}>{d.nombre}</option>
+                      ))}
                   </select>
                 </div>
               )}
