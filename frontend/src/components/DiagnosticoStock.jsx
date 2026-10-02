@@ -3,13 +3,14 @@ import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 
 export default function DiagnosticoStock() {
-  const { token, hasPermission } = useAuth()
+  const { token, hasPermission, user } = useAuth()
   const [diagnostico, setDiagnostico] = useState(null)
   const [loading, setLoading] = useState(false)
   const [reconciliando, setReconciliando] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
 
-  const canReconcile = hasPermission('stock.movement.create') // or whichever permission makes sense
+  const isCivico = user?.role === 'operador_civico' || Boolean(diagnostico?.es_civico)
+  const canReconcile = hasPermission('stock.movement.create')
   const canView = hasPermission('stock.view')
 
   const ejecutarDiagnostico = async () => {
@@ -27,8 +28,8 @@ export default function DiagnosticoStock() {
       setDiagnostico(data)
       setMsg({ 
         text: data.productos_inconsistentes === 0 
-          ? '✅ Stock consistente. No se encontraron diferencias.' 
-          : `⚠️ Se encontraron ${data.productos_inconsistentes} productos con inconsistencias de stock.`, 
+          ? `✅ Stock consistente${isCivico ? ' en Centro Cívico' : ''}. No se encontraron diferencias.` 
+          : `⚠️ Se encontraron ${data.productos_inconsistentes} productos con inconsistencias de stock${isCivico ? ' en Centro Cívico' : ''}.`, 
         type: data.productos_inconsistentes === 0 ? 'success' : 'error' 
       })
     } catch {
@@ -39,7 +40,11 @@ export default function DiagnosticoStock() {
   }
 
   const ejecutarReconciliacion = async () => {
-    if (!window.confirm('⚠️ ATENCIÓN: Esta acción reescribirá el stock global (stock_actual) para que coincida exactamente con la suma del stock por depósitos. Se generarán registros de auditoría por cada corrección. ¿Estás seguro de continuar?')) {
+    const confirmMessage = isCivico
+      ? '⚠️ ATENCIÓN: Esta acción sincronizará el stock del Depósito Centro Cívico con el balance acumulado de sus movimientos registrados (ingresos - egresos + devoluciones + ajustes). Se generarán registros de auditoría por cada corrección. ¿Estás seguro de continuar?'
+      : '⚠️ ATENCIÓN: Esta acción reescribirá el stock global (stock_actual) para que coincida exactamente con la suma del stock por depósitos. Se generarán registros de auditoría por cada corrección. ¿Estás seguro de continuar?'
+
+    if (!window.confirm(confirmMessage)) {
       return
     }
 
@@ -79,9 +84,13 @@ export default function DiagnosticoStock() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <h2 style={{ margin: 0 }}>Diagnóstico de Stock</h2>
+          <h2 style={{ margin: 0 }}>
+            {isCivico ? '🏛️ Diagnóstico de Stock - Centro Cívico' : 'Diagnóstico de Stock'}
+          </h2>
           <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '0.9rem' }}>
-            Audita y corrige discrepancias entre el stock global y la suma del stock en los depósitos.
+            {isCivico
+              ? 'Audita y verifica la consistencia de existencias en el Depósito Centro Cívico frente a los movimientos registrados.'
+              : 'Audita y corrige discrepancias entre el stock global y la suma del stock en los depósitos.'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -124,7 +133,9 @@ export default function DiagnosticoStock() {
       {diagnostico && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
           <div style={{ padding: 16, borderRadius: 10, background: '#f8fafc', border: '1px solid var(--border)', textAlign: 'center' }}>
-            <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }}>Total Productos</div>
+            <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }}>
+              {isCivico ? 'Productos en Centro Cívico' : 'Total Productos'}
+            </div>
             <div style={{ fontSize: '2rem', fontWeight: 700, marginTop: 4 }}>{diagnostico.total_productos}</div>
           </div>
           <div style={{ padding: 16, borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center' }}>
@@ -147,8 +158,8 @@ export default function DiagnosticoStock() {
                 <tr>
                   <th>ID</th>
                   <th>Producto</th>
-                  <th style={{ textAlign: 'right' }}>Stock Global (BD)</th>
-                  <th style={{ textAlign: 'right' }}>Suma en Depósitos</th>
+                  <th style={{ textAlign: 'right' }}>{isCivico ? 'Stock Centro Cívico' : 'Stock Global (BD)'}</th>
+                  <th style={{ textAlign: 'right' }}>{isCivico ? 'Balance Movimientos' : 'Suma en Depósitos'}</th>
                   <th style={{ textAlign: 'right' }}>Diferencia</th>
                 </tr>
               </thead>
@@ -157,8 +168,8 @@ export default function DiagnosticoStock() {
                   <tr key={item.id}>
                     <td style={{ color: 'var(--muted)' }}>#{item.id}</td>
                     <td style={{ fontWeight: 500 }}>{item.nombre} <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>({item.unidad_medida})</span></td>
-                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{item.stock_global}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, color: '#065f46' }}>{item.stock_depositos}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{isCivico ? item.stock_depositos : item.stock_global}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: '#065f46' }}>{isCivico ? item.balance_movimientos : item.stock_depositos}</td>
                     <td style={{ textAlign: 'right' }}>
                       <span className="badge" style={{ background: '#fef2f2', color: '#b91c1c', fontWeight: 700 }}>
                         {item.diferencia > 0 ? `+${item.diferencia}` : item.diferencia}
@@ -170,7 +181,9 @@ export default function DiagnosticoStock() {
             </table>
           </div>
           <div style={{ marginTop: 12, padding: 12, background: '#f8fafc', borderRadius: 8, fontSize: '0.9rem', color: 'var(--muted)' }}>
-            <strong>Nota:</strong> Al ejecutar la reconciliación, el "Stock Global (BD)" será reemplazado por la "Suma en Depósitos" para corregir la diferencia.
+            <strong>Nota:</strong> {isCivico 
+              ? 'Al ejecutar la reconciliación, el stock físico en Centro Cívico se sincronizará con el balance acumulado de sus movimientos registrados.'
+              : 'Al ejecutar la reconciliación, el "Stock Global (BD)" será reemplazado por la "Suma en Depósitos" para corregir la diferencia.'}
           </div>
         </div>
       )}

@@ -13,7 +13,7 @@ async function obtenerStats(req, res) {
 
 async function obtenerMovimientosMes(req, res) {
   try {
-    const movimientos = await dashboardService.getMovimientosMes(req.query);
+    const movimientos = await dashboardService.getMovimientosMes(req.query, req.user);
     return res.json({ movimientos });
   } catch (err) {
     console.error("Error obteniendo movimientos del mes:", err);

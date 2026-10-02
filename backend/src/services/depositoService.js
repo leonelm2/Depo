@@ -1224,9 +1224,8 @@ async function registrarEgresoMultipleZona({ zona_id, anio, id_deposito, observa
   }
 }
 
-async function getVencimientosProximos(dias = 60) {
+async function getVencimientosProximos(dias = 60, user = null) {
   await ensureDepositosSchema();
-
   // Verificar que existen las columnas necesarias
   const columnCheck = await get(`
     SELECT column_name
@@ -1238,8 +1237,9 @@ async function getVencimientosProximos(dias = 60) {
     return [];
   }
 
-  // Buscamos ingresos que tengan fecha de vencimiento próxima
-  return await all(`
+  const isCivico = user && String(user.role).toLowerCase() === 'operador_civico';
+
+  let query = `
     SELECT
       p.id_producto,
       p.nombre as producto,
@@ -1254,14 +1254,81 @@ async function getVencimientosProximos(dias = 60) {
     JOIN stock_deposito sd ON sd.id_producto = ms.id_producto AND sd.id_deposito = ms.id_deposito
     WHERE ms.tipo = 'ingreso'
       AND ms.fecha_vencimiento IS NOT NULL
-      AND ms.fecha_vencimiento <= (CURRENT_DATE + ? * INTERVAL '1 day')
+      AND ms.fecha_vencimiento <= (CURRENT_DATE + $1 * INTERVAL '1 day')
       AND ms.fecha_vencimiento >= CURRENT_DATE
       AND sd.cantidad > 0
-    ORDER BY ms.fecha_vencimiento ASC
-  `, [dias]);
+  `;
+
+  if (isCivico) {
+    query += ` AND (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR ms.id_deposito = 2)`;
+  }
+
+  query += ` ORDER BY ms.fecha_vencimiento ASC`;
+
+  return await all(query, [dias]);
 }
 
-async function diagnosticoStock() {
+async function diagnosticoStock(user = null) {
+  const isCivico = user && String(user.role).toLowerCase() === 'operador_civico';
+
+  if (isCivico) {
+    const civDepRes = await get(`
+      SELECT id_deposito, nombre FROM deposito 
+      WHERE tipo = 'centro_civico' OR tipo_deposito = 'centro_civico' OR nombre ILIKE '%civico%' 
+      LIMIT 1
+    `);
+    const civDepId = civDepRes?.id_deposito || 2;
+    const depNombre = civDepRes?.nombre || 'Centro Cívico';
+
+    const rows = await all(`
+      WITH mov_calc AS (
+        SELECT 
+          id_producto,
+          SUM(
+            CASE 
+              WHEN tipo = 'ingreso' THEN cantidad
+              WHEN tipo = 'egreso' THEN -cantidad
+              WHEN tipo = 'devolucion' THEN cantidad
+              WHEN tipo = 'ajuste' THEN cantidad
+              ELSE 0
+            END
+          ) AS balance_movimientos
+        FROM movimiento_stock
+        WHERE id_deposito = $1
+        GROUP BY id_producto
+      )
+      SELECT 
+        p.id_producto AS id,
+        p.nombre,
+        p.unidad_medida,
+        COALESCE(sd.cantidad, 0) AS stock_global,
+        COALESCE(sd.cantidad, 0) AS stock_depositos,
+        COALESCE(mc.balance_movimientos, 0) AS balance_movimientos,
+        COALESCE(sd.cantidad, 0) - COALESCE(mc.balance_movimientos, 0) AS diferencia,
+        p.stock_minimo
+      FROM producto p
+      JOIN stock_deposito sd ON sd.id_producto = p.id_producto AND sd.id_deposito = $1
+      LEFT JOIN mov_calc mc ON mc.id_producto = p.id_producto
+      ORDER BY ABS(COALESCE(sd.cantidad, 0) - COALESCE(mc.balance_movimientos, 0)) DESC, p.nombre
+    `, [civDepId]);
+
+    const inconsistentes = rows.filter(r => Number(r.diferencia) !== 0);
+    const consistentes = rows.filter(r => Number(r.diferencia) === 0);
+
+    return {
+      deposito: depNombre,
+      deposito_id: civDepId,
+      es_civico: true,
+      total_productos: rows.length,
+      productos_consistentes: consistentes.length,
+      productos_inconsistentes: inconsistentes.length,
+      inconsistencias: inconsistentes,
+      resumen: inconsistentes.length === 0
+        ? `Stock consistente en ${depNombre}: las existencias coinciden con el balance de movimientos registrados.`
+        : `Se encontraron ${inconsistentes.length} producto(s) con discrepancias en el depósito ${depNombre}.`
+    };
+  }
+
   const rows = await all(`
     SELECT 
       p.id_producto AS id,
@@ -1293,7 +1360,107 @@ async function diagnosticoStock() {
   };
 }
 
-async function reconciliarStock(userId) {
+async function reconciliarStock(userId, user = null) {
+  const isCivico = user && String(user.role).toLowerCase() === 'operador_civico';
+
+  if (isCivico) {
+    const civDepRes = await get(`
+      SELECT id_deposito, nombre FROM deposito 
+      WHERE tipo = 'centro_civico' OR tipo_deposito = 'centro_civico' OR nombre ILIKE '%civico%' 
+      LIMIT 1
+    `);
+    const civDepId = civDepRes?.id_deposito || 2;
+    const depNombre = civDepRes?.nombre || 'Centro Cívico';
+
+    const inconsistentes = await all(`
+      WITH mov_calc AS (
+        SELECT 
+          id_producto,
+          SUM(
+            CASE 
+              WHEN tipo = 'ingreso' THEN cantidad
+              WHEN tipo = 'egreso' THEN -cantidad
+              WHEN tipo = 'devolucion' THEN cantidad
+              WHEN tipo = 'ajuste' THEN cantidad
+              ELSE 0
+            END
+          ) AS balance_movimientos
+        FROM movimiento_stock
+        WHERE id_deposito = $1
+        GROUP BY id_producto
+      )
+      SELECT 
+        p.id_producto AS id,
+        p.nombre,
+        COALESCE(sd.cantidad, 0) AS stock_anterior,
+        COALESCE(mc.balance_movimientos, 0) AS stock_correcto
+      FROM producto p
+      JOIN stock_deposito sd ON sd.id_producto = p.id_producto AND sd.id_deposito = $1
+      LEFT JOIN mov_calc mc ON mc.id_producto = p.id_producto
+      WHERE COALESCE(sd.cantidad, 0) <> COALESCE(mc.balance_movimientos, 0)
+    `, [civDepId]);
+
+    if (inconsistentes.length === 0) {
+      return { ok: true, corregidos: 0, message: `No hay inconsistencias en ${depNombre}. El stock ya está sincronizado.` };
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      for (const item of inconsistentes) {
+        await client.query(
+          'UPDATE stock_deposito SET cantidad = $1 WHERE id_deposito = $2 AND id_producto = $3',
+          [item.stock_correcto, civDepId, item.id]
+        );
+
+        await client.query(
+          `UPDATE producto 
+           SET stock_actual = COALESCE((SELECT SUM(cantidad) FROM stock_deposito WHERE id_producto = $1), 0),
+               updated_at = CURRENT_TIMESTAMP 
+           WHERE id_producto = $1`,
+          [item.id]
+        );
+
+        await client.query(
+          `INSERT INTO auditoria (usuario_id, entidad, accion, id_registro, cambios)
+           VALUES ($1, 'stock_deposito', 'RECONCILIACION_CENTRO_CIVICO', $2, $3)`,
+          [
+            userId,
+            item.id,
+            JSON.stringify({
+              deposito: depNombre,
+              producto: item.nombre,
+              stock_anterior: Number(item.stock_anterior),
+              stock_correcto: Number(item.stock_correcto),
+              diferencia: Number(item.stock_anterior) - Number(item.stock_correcto),
+              motivo: `Reconciliación en ${depNombre}: stock del depósito ajustado a balance de movimientos`
+            })
+          ]
+        );
+      }
+
+      await client.query('COMMIT');
+
+      return {
+        ok: true,
+        corregidos: inconsistentes.length,
+        detalles: inconsistentes.map(i => ({
+          id: i.id,
+          nombre: i.nombre,
+          stock_anterior: Number(i.stock_anterior),
+          stock_correcto: Number(i.stock_correcto)
+        })),
+        message: `Se reconciliaron ${inconsistentes.length} producto(s) en ${depNombre}.`
+      };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   const inconsistentes = await all(`
     SELECT 
       p.id_producto AS id,
@@ -1351,7 +1518,7 @@ async function reconciliarStock(userId) {
         stock_anterior: Number(i.stock_anterior),
         stock_correcto: Number(i.stock_correcto)
       })),
-      message: `Se corrigieron ${inconsistentes.length} producto(s).`
+      message: `Se reconciliaron ${inconsistentes.length} producto(s).`
     };
   } catch (err) {
     await client.query('ROLLBACK');

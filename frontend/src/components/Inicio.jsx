@@ -123,6 +123,7 @@ export default function Inicio({ onNavigate }) {
 
   const mesActual = new Date().toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
   const sinStockList = stats.sin_stock_list || []
+  const isOperadorCivico = user?.role === 'operador_civico'
 
   return (
     <div className="dashboard-stack">
@@ -134,9 +135,15 @@ export default function Inicio({ onNavigate }) {
           transition={{ duration: 0.5, ease: 'easeOut' }}
         >
           <div className="dashboard-hero-copy">
-            <span className="dashboard-hero-chip">Panel administrativo</span>
+            <span className="dashboard-hero-chip">
+              {isOperadorCivico ? '🏛️ Depósito Centro Cívico' : 'Panel administrativo'}
+            </span>
             <h2>Bienvenido, {user?.nombre || 'Usuario'}</h2>
-            <p>{ROLE_LABELS[user?.role] || user?.role || 'Sin rol'} con acceso al estado general del deposito.</p>
+            <p>
+              {isOperadorCivico 
+                ? 'Operador Cívico con acceso y gestión exclusiva del Depósito Centro Cívico.' 
+                : `${ROLE_LABELS[user?.role] || user?.role || 'Sin rol'} con acceso al estado general del deposito.`}
+            </p>
           </div>
 
           <div className="dashboard-hero-aside">
@@ -161,8 +168,8 @@ export default function Inicio({ onNavigate }) {
           <section className="dashboard-section-card dashboard-section-card--span-8 dashboard-highlight">
             <div className="dashboard-section-head">
               <div>
-                <h3>Resumen operativo</h3>
-                <p>Accesos rapidos a las areas principales del panel.</p>
+                <h3>{isOperadorCivico ? 'Resumen Operativo Centro Cívico' : 'Resumen operativo'}</h3>
+                <p>{isOperadorCivico ? 'Accesos rápidos al inventario y dependencias del Centro Cívico.' : 'Accesos rapidos a las areas principales del panel.'}</p>
               </div>
             </div>
 
@@ -170,7 +177,16 @@ export default function Inicio({ onNavigate }) {
               <StatCard label="Productos" value={stats.productos.total} icon={<BoxIcon />} onClick={() => onNavigate?.('productos')} />
               <StatCard label="Stock bajo" value={stats.productos.stock_bajo} icon={<AlertTriangleIcon />} accent={stats.productos.stock_bajo > 0 ? '#E03C31' : '#065f46'} onClick={() => setModalType('stock_bajo')} />
               <StatCard label="Sin stock" value={stats.productos.sin_stock} icon={<XCircleIcon />} accent={stats.productos.sin_stock > 0 ? '#b91c1c' : '#065f46'} onClick={() => setModalType('sin_stock')} />
-              <StatCard label="Instituciones" value={stats.instituciones.total} icon={<BuildingIcon />} onClick={() => onNavigate?.('instituciones')} />
+              {isOperadorCivico ? (
+                <StatCard 
+                  label="Dependencias" 
+                  value={stats.dependencias?.total || 23} 
+                  icon={<BuildingIcon />} 
+                  onClick={() => onNavigate?.('movimientos')} 
+                />
+              ) : (
+                <StatCard label="Instituciones" value={stats.instituciones.total} icon={<BuildingIcon />} onClick={() => onNavigate?.('instituciones')} />
+              )}
               <StatCard label="Proveedores" value={stats.proveedores.total} icon={<TruckIcon />} onClick={() => onNavigate?.('proveedores')} />
             </div>
           </section>
@@ -179,13 +195,13 @@ export default function Inicio({ onNavigate }) {
             <div className="dashboard-section-head">
               <div>
                 <h3>Alertas</h3>
-                <p>Lectura rapida del inventario actual.</p>
+                <p>{isOperadorCivico ? 'Inventario en Centro Cívico.' : 'Lectura rapida del inventario actual.'}</p>
               </div>
             </div>
 
             <div className="dashboard-status-list">
               <div className="dashboard-status-row">
-                <span className="dashboard-status-label">Productos activos</span>
+                <span className="dashboard-status-label">{isOperadorCivico ? 'Productos en depósito' : 'Productos activos'}</span>
                 <span className="dashboard-status-value">{stats.productos.total}</span>
               </div>
               <div className="dashboard-status-row">
@@ -204,8 +220,8 @@ export default function Inicio({ onNavigate }) {
           <section className="dashboard-section-card dashboard-table-card">
             <div className="dashboard-section-head">
               <div>
-                <h3>Alertas de vencimiento</h3>
-                <p>Productos que vencen dentro de los proximos 60 dias.</p>
+                <h3>Alertas de vencimiento {isOperadorCivico && '- Centro Cívico'}</h3>
+                <p>Productos que vencen dentro de los proximos 60 dias{isOperadorCivico ? ' en el Depósito Centro Cívico' : ''}.</p>
               </div>
             </div>
 
@@ -233,7 +249,7 @@ export default function Inicio({ onNavigate }) {
           <div className="dashboard-section-head">
             <div>
               <h3>Movimientos del mes</h3>
-              <p>Indicadores rapidos del periodo actual.</p>
+              <p>{isOperadorCivico ? 'Indicadores del Centro Cívico en el periodo actual.' : 'Indicadores rapidos del periodo actual.'}</p>
             </div>
           </div>
 
@@ -286,8 +302,8 @@ export default function Inicio({ onNavigate }) {
           <section className="dashboard-section-card dashboard-table-card">
             <div className="dashboard-section-head">
               <div>
-                <h3>Actividad reciente</h3>
-                <p>Ultimos movimientos registrados en el sistema.</p>
+                <h3>Actividad reciente {isOperadorCivico && '- Centro Cívico'}</h3>
+                <p>{isOperadorCivico ? 'Últimos movimientos registrados en el Depósito Centro Cívico.' : 'Ultimos movimientos registrados en el sistema.'}</p>
               </div>
             </div>
 
@@ -298,7 +314,7 @@ export default function Inicio({ onNavigate }) {
                   <th>Tipo</th>
                   <th>Producto</th>
                   <th>Cantidad</th>
-                  <th>Institucion</th>
+                  <th>{isOperadorCivico ? 'Destino / Dependencia' : 'Institucion'}</th>
                   <th>Usuario</th>
                   <th>Acción</th>
                 </tr>
@@ -306,6 +322,9 @@ export default function Inicio({ onNavigate }) {
               <tbody>
                 {stats.ultimos_movimientos.map((movimiento) => {
                   const tipoStyle = TIPO_COLORS[movimiento.tipo] || {}
+                  const destinoLabel = isOperadorCivico
+                    ? (movimiento.dependencia_destino ? `🏛️ ${movimiento.dependencia_destino}` : (movimiento.institucion || '-'))
+                    : (movimiento.institucion || '-')
 
                   return (
                     <tr key={movimiento.id}>
@@ -317,7 +336,7 @@ export default function Inicio({ onNavigate }) {
                       </td>
                       <td>{movimiento.producto || '-'}</td>
                       <td style={{ fontWeight: 600 }}>{movimiento.cantidad}</td>
-                      <td>{movimiento.institucion || '-'}</td>
+                      <td>{destinoLabel}</td>
                       <td>{movimiento.usuario || '-'}</td>
                       <td>
                         <button
@@ -418,6 +437,7 @@ export default function Inicio({ onNavigate }) {
                       <th>Tipo</th>
                       <th>Producto</th>
                       <th>Cantidad</th>
+                      <th>{isOperadorCivico ? 'Destino / Dependencia' : 'Institución / Destino'}</th>
                       <th>Usuario</th>
                       <th>Acción</th>
                     </tr>
@@ -425,13 +445,17 @@ export default function Inicio({ onNavigate }) {
                   <tbody>
                     {movimientosList.length === 0 ? (
                       <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)' }}>
+                        <td colSpan={7} style={{ textAlign: 'center', color: 'var(--muted)' }}>
                           No hay movimientos para mostrar en esta categoría
                         </td>
                       </tr>
                     ) : (
                       movimientosList.map((mov) => {
                         const tipoStyle = TIPO_COLORS[mov.tipo] || {}
+                        const destinoLabel = isOperadorCivico
+                          ? (mov.dependencia_destino ? `🏛️ ${mov.dependencia_destino}` : (mov.institucion || '-'))
+                          : (mov.institucion || '-')
+
                         return (
                           <tr key={mov.id}>
                             <td>{new Date(mov.fecha).toLocaleDateString('es-AR')}</td>
@@ -442,6 +466,7 @@ export default function Inicio({ onNavigate }) {
                             </td>
                             <td style={{ fontWeight: 600 }}>{mov.producto || '-'}</td>
                             <td style={{ textAlign: 'center' }}>{mov.cantidad}</td>
+                            <td>{destinoLabel}</td>
                             <td>{mov.usuario || '-'}</td>
                             <td>
                               <button

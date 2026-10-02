@@ -253,7 +253,7 @@ async function getRemitoGeneralLicitacion(req, res) {
 async function getVencimientosProximos(req, res) {
   try {
     const dias = Number(req.query.dias || 60);
-    const alertas = await depositoService.getVencimientosProximos(dias);
+    const alertas = await depositoService.getVencimientosProximos(dias, req.user);
     return res.json({ alertas });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -352,7 +352,7 @@ async function registrarSalidaDistribucion(req, res) {
 
 async function diagnosticoStock(req, res) {
   try {
-    const result = await depositoService.diagnosticoStock();
+    const result = await depositoService.diagnosticoStock(req.user);
     return res.json(result);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -363,7 +363,7 @@ async function diagnosticoStock(req, res) {
 
 async function reconciliarStock(req, res) {
   try {
-    const result = await depositoService.reconciliarStock(req.user.sub);
+    const result = await depositoService.reconciliarStock(req.user.sub, req.user);
     return res.json(result);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
