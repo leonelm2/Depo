@@ -415,9 +415,39 @@ export default function Productos() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <h2>Gestión de Productos</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+        <h2 style={{ margin: 0 }}>Gestión de Productos</h2>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {hasPermission('productos.create') && (
+            <>
+              <button
+                type="button"
+                style={{ width: 'auto', margin: 0, padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                onClick={() => setFormOpen(true)}
+              >
+                <ActionIcon name="agregar" size={16} />
+                Crear producto
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                style={{ width: 'auto', margin: 0, padding: '10px 18px', background: '#f8fafc', color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                onClick={() => setImportModalOpen(true)}
+              >
+                <ActionIcon name="excel" size={16} />
+                Importar Excel
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="secondary"
+            style={{ width: 'auto', margin: 0, padding: '10px 18px', background: '#f8fafc', color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            onClick={() => setExportModalOpen(true)}
+          >
+            <ActionIcon name="excel" size={16} />
+            Exportar a Excel
+          </button>
           <FilterSortButton
             searchValue={searchText}
             searchPlaceholder="Buscar por nombre, SKU, marca, deposito o categoria..."
@@ -461,40 +491,9 @@ export default function Productos() {
             }}
             activeCount={productoFilterCount}
           />
-          <button
-            type="button"
-            className="secondary"
-            style={{ width: 'auto', margin: 0, padding: '10px 18px', background: '#f8fafc', color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-            onClick={() => setExportModalOpen(true)}
-          >
-            <ActionIcon name="excel" size={16} />
-            Exportar a Excel
-          </button>
           <PrintButton targetRef={printRef} title="Inventario de Productos" />
         </div>
       </div>
-
-      {hasPermission('productos.create') && (
-        <div style={{ marginBottom: 24, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            style={{ width: 'auto', margin: 0, padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-            onClick={() => setFormOpen(true)}
-          >
-            <ActionIcon name="agregar" size={16} />
-            Crear producto
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            style={{ width: 'auto', margin: 0, padding: '10px 18px', background: '#f8fafc', color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-            onClick={() => setImportModalOpen(true)}
-          >
-            <ActionIcon name="excel" size={16} />
-            Importar Excel
-          </button>
-        </div>
-      )}
 
       {msg.text && (
         <div className={`msg show ${msg.type === 'success' ? 'msg-success' : 'msg-error'}`}>{msg.text}</div>
