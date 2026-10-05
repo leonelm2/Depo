@@ -626,7 +626,22 @@ button.secondary:hover .action-icon {
   position: relative;
   display: inline-flex;
   justify-content: flex-end;
-  z-index: 200;
+  z-index: var(--z-dropdown);
+}
+
+.filter-sort-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .filter-sort-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: calc(var(--z-modal) - 1);
+  }
 }
 
 .filter-sort-trigger {
@@ -686,7 +701,7 @@ button.secondary:hover .action-icon {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 300;
+  z-index: var(--z-dropdown);
   width: min(520px, calc(100vw - 40px));
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

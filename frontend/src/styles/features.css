@@ -1283,7 +1283,7 @@ button.dashboard-mini-card:hover::after { background: transparent; }
     position: fixed;
     left: 0; top: 0; bottom: 0;
     width: min(270px, 85vw);
-    z-index: var(--z-modal);
+    z-index: 1000;
     transform: translateX(-100%);
     transition: transform var(--transition-slow);
     overflow-y: auto;
@@ -1298,7 +1298,7 @@ button.dashboard-mini-card:hover::after { background: transparent; }
   .dashboard-sidebar-backdrop {
     position: fixed;
     inset: 0;
-    z-index: calc(var(--z-modal) - 1);
+    z-index: 999;
     border: none;
     margin: 0;
     padding: 0;

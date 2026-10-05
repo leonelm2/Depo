@@ -66,10 +66,16 @@
     font-size: 0.875rem;
   }
 
-  .filter-sort { width: 100%; }
-  .filter-sort-trigger { width: 100%; }
+  .productos-header-actions {
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+
+  .filter-sort { width: auto; max-width: 100%; }
+  .filter-sort-trigger { width: auto; max-width: 100%; }
 
   .filter-sort-panel {
+    z-index: var(--z-modal);
     position: fixed;
     left: 12px;
     right: 12px;
