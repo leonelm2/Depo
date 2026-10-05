@@ -244,6 +244,9 @@
 
   html, body { overflow-x: hidden; }
 
+  /* Grid depositos */
+  .grid-depositos { grid-template-columns: 1fr !important; }
+
   /* Auth */
   .auth-container { padding-top: 20px; padding-bottom: 20px; align-items: center; }
   .auth-card { width: min(440px, 100%); }
