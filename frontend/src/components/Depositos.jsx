@@ -17,6 +17,8 @@ export default function Depositos() {
   const [modalType, setModalType] = useState(null) // 'ingreso', 'egreso', 'traslado'
   const [productos, setProductos] = useState([])
   const [form, setForm] = useState({ id_producto: '', cantidad: '', destino_id: '', motivo: '' })
+  const [productoBusqueda, setProductoBusqueda] = useState(null)
+  useEffect(() => { setProductoBusqueda(null) }, [modalType])
 
   const isOperadorCivico = user?.role === 'operador_civico'
   const isOperadorDeposito = user?.role === 'operador'
@@ -598,21 +600,41 @@ export default function Depositos() {
             <form onSubmit={handleAction} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>Producto</label>
-                <select
-                  value={form.id_producto}
-                  onChange={e => setForm({ ...form, id_producto: e.target.value })}
-                  required
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}
-                >
-                  <option value="">Seleccionar producto</option>
-                  {productosOpciones.map(p => {
+                {(() => {
+                  const labelDe = (p) => {
                     const disp = stock.find(s => s.id === p.id)?.cantidad || 0;
                     const stockText = (modalType === 'egreso' || modalType === 'traslado') ? ` - Disp: ${disp}` : '';
-                    return (
-                      <option key={p.id} value={p.id}>{p.nombre}{p.marca ? ` - ${p.marca}` : ''} ({p.unidad_medida}){stockText}</option>
-                    );
-                  })}
-                </select>
+                    return `${p.nombre}${p.marca ? ` - ${p.marca}` : ''} (${p.unidad_medida})${stockText}`;
+                  };
+                  const seleccionado = productosOpciones.find(p => String(p.id) === String(form.id_producto));
+                  const valorInput = productoBusqueda !== null ? productoBusqueda : (seleccionado ? labelDe(seleccionado) : '');
+                  return (
+                    <>
+                      <input
+                        type="text"
+                        list="productos-busqueda"
+                        value={valorInput}
+                        onChange={e => {
+                          const texto = e.target.value;
+                          const match = productosOpciones.find(p => labelDe(p) === texto);
+                          setProductoBusqueda(texto);
+                          setForm({ ...form, id_producto: match ? String(match.id) : '' });
+                          e.target.setCustomValidity(match ? '' : 'Seleccioná un producto de la lista');
+                        }}
+                        onFocus={e => e.target.select()}
+                        required
+                        placeholder="Escribí para buscar producto..."
+                        autoComplete="off"
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                      />
+                      <datalist id="productos-busqueda">
+                        {productosOpciones.map(p => (
+                          <option key={p.id} value={labelDe(p)} />
+                        ))}
+                      </datalist>
+                    </>
+                  );
+                })()}
               </div>
 
               {modalType === 'traslado' && (
