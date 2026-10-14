@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import ActionIcon from './ui/ActionIcon'
+import { DEPENDENCIAS_CENTRO_CIVICO, OTRA_DEPENDENCIA } from '../utils/dependenciasCentroCivico'
+
+const FORM_INICIAL = { id_producto: '', cantidad: '', destino: '', dependencia_otra: '', motivo: '' }
 
 export default function Depositos() {
   const { token, user, hasPermission } = useAuth()
@@ -16,7 +19,8 @@ export default function Depositos() {
   // Modales
   const [modalType, setModalType] = useState(null) // 'ingreso', 'egreso', 'traslado'
   const [productos, setProductos] = useState([])
-  const [form, setForm] = useState({ id_producto: '', cantidad: '', destino_id: '', motivo: '' })
+  // destino (traslado): 'dep:<id>' para otro depósito o 'rep:<nombre>' para una repartición del Centro Cívico
+  const [form, setForm] = useState(FORM_INICIAL)
   const [productoBusqueda, setProductoBusqueda] = useState(null)
   useEffect(() => { setProductoBusqueda(null) }, [modalType])
 
@@ -171,14 +175,29 @@ export default function Depositos() {
 
       if (modalType === 'traslado') {
         endpoint = '/api/depositos/mover'
-        body = {
-          ...body,
-          origen_id: depId,
-          destino_id: parseInt(form.destino_id)
-        }
-        if (!form.destino_id) {
-          setMsg({ text: 'Depósito de destino requerido', type: 'error' })
+        if (!form.destino) {
+          setMsg({ text: 'Seleccione el destino del traslado', type: 'error' })
           return
+        }
+        if (form.destino.startsWith('rep:')) {
+          const rep = form.destino.slice(4)
+          const dependencia = (rep === OTRA_DEPENDENCIA ? form.dependencia_otra : rep).trim()
+          if (!dependencia) {
+            setMsg({ text: 'Especifique la repartición de destino', type: 'error' })
+            return
+          }
+          body = {
+            ...body,
+            motivo: form.motivo || `Traslado a ${dependencia}`,
+            origen_id: depId,
+            dependencia_destino: dependencia
+          }
+        } else {
+          body = {
+            ...body,
+            origen_id: depId,
+            destino_id: parseInt(form.destino.replace('dep:', ''))
+          }
         }
       }
 
@@ -190,7 +209,7 @@ export default function Depositos() {
 
       if (res.ok) {
         setMsg({ text: 'Operación realizada con éxito', type: 'success' })
-        setForm({ id_producto: '', cantidad: '', destino_id: '', motivo: '' })
+        setForm(FORM_INICIAL)
         setModalType(null)
         loadStockYMovimientos()
       } else {
@@ -586,7 +605,7 @@ export default function Depositos() {
               ) : modalType === 'egreso' ? (
                 '➖ Registrar Egreso Manual'
               ) : (
-                <><ActionIcon name="recargar" size={20} /> Traslado entre Depósitos</>
+                <><ActionIcon name="recargar" size={20} /> {(isOperadorCivico || isCivico(depositoSeleccionado)) ? 'Traslado a Repartición / Depósito' : 'Traslado entre Depósitos'}</>
               )}
             </h3>
             <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '20px' }}>
@@ -639,24 +658,54 @@ export default function Depositos() {
                 })()}
               </div>
 
-              {modalType === 'traslado' && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>Depósito Destino</label>
-                  <select
-                    value={form.destino_id}
-                    onChange={e => setForm({ ...form, destino_id: e.target.value })}
-                    required
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}
-                  >
-                    <option value="">Seleccionar destino</option>
-                    {depositos
-                      .filter(d => (d.id || d.id_deposito) !== (depositoSeleccionado.id || depositoSeleccionado.id_deposito))
-                      .map(d => (
-                        <option key={d.id || d.id_deposito} value={d.id || d.id_deposito}>{d.nombre}</option>
-                      ))}
-                  </select>
-                </div>
-              )}
+              {modalType === 'traslado' && (() => {
+                const permiteReparticiones = isOperadorCivico || isCivico(depositoSeleccionado)
+                const otrosDepositos = depositos.filter(d => (d.id || d.id_deposito) !== (depositoSeleccionado.id || depositoSeleccionado.id_deposito))
+                const selectStyle = { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }
+                return (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
+                      {permiteReparticiones ? 'Destino del Traslado (Repartición o Depósito)' : 'Depósito Destino'}
+                    </label>
+                    <select
+                      value={form.destino}
+                      onChange={e => setForm({ ...form, destino: e.target.value, dependencia_otra: '' })}
+                      required
+                      style={selectStyle}
+                    >
+                      <option value="">{permiteReparticiones ? 'Seleccione repartición o depósito destino...' : 'Seleccionar destino'}</option>
+                      {permiteReparticiones && (
+                        <optgroup label="🏛️ Reparticiones del Centro Cívico">
+                          {DEPENDENCIAS_CENTRO_CIVICO.map(dep => (
+                            <option key={dep} value={`rep:${dep}`}>{dep}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {otrosDepositos.length > 0 && (
+                        permiteReparticiones ? (
+                          <optgroup label="📦 Depósitos">
+                            {otrosDepositos.map(d => (
+                              <option key={d.id || d.id_deposito} value={`dep:${d.id || d.id_deposito}`}>{d.nombre}</option>
+                            ))}
+                          </optgroup>
+                        ) : otrosDepositos.map(d => (
+                          <option key={d.id || d.id_deposito} value={`dep:${d.id || d.id_deposito}`}>{d.nombre}</option>
+                        ))
+                      )}
+                    </select>
+                    {form.destino === `rep:${OTRA_DEPENDENCIA}` && (
+                      <input
+                        type="text"
+                        value={form.dependencia_otra}
+                        onChange={e => setForm({ ...form, dependencia_otra: e.target.value })}
+                        required
+                        placeholder="Nombre de la repartición o área"
+                        style={{ ...selectStyle, marginTop: '8px' }}
+                      />
+                    )}
+                  </div>
+                )
+              })()}
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>Cantidad</label>
