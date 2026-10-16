@@ -184,8 +184,8 @@ export default function Proveedores() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <h2>Proveedores</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+        <h2 style={{ margin: 0 }}>Proveedores</h2>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <FilterSortButton
             searchValue={searchText}
@@ -217,25 +217,22 @@ export default function Proveedores() {
             activeCount={filtrosActivos}
           />
           <PrintButton targetRef={printRef} title="Listado de Proveedores" />
+          {canCreate && (
+            <button
+              type="button"
+              style={{ width: 'auto', margin: 0, padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              onClick={() => setFormOpen(true)}
+            >
+              <ActionIcon name="agregar" size={16} />
+              Agregar proveedor
+            </button>
+          )}
         </div>
       </div>
 
       {msg.text && (
         <div className={`msg show ${msg.type === 'success' ? 'msg-success' : 'msg-error'}`} style={{ marginBottom: 16 }}>
           {msg.text}
-        </div>
-      )}
-
-      {canCreate && (
-        <div style={{ marginBottom: 24 }}>
-          <button
-            type="button"
-            style={{ width: 'auto', margin: 0, padding: '10px 18px', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-            onClick={() => setFormOpen(true)}
-          >
-            <ActionIcon name="agregar" size={16} />
-            Agregar proveedor
-          </button>
         </div>
       )}
 
