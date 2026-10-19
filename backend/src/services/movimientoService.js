@@ -413,8 +413,11 @@ async function crearMovimientoDirecto(user, body) {
   const isCivico = String(user?.role || "").toLowerCase() === "operador_civico";
   if (tipo === "egreso") {
     if (isCivico) {
-      if (!dependencia_destino && !body.dependencia && !motivo) {
-        throw { status: 400, message: "Para egresos del Centro Cívico se requiere indicar la dependencia o área de destino" };
+      if (!institucion_id && !dependencia_destino && !body.dependencia && !motivo) {
+        throw { status: 400, message: "Para egresos del Centro Cívico se requiere indicar la escuela o la dependencia/área de destino" };
+      }
+      if (institucion_id && !cargo_retira && !body.persona_recibe) {
+        throw { status: 400, message: "Para egresos a escuelas se requiere indicar el cargo o persona que recibe" };
       }
     } else {
       if (!institucion_id || !cargo_retira) {
@@ -515,7 +518,9 @@ async function crearMovimientoDirecto(user, body) {
       const finalDependencia = dependencia_destino || body.dependencia || null;
       const finalMotivo = isCivico && finalDependencia
         ? (motivo && motivo.includes(finalDependencia) ? motivo : `[Centro Cívico - ${finalDependencia}] ${motivo || 'Egreso a dependencia'}`)
-        : (motivo || null);
+        : (isCivico && institucion_id
+          ? (motivo || 'Egreso a escuela')
+          : (motivo || null));
 
       const movRes = await client.query(
         `INSERT INTO movimiento_stock

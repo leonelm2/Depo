@@ -323,7 +323,7 @@ export default function Inicio({ onNavigate }) {
                 {stats.ultimos_movimientos.map((movimiento) => {
                   const tipoStyle = TIPO_COLORS[movimiento.tipo] || {}
                   const destinoLabel = isOperadorCivico
-                    ? (movimiento.dependencia_destino ? `🏛️ ${movimiento.dependencia_destino}` : (movimiento.institucion || '-'))
+                    ? (movimiento.dependencia_destino ? `🏛️ ${movimiento.dependencia_destino}` : (movimiento.institucion ? `🏫 ${movimiento.institucion}` : '-'))
                     : (movimiento.institucion || '-')
 
                   return (
@@ -453,7 +453,7 @@ export default function Inicio({ onNavigate }) {
                       movimientosList.map((mov) => {
                         const tipoStyle = TIPO_COLORS[mov.tipo] || {}
                         const destinoLabel = isOperadorCivico
-                          ? (mov.dependencia_destino ? `🏛️ ${mov.dependencia_destino}` : (mov.institucion || '-'))
+                          ? (mov.dependencia_destino ? `🏛️ ${mov.dependencia_destino}` : (mov.institucion ? `🏫 ${mov.institucion}` : '-'))
                           : (mov.institucion || '-')
 
                         return (

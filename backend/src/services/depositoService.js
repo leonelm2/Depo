@@ -385,7 +385,7 @@ async function registrarEgreso({ id, id_producto, cantidad, id_institucion, moti
 
   const finalMotivo = (role === "operador_civico" && dependencia_destino)
     ? `[Centro Cívico - ${dependencia_destino}] ${motivo || 'Egreso a dependencia'}`
-    : (motivo || "Egreso de depósito");
+    : (motivo || (role === "operador_civico" && institucionIdNum ? "[Centro Cívico] Egreso a escuela" : "Egreso de depósito"));
 
   await run(`
     INSERT INTO movimiento_stock (id_producto, cantidad, tipo, id_institucion, cargo_retira, motivo, id_usuario, id_deposito, estado_egreso, fecha_pedido, fecha_salida_camion, dependencia_destino)

@@ -99,6 +99,7 @@ export default function Movimientos() {
   const [egresoItem, setEgresoItem] = useState({ productoNombre: '', cantidad: '', estado: 'nuevo' })
 
   // Egreso Centro Cívico state
+  const [egresoTipoDestinoCivico, setEgresoTipoDestinoCivico] = useState('dependencia') // 'dependencia' | 'escuela'
   const [egresoDependencia, setEgresoDependencia] = useState('')
   const [egresoDependenciaOtra, setEgresoDependenciaOtra] = useState('')
   const [egresoPisoOficina, setEgresoPisoOficina] = useState('')
@@ -357,8 +358,63 @@ export default function Movimientos() {
 
     setIsLoading(true)
     try {
-      // 1. FLUJO ESPECIAL OPERADOR CÍVICO (Egreso entre dependencias/áreas del Centro Cívico)
+      // 1. FLUJO ESPECIAL OPERADOR CÍVICO (Egreso a Dependencias/Áreas o a Escuelas desde Centro Cívico)
       if (isOperadorCivico) {
+        if (egresoTipoDestinoCivico === 'escuela') {
+          const instMatch = instituciones.find(i => i.nombre.toLowerCase() === egresoInst.trim().toLowerCase())
+          if (!instMatch) {
+            setMsg({ text: 'Debe seleccionar una escuela o institución válida de la lista', type: 'error' })
+            return
+          }
+
+          if (!egresoCargo && !egresoPersonaRecibe.trim()) {
+            setMsg({ text: 'Indique el cargo o nombre de la persona que recibe en la escuela', type: 'error' })
+            return
+          }
+
+          const detalleReceptor = [
+            egresoPersonaRecibe.trim(),
+            egresoCargo ? `(${egresoCargo})` : ''
+          ].filter(Boolean).join(' ')
+
+          const payload = {
+            tipo: 'egreso',
+            id_deposito: 2,
+            institucion_id: instMatch.id,
+            cargo_retira: detalleReceptor || egresoCargo,
+            fecha_pedido: egresoFechaPedido || null,
+            fecha_salida_camion: egresoFechaSalidaCamion || null,
+            motivo: egresoMotivo.trim() || `Entrega desde Centro Cívico a ${instMatch.nombre}`,
+            productos: loteEgreso
+          }
+
+          const res = await apiFetch('/api/movimientos/directo', {
+            token,
+            method: 'POST',
+            body: JSON.stringify(payload)
+          })
+
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}))
+            setMsg({ text: data.error || 'Error al registrar egreso a escuela', type: 'error' })
+            return
+          }
+
+          setEgresoInst('')
+          setEgresoNivel('')
+          setEgresoCargo('')
+          setEgresoPersonaRecibe('')
+          setEgresoMotivo('')
+          setEgresoFechaPedido(getTodayStr())
+          setEgresoFechaSalidaCamion(getTodayStr())
+          setLoteEgreso([])
+          setEgresoModalOpen(false)
+          setMsg({ text: `Egreso a escuela "${instMatch.nombre}" registrado correctamente`, type: 'success' })
+          loadMovimientos()
+          loadProductos()
+          return
+        }
+
         const destFinal = egresoDependencia === 'Otra Dependencia / Área...'
           ? egresoDependenciaOtra.trim()
           : egresoDependencia.trim()
@@ -887,7 +943,9 @@ return (
                   }}>➖</div>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1.2 }}>
-                      {isOperadorCivico ? '🏛️ Egreso a Dependencias - Centro Cívico' : 'Egreso de Productos'}
+                      {isOperadorCivico 
+                        ? (egresoTipoDestinoCivico === 'escuela' ? '🏫 Egreso a Escuelas - Centro Cívico' : '🏛️ Egreso a Dependencias - Centro Cívico') 
+                        : 'Egreso de Productos'}
                     </div>
                     <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span>Depósito de origen:</span>
@@ -933,101 +991,246 @@ return (
                     padding: '18px 20px',
                     marginBottom: 20,
                   }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 14 }}>
-                      {isOperadorCivico ? '🏛️ Destino del Egreso (Dependencias Centro Cívico)' : 'Destino del Egreso'}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {isOperadorCivico 
+                          ? (egresoTipoDestinoCivico === 'escuela' ? '🏫 Destino del Egreso (Escuelas / Instituciones)' : '🏛️ Destino del Egreso (Dependencias Centro Cívico)')
+                          : 'Destino del Egreso'}
+                      </div>
+                      {isOperadorCivico && (
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          Seleccioná si entregás a un área interna o a una escuela
+                        </span>
+                      )}
                     </div>
 
                     {isOperadorCivico ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
-                            Dependencia o Área Destino *
-                          </label>
-                          <select
-                            value={egresoDependencia}
-                            onChange={e => setEgresoDependencia(e.target.value)}
-                            required
-                            style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {/* Selector Tipo de Destino (Áreas vs Escuelas) */}
+                        <div style={{
+                          display: 'flex',
+                          gap: 8,
+                          background: '#e2e8f0',
+                          padding: 4,
+                          borderRadius: 10,
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => { setEgresoTipoDestinoCivico('dependencia'); setMsg({ text: '', type: '' }) }}
+                            style={{
+                              flex: 1,
+                              padding: '9px 14px',
+                              borderRadius: 8,
+                              border: 'none',
+                              background: egresoTipoDestinoCivico === 'dependencia' ? '#ffffff' : 'transparent',
+                              color: egresoTipoDestinoCivico === 'dependencia' ? '#0f172a' : '#64748b',
+                              fontWeight: egresoTipoDestinoCivico === 'dependencia' ? 700 : 500,
+                              fontSize: '0.85rem',
+                              boxShadow: egresoTipoDestinoCivico === 'dependencia' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 6,
+                              transition: 'all 0.15s ease'
+                            }}
                           >
-                            <option value="">Seleccione dependencia o área del Centro Cívico...</option>
-                            {DEPENDENCIAS_CENTRO_CIVICO.map(dep => (
-                              <option key={dep} value={dep}>{dep}</option>
-                            ))}
-                          </select>
+                            <span>🏛️</span>
+                            <span>Áreas / Dependencias</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setEgresoTipoDestinoCivico('escuela'); setMsg({ text: '', type: '' }) }}
+                            style={{
+                              flex: 1,
+                              padding: '9px 14px',
+                              borderRadius: 8,
+                              border: 'none',
+                              background: egresoTipoDestinoCivico === 'escuela' ? '#ffffff' : 'transparent',
+                              color: egresoTipoDestinoCivico === 'escuela' ? '#0f172a' : '#64748b',
+                              fontWeight: egresoTipoDestinoCivico === 'escuela' ? 700 : 500,
+                              fontSize: '0.85rem',
+                              boxShadow: egresoTipoDestinoCivico === 'escuela' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 6,
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <span>🏫</span>
+                            <span>Escuelas / Instituciones</span>
+                          </button>
                         </div>
 
-                        {egresoDependencia === 'Otra Dependencia / Área...' && (
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
-                              Nombre de la Dependencia o Área *
-                            </label>
-                            <input
-                              type="text"
-                              value={egresoDependenciaOtra}
-                              onChange={e => setEgresoDependenciaOtra(e.target.value)}
-                              placeholder="Ej: Dirección de Educación Inicial - Supervisión"
-                              required
-                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
-                            />
-                          </div>
+                        {egresoTipoDestinoCivico === 'escuela' ? (
+                          <>
+                            <div>
+                              <SelectorTrigger
+                                label="Escuela o Institución Destino"
+                                placeholder="Buscar escuela por CUE o nombre..."
+                                selectedItem={instituciones.find(i => i.nombre.toLowerCase() === egresoInst.trim().toLowerCase()) || (egresoInst ? { nombre: egresoInst, departamento: egresoNivel ? `Nivel: ${egresoNivel}` : '' } : null)}
+                                onClick={() => setEgresoInstModalOpen(true)}
+                                onClear={() => { setEgresoInst(''); setEgresoNivel('') }}
+                                required
+                              />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                                  Persona que retira / recibe
+                                </label>
+                                <input
+                                  type="text"
+                                  value={egresoPersonaRecibe}
+                                  onChange={e => setEgresoPersonaRecibe(e.target.value)}
+                                  placeholder="Ej: Lic. Martín Díaz (DNI o legajo)"
+                                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                                  Cargo de quien recibe *
+                                </label>
+                                <select
+                                  value={egresoCargo}
+                                  onChange={e => setEgresoCargo(e.target.value)}
+                                  required
+                                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                                >
+                                  <option value="">Seleccionar cargo institucional...</option>
+                                  {CARGOS.map(c => (
+                                    <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                                  ))}
+                                  <option value="docente">Docente</option>
+                                  <option value="administrativo/a">Administrativo/a</option>
+                                  <option value="otro">Otro</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                                  Nivel Educativo
+                                </label>
+                                <input
+                                  type="text"
+                                  value={egresoNivel}
+                                  placeholder="Se cargará automáticamente al elegir la escuela"
+                                  readOnly
+                                  disabled
+                                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', minHeight: 40, background: '#f1f5f9' }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                                  Fecha de Entrega / Despacho
+                                </label>
+                                <input
+                                  type="date"
+                                  value={egresoFechaPedido}
+                                  onChange={e => setEgresoFechaPedido(e.target.value)}
+                                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                                />
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                                Dependencia o Área Destino *
+                              </label>
+                              <select
+                                value={egresoDependencia}
+                                onChange={e => setEgresoDependencia(e.target.value)}
+                                required
+                                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                              >
+                                <option value="">Seleccione dependencia o área del Centro Cívico...</option>
+                                {DEPENDENCIAS_CENTRO_CIVICO.map(dep => (
+                                  <option key={dep} value={dep}>{dep}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {egresoDependencia === 'Otra Dependencia / Área...' && (
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                                  Nombre de la Dependencia o Área *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={egresoDependenciaOtra}
+                                  onChange={e => setEgresoDependenciaOtra(e.target.value)}
+                                  placeholder="Ej: Dirección de Educación Inicial - Supervisión"
+                                  required
+                                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                                />
+                              </div>
+                            )}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                                  Persona que retira / recibe *
+                                </label>
+                                <input
+                                  type="text"
+                                  value={egresoPersonaRecibe}
+                                  onChange={e => setEgresoPersonaRecibe(e.target.value)}
+                                  placeholder="Ej: Lic. María González (DNI / Legajo)"
+                                  required
+                                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                                  Cargo / Función en la Dependencia
+                                </label>
+                                <select
+                                  value={egresoCargo}
+                                  onChange={e => setEgresoCargo(e.target.value)}
+                                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                                >
+                                  <option value="">Seleccionar cargo/función...</option>
+                                  {CARGOS_CENTRO_CIVICO.map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                                  Ubicación interna (Piso / Núcleo / Oficina)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={egresoPisoOficina}
+                                  onChange={e => setEgresoPisoOficina(e.target.value)}
+                                  placeholder="Ej: Piso 2 - Núcleo 3 - Of. 204"
+                                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
+                                  Fecha de Entrega / Despacho
+                                </label>
+                                <input
+                                  type="date"
+                                  value={egresoFechaPedido}
+                                  onChange={e => setEgresoFechaPedido(e.target.value)}
+                                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
+                                />
+                              </div>
+                            </div>
+                          </>
                         )}
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
-                              Persona que retira / recibe *
-                            </label>
-                            <input
-                              type="text"
-                              value={egresoPersonaRecibe}
-                              onChange={e => setEgresoPersonaRecibe(e.target.value)}
-                              placeholder="Ej: Lic. María González (DNI / Legajo)"
-                              required
-                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
-                              Cargo / Función en la Dependencia
-                            </label>
-                            <select
-                              value={egresoCargo}
-                              onChange={e => setEgresoCargo(e.target.value)}
-                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
-                            >
-                              <option value="">Seleccionar cargo/función...</option>
-                              {CARGOS_CENTRO_CIVICO.map(c => (
-                                <option key={c} value={c}>{c}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
-                              Ubicación interna (Piso / Núcleo / Oficina)
-                            </label>
-                            <input
-                              type="text"
-                              value={egresoPisoOficina}
-                              onChange={e => setEgresoPisoOficina(e.target.value)}
-                              placeholder="Ej: Piso 2 - Núcleo 3 - Of. 204"
-                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>
-                              Fecha de Entrega / Despacho
-                            </label>
-                            <input
-                              type="date"
-                              value={egresoFechaPedido}
-                              onChange={e => setEgresoFechaPedido(e.target.value)}
-                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', background: '#fff', minHeight: 40 }}
-                            />
-                          </div>
-                        </div>
                       </div>
                     ) : (
                       <>
@@ -1264,7 +1467,9 @@ return (
                       type="text"
                       value={egresoMotivo}
                       onChange={e => setEgresoMotivo(e.target.value)}
-                      placeholder={isOperadorCivico ? "Ej: Solicitud interna de suministros, insumos para reunión..." : "Ej: Entrega a escuela, donación, traslado..."}
+                      placeholder={isOperadorCivico 
+                        ? (egresoTipoDestinoCivico === 'escuela' ? "Ej: Entrega de útiles a escuela, retiro directivo..." : "Ej: Solicitud interna de suministros, insumos para reunión...")
+                        : "Ej: Entrega a escuela, donación, traslado..."}
                       style={{ width: '100%', padding: '9px 14px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', minHeight: 40 }}
                     />
                   </div>
@@ -1307,7 +1512,9 @@ return (
                       boxShadow: loteEgreso.length === 0 ? 'none' : '0 4px 12px rgba(225,29,72,0.30)',
                     }}
                   >
-                    {isOperadorCivico ? '✓ Registrar Egreso a Dependencia' : '✓ Registrar Egreso'}
+                    {isOperadorCivico 
+                      ? (egresoTipoDestinoCivico === 'escuela' ? '✓ Registrar Egreso a Escuela' : '✓ Registrar Egreso a Dependencia') 
+                      : '✓ Registrar Egreso'}
                   </button>
                 </div>
               </div>
@@ -2004,7 +2211,7 @@ return (
                   
                   let proveedorDisplay = '-';
                   if (first.tipo === 'egreso') {
-                    proveedorDisplay = first.dependencia_destino ? `🏛️ ${first.dependencia_destino}` : (first.institucion_nombre || '-');
+                    proveedorDisplay = first.dependencia_destino ? `🏛️ ${first.dependencia_destino}` : (first.institucion_nombre ? `🏫 ${first.institucion_nombre}` : '-');
                   } else if (first.tipo === 'ingreso') {
                     proveedorDisplay = proveedoresResumen.length > 0 ? proveedoresResumen.join(', ') : 'Sin proveedor';
                   } else {
