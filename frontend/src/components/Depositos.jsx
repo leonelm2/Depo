@@ -409,7 +409,6 @@ export default function Depositos() {
           const dId = d.id || d.id_deposito
           const selId = depositoSeleccionado?.id || depositoSeleccionado?.id_deposito
           const isSelected = selId === dId
-          const esSoloLectura = isOperadorCivico && isCentral(d)
           return (
             <button
               key={dId}
@@ -432,19 +431,6 @@ export default function Depositos() {
               }}
             >
               <span>{getTipoLabel(d.tipo, d.nombre)}</span>
-              {esSoloLectura && (
-                <span style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  background: isSelected ? '#dbeafe' : '#f1f5f9',
-                  color: isSelected ? '#1d4ed8' : '#64748b',
-                  border: '1px solid rgba(0,0,0,0.08)'
-                }}>
-                  👁️ Solo ver
-                </span>
-              )}
             </button>
           )
         })}
@@ -458,7 +444,7 @@ export default function Depositos() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
               <h3 style={{ margin: 0 }}>Inventario Actual</h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap' }}>
-                {puedeOperarEnDeposito ? (
+                {puedeOperarEnDeposito && (
                   <>
                     <button className="primary" onClick={() => { setModalType('ingreso'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ width: 'auto', padding: '8px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flex: '0 0 auto' }}>
                       <ActionIcon name="agregar" size={14} /> Ingreso
@@ -470,22 +456,7 @@ export default function Depositos() {
                       <ActionIcon name="recargar" size={14} /> Traslado
                     </button>
                   </>
-                ) : (isOperadorCivico && isCentral(depositoSeleccionado)) ? (
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    background: '#e0f2fe',
-                    color: '#0369a1',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    border: '1px solid #bae6fd'
-                  }}>
-                    <span>👁️</span> Solo consulta (Disponibilidad para pedidos)
-                  </div>
-                ) : null}
+                )}
               </div>
             </div>
 
