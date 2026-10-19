@@ -51,7 +51,16 @@ function isCentroCivicoDep(dep) {
   if (!dep) return false;
   const tipo = String(dep.tipo || dep.tipo_deposito || "").toLowerCase();
   const nombre = String(dep.nombre || "").toLowerCase();
-  return tipo === "centro_civico" || nombre.includes("civico") || nombre.includes("cívico");
+  const id = Number(dep.id_deposito || dep.id);
+  return id === 2 || tipo === "centro_civico" || nombre.includes("civico") || nombre.includes("cívico");
+}
+
+function isCentralDep(dep) {
+  if (!dep) return false;
+  const tipo = String(dep.tipo || dep.tipo_deposito || "").toLowerCase();
+  const nombre = String(dep.nombre || "").toLowerCase();
+  const id = Number(dep.id_deposito || dep.id);
+  return id === 1 || tipo === "central" || nombre.includes("central");
 }
 
 async function listDepositos(user = {}) {
@@ -84,7 +93,7 @@ async function listDepositos(user = {}) {
   if (isEscolar) {
     query += " AND d.id_deposito IN (1, 2)";
   } else if (isCivico) {
-    query += " AND (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR d.id_deposito = 2)";
+    query += " AND (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR d.id_deposito = 2 OR d.tipo = 'central' OR d.tipo_deposito = 'central' OR d.nombre ILIKE '%central%' OR d.id_deposito = 1)";
   } else if (isOperador) {
     query += " AND NOT (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR d.id_deposito = 2)";
   }
@@ -156,8 +165,19 @@ async function getStockByDeposito(id, user) {
     throw { status: 403, message: "No tenés acceso a la cápsula de seguridad" };
   }
 
-  const isPadre = deposito.tipo === "central";
-  const isCivico = isCentroCivicoDep(deposito) || String(user?.role || '').toLowerCase() === 'operador_civico';
+  const role = String(user?.role || '').toLowerCase();
+  const isCivicoRole = role === 'operador_civico';
+  const isOperadorRole = role === 'operador';
+
+  if (isCivicoRole && !isCentroCivicoDep(deposito) && !isCentralDep(deposito)) {
+    throw { status: 403, message: "No tenés acceso a este depósito" };
+  }
+  if (isOperadorRole && isCentroCivicoDep(deposito)) {
+    throw { status: 403, message: "No tenés acceso al Centro Cívico" };
+  }
+
+  const isPadre = isCentralDep(deposito) || deposito.tipo === "central";
+  const isCivico = isCentroCivicoDep(deposito);
 
   let stockQuery;
 

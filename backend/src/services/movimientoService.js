@@ -112,7 +112,11 @@ async function listarMovimientos(queryParams, user = null) {
   const isOperadorCentral = user && String(user.role).toLowerCase() === "operador";
 
   if (isCivico) {
-    query += ` AND (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR m.id_deposito = 2 OR m.dependencia_destino IS NOT NULL)`;
+    if (id_deposito) {
+      query += ` AND (m.id_deposito IN (1, 2) OR d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR m.dependencia_destino IS NOT NULL)`;
+    } else {
+      query += ` AND (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR m.id_deposito = 2 OR m.dependencia_destino IS NOT NULL)`;
+    }
   } else if (isOperadorCentral) {
     query += ` AND NOT (d.tipo = 'centro_civico' OR d.tipo_deposito = 'centro_civico' OR d.nombre ILIKE '%civico%' OR m.id_deposito = 2 OR m.dependencia_destino IS NOT NULL)`;
   }

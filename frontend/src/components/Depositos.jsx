@@ -38,10 +38,35 @@ export default function Depositos() {
     return id === 2 || tipo === 'centro_civico' || nombre.includes('civico') || nombre.includes('cívico')
   }, [])
 
+  const isCentral = useCallback((d) => {
+    if (!d) return false
+    const id = Number(d.id || d.id_deposito || 0)
+    const tipo = (d.tipo || d.tipo_deposito || '').toLowerCase()
+    const nombre = (d.nombre || '').toLowerCase()
+    return id === 1 || tipo === 'central' || nombre.includes('central')
+  }, [])
+
+  const puedeOperarEnDeposito = useMemo(() => {
+    if (!depositoSeleccionado) return false
+    // Si es operador cívico, SOLO puede operar en Centro Cívico. En Central es solo consulta/ver
+    if (isOperadorCivico) {
+      return isCivico(depositoSeleccionado)
+    }
+    if (isOperadorDeposito && isCivico(depositoSeleccionado)) {
+      return false
+    }
+    if (depositoSeleccionado.tipo === 'capsula' && !esAdmin) {
+      return false
+    }
+    return canMove
+  }, [depositoSeleccionado, isOperadorCivico, isOperadorDeposito, isCivico, esAdmin, canMove])
+
   const depositosMostrar = useMemo(() => {
     if (isOperadorCivico) {
-      // El operador de centro cívico solo debe tener el suyo
-      return depositos.filter(isCivico)
+      // El operador cívico puede ver su Centro Cívico (operativo) y Depósito Central (solo consulta)
+      const civ = depositos.filter(isCivico)
+      const cen = depositos.filter(isCentral)
+      return [...civ, ...cen]
     }
     if (isOperadorDeposito) {
       // Al operador de depósito se le quita el centro cívico
@@ -49,7 +74,7 @@ export default function Depositos() {
     }
     // Jefe de depósito, admin y master ven todos los depósitos
     return depositos
-  }, [depositos, isOperadorCivico, isOperadorDeposito, isCivico])
+  }, [depositos, isOperadorCivico, isOperadorDeposito, isCivico, isCentral])
 
   const loadData = useCallback(async () => {
     try {
@@ -60,7 +85,7 @@ export default function Depositos() {
         setDepositos(allDeps)
         
         const permitidos = isOperadorCivico 
-          ? allDeps.filter(isCivico)
+          ? allDeps.filter(d => isCivico(d) || isCentral(d))
           : isOperadorDeposito 
             ? allDeps.filter(d => !isCivico(d))
             : allDeps
@@ -69,6 +94,9 @@ export default function Depositos() {
           setDepositoSeleccionado(prev => {
             const prevId = prev?.id || prev?.id_deposito
             if (!prev || !permitidos.some(d => (d.id || d.id_deposito) === prevId)) {
+              if (isOperadorCivico) {
+                return permitidos.find(isCivico) || permitidos[0]
+              }
               return permitidos[0]
             }
             return prev
@@ -84,7 +112,7 @@ export default function Depositos() {
     } catch (err) {
       console.error('Error loading initial data:', err)
     }
-  }, [token, isOperadorCivico, isOperadorDeposito, isCivico])
+  }, [token, isOperadorCivico, isOperadorDeposito, isCivico, isCentral])
 
   const loadStockYMovimientos = useCallback(async () => {
     const depId = depositoSeleccionado?.id || depositoSeleccionado?.id_deposito
@@ -118,21 +146,21 @@ export default function Depositos() {
   }, [token, depositoSeleccionado])
 
   const stockMostrar = useMemo(() => {
-    if (isCivico(depositoSeleccionado) || isOperadorCivico) {
+    if (isCivico(depositoSeleccionado)) {
       return stock.filter(s => Number(s.cantidad) > 0 || s.en_civico)
     }
     return stock
-  }, [stock, depositoSeleccionado, isCivico, isOperadorCivico])
+  }, [stock, depositoSeleccionado, isCivico])
 
   const productosOpciones = useMemo(() => {
     if (modalType === 'egreso' || modalType === 'traslado') {
       return stockMostrar.filter(s => Number(s.cantidad) > 0)
     }
-    if (isCivico(depositoSeleccionado) || isOperadorCivico) {
+    if (isCivico(depositoSeleccionado)) {
       return productos.length > 0 ? productos : stockMostrar
     }
     return productos
-  }, [modalType, stockMostrar, productos, depositoSeleccionado, isCivico, isOperadorCivico])
+  }, [modalType, stockMostrar, productos, depositoSeleccionado, isCivico])
 
   useEffect(() => {
     loadData()
@@ -149,6 +177,11 @@ export default function Depositos() {
     const depId = depositoSeleccionado?.id || depositoSeleccionado?.id_deposito
     if (!depId) {
       setMsg({ text: 'No hay depósito seleccionado', type: 'error' })
+      return
+    }
+
+    if (!puedeOperarEnDeposito) {
+      setMsg({ text: 'No tiene permisos para operar en este depósito (modo solo consulta)', type: 'error' })
       return
     }
 
@@ -376,6 +409,7 @@ export default function Depositos() {
           const dId = d.id || d.id_deposito
           const selId = depositoSeleccionado?.id || depositoSeleccionado?.id_deposito
           const isSelected = selId === dId
+          const esSoloLectura = isOperadorCivico && isCentral(d)
           return (
             <button
               key={dId}
@@ -397,7 +431,20 @@ export default function Depositos() {
                 gap: '8px'
               }}
             >
-              {getTipoLabel(d.tipo, d.nombre)}
+              <span>{getTipoLabel(d.tipo, d.nombre)}</span>
+              {esSoloLectura && (
+                <span style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  background: isSelected ? '#dbeafe' : '#f1f5f9',
+                  color: isSelected ? '#1d4ed8' : '#64748b',
+                  border: '1px solid rgba(0,0,0,0.08)'
+                }}>
+                  👁️ Solo ver
+                </span>
+              )}
             </button>
           )
         })}
@@ -411,7 +458,7 @@ export default function Depositos() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
               <h3 style={{ margin: 0 }}>Inventario Actual</h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap' }}>
-                {canMove && (depositoSeleccionado.tipo !== 'capsula' || esAdmin) && (
+                {puedeOperarEnDeposito ? (
                   <>
                     <button className="primary" onClick={() => { setModalType('ingreso'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ width: 'auto', padding: '8px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flex: '0 0 auto' }}>
                       <ActionIcon name="agregar" size={14} /> Ingreso
@@ -423,7 +470,22 @@ export default function Depositos() {
                       <ActionIcon name="recargar" size={14} /> Traslado
                     </button>
                   </>
-                )}
+                ) : (isOperadorCivico && isCentral(depositoSeleccionado)) ? (
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    background: '#e0f2fe',
+                    color: '#0369a1',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    border: '1px solid #bae6fd'
+                  }}>
+                    <span>👁️</span> Solo consulta (Disponibilidad para pedidos)
+                  </div>
+                ) : null}
               </div>
             </div>
 
