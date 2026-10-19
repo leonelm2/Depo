@@ -17,6 +17,9 @@ export const printMovimiento = (movimientoOrGroup, instituciones = [], productos
   const institucionNombre = primer.dependencia_destino
     ? `Centro Cívico - ${primer.dependencia_destino}`
     : (primer.institucion_nombre || '-')
+  const cueDestino = primer.dependencia_destino
+    ? ''
+    : String(primer.institucion_cue || (institucionMatch && institucionMatch.cue) || '').trim()
   const depositoOrigen = primer.deposito_nombre || (primer.dependencia_destino ? 'CENTRO CÍVICO' : 'DEPOSITO CENTRAL')
 
   const dateObj = primer.created_at ? new Date(primer.created_at) : new Date()
@@ -208,6 +211,7 @@ export const printMovimiento = (movimientoOrGroup, instituciones = [], productos
             <div><strong>Fecha:</strong> ${fechaStr}</div>
             <div><strong>Depósito Origen:</strong> ${depositoOrigen.toUpperCase()}</div>
             <div><strong>Destino:</strong> ${institucionNombre.toUpperCase()}</div>
+            ${cueDestino ? `<div><strong>CUE:</strong> ${cueDestino}</div>` : ''}
             ${primer.cargo_retira ? `<div><strong>Receptor:</strong> ${primer.cargo_retira}</div>` : ''}
             <div><strong>Ubicación del Destino:</strong> ${ubicacionDestino}</div>
           </div>

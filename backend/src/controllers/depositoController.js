@@ -48,15 +48,17 @@ async function getStockByDeposito(req, res) {
 
 async function moverStock(req, res) {
   try {
-    const { id_producto, cantidad, origen_id, destino_id, motivo } = req.body;
-    if (!id_producto || !cantidad || !origen_id || !destino_id) {
+    const { id_producto, cantidad, origen_id, destino_id, motivo, dependencia_destino } = req.body;
+    const dependencia = typeof dependencia_destino === "string" ? dependencia_destino.trim() : "";
+    if (!id_producto || !cantidad || !origen_id || (!destino_id && !dependencia)) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
     const result = await depositoService.moverStock({
       id_producto,
       cantidad,
       origen_id,
-      destino_id,
+      destino_id: destino_id || null,
+      dependencia_destino: dependencia || null,
       motivo,
       user: req.user
     });

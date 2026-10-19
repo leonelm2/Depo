@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import ActionIcon from './ui/ActionIcon'
+import { DEPENDENCIAS_CENTRO_CIVICO, OTRA_DEPENDENCIA } from '../utils/dependenciasCentroCivico'
+
+const FORM_INICIAL = { id_producto: '', cantidad: '', destino: '', dependencia_otra: '', motivo: '' }
 
 export default function Depositos() {
   const { token, user, hasPermission } = useAuth()
@@ -16,7 +19,10 @@ export default function Depositos() {
   // Modales
   const [modalType, setModalType] = useState(null) // 'ingreso', 'egreso', 'traslado'
   const [productos, setProductos] = useState([])
-  const [form, setForm] = useState({ id_producto: '', cantidad: '', destino_id: '', motivo: '' })
+  // destino (traslado): 'dep:<id>' para otro depósito o 'rep:<nombre>' para una repartición del Centro Cívico
+  const [form, setForm] = useState(FORM_INICIAL)
+  const [productoBusqueda, setProductoBusqueda] = useState(null)
+  useEffect(() => { setProductoBusqueda(null) }, [modalType])
 
   const isOperadorCivico = user?.role === 'operador_civico'
   const isOperadorDeposito = user?.role === 'operador'
@@ -169,14 +175,29 @@ export default function Depositos() {
 
       if (modalType === 'traslado') {
         endpoint = '/api/depositos/mover'
-        body = {
-          ...body,
-          origen_id: depId,
-          destino_id: parseInt(form.destino_id)
-        }
-        if (!form.destino_id) {
-          setMsg({ text: 'Depósito de destino requerido', type: 'error' })
+        if (!form.destino) {
+          setMsg({ text: 'Seleccione el destino del traslado', type: 'error' })
           return
+        }
+        if (form.destino.startsWith('rep:')) {
+          const rep = form.destino.slice(4)
+          const dependencia = (rep === OTRA_DEPENDENCIA ? form.dependencia_otra : rep).trim()
+          if (!dependencia) {
+            setMsg({ text: 'Especifique la repartición de destino', type: 'error' })
+            return
+          }
+          body = {
+            ...body,
+            motivo: form.motivo || `Traslado a ${dependencia}`,
+            origen_id: depId,
+            dependencia_destino: dependencia
+          }
+        } else {
+          body = {
+            ...body,
+            origen_id: depId,
+            destino_id: parseInt(form.destino.replace('dep:', ''))
+          }
         }
       }
 
@@ -188,7 +209,7 @@ export default function Depositos() {
 
       if (res.ok) {
         setMsg({ text: 'Operación realizada con éxito', type: 'success' })
-        setForm({ id_producto: '', cantidad: '', destino_id: '', motivo: '' })
+        setForm(FORM_INICIAL)
         setModalType(null)
         loadStockYMovimientos()
       } else {
@@ -387,16 +408,18 @@ export default function Depositos() {
           
           {/* Panel Principal: Stock */}
           <div className="card" style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
               <h3 style={{ margin: 0 }}>Inventario Actual</h3>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap' }}>
                 {canMove && (depositoSeleccionado.tipo !== 'capsula' || esAdmin) && (
                   <>
-                    <button className="primary" onClick={() => { setModalType('ingreso'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ padding: '8px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <button className="primary" onClick={() => { setModalType('ingreso'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ width: 'auto', padding: '8px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flex: '0 0 auto' }}>
                       <ActionIcon name="agregar" size={14} /> Ingreso
                     </button>
-                    <button className="secondary" onClick={() => { setModalType('egreso'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ padding: '8px 14px', fontSize: '0.85rem' }}>- Egreso</button>
-                    <button className="secondary" onClick={() => { setModalType('traslado'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ padding: '8px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <button className="primary" onClick={() => { setModalType('egreso'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ width: 'auto', padding: '8px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 800, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14 }}>−</span> Egreso
+                    </button>
+                    <button className="primary" onClick={() => { setModalType('traslado'); setForm({ ...form, id_producto: '', cantidad: '' }) }} style={{ width: 'auto', padding: '8px 14px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flex: '0 0 auto' }}>
                       <ActionIcon name="recargar" size={14} /> Traslado
                     </button>
                   </>
@@ -582,7 +605,7 @@ export default function Depositos() {
               ) : modalType === 'egreso' ? (
                 '➖ Registrar Egreso Manual'
               ) : (
-                <><ActionIcon name="recargar" size={20} /> Traslado entre Depósitos</>
+                <><ActionIcon name="recargar" size={20} /> {(isOperadorCivico || isCivico(depositoSeleccionado)) ? 'Traslado a Repartición / Depósito' : 'Traslado entre Depósitos'}</>
               )}
             </h3>
             <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '20px' }}>
@@ -598,41 +621,91 @@ export default function Depositos() {
             <form onSubmit={handleAction} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>Producto</label>
-                <select
-                  value={form.id_producto}
-                  onChange={e => setForm({ ...form, id_producto: e.target.value })}
-                  required
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}
-                >
-                  <option value="">Seleccionar producto</option>
-                  {productosOpciones.map(p => {
+                {(() => {
+                  const labelDe = (p) => {
                     const disp = stock.find(s => s.id === p.id)?.cantidad || 0;
                     const stockText = (modalType === 'egreso' || modalType === 'traslado') ? ` - Disp: ${disp}` : '';
-                    return (
-                      <option key={p.id} value={p.id}>{p.nombre}{p.marca ? ` - ${p.marca}` : ''} ({p.unidad_medida}){stockText}</option>
-                    );
-                  })}
-                </select>
+                    return `${p.nombre}${p.marca ? ` - ${p.marca}` : ''} (${p.unidad_medida})${stockText}`;
+                  };
+                  const seleccionado = productosOpciones.find(p => String(p.id) === String(form.id_producto));
+                  const valorInput = productoBusqueda !== null ? productoBusqueda : (seleccionado ? labelDe(seleccionado) : '');
+                  return (
+                    <>
+                      <input
+                        type="text"
+                        list="productos-busqueda"
+                        value={valorInput}
+                        onChange={e => {
+                          const texto = e.target.value;
+                          const match = productosOpciones.find(p => labelDe(p) === texto);
+                          setProductoBusqueda(texto);
+                          setForm({ ...form, id_producto: match ? String(match.id) : '' });
+                          e.target.setCustomValidity(match ? '' : 'Seleccioná un producto de la lista');
+                        }}
+                        onFocus={e => e.target.select()}
+                        required
+                        placeholder="Escribí para buscar producto..."
+                        autoComplete="off"
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                      />
+                      <datalist id="productos-busqueda">
+                        {productosOpciones.map(p => (
+                          <option key={p.id} value={labelDe(p)} />
+                        ))}
+                      </datalist>
+                    </>
+                  );
+                })()}
               </div>
 
-              {modalType === 'traslado' && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>Depósito Destino</label>
-                  <select
-                    value={form.destino_id}
-                    onChange={e => setForm({ ...form, destino_id: e.target.value })}
-                    required
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}
-                  >
-                    <option value="">Seleccionar destino</option>
-                    {depositos
-                      .filter(d => (d.id || d.id_deposito) !== (depositoSeleccionado.id || depositoSeleccionado.id_deposito))
-                      .map(d => (
-                        <option key={d.id || d.id_deposito} value={d.id || d.id_deposito}>{d.nombre}</option>
-                      ))}
-                  </select>
-                </div>
-              )}
+              {modalType === 'traslado' && (() => {
+                const permiteReparticiones = isOperadorCivico || isCivico(depositoSeleccionado)
+                const otrosDepositos = depositos.filter(d => (d.id || d.id_deposito) !== (depositoSeleccionado.id || depositoSeleccionado.id_deposito))
+                const selectStyle = { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }
+                return (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
+                      {permiteReparticiones ? 'Destino del Traslado (Repartición o Depósito)' : 'Depósito Destino'}
+                    </label>
+                    <select
+                      value={form.destino}
+                      onChange={e => setForm({ ...form, destino: e.target.value, dependencia_otra: '' })}
+                      required
+                      style={selectStyle}
+                    >
+                      <option value="">{permiteReparticiones ? 'Seleccione repartición o depósito destino...' : 'Seleccionar destino'}</option>
+                      {permiteReparticiones && (
+                        <optgroup label="🏛️ Reparticiones del Centro Cívico">
+                          {DEPENDENCIAS_CENTRO_CIVICO.map(dep => (
+                            <option key={dep} value={`rep:${dep}`}>{dep}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {otrosDepositos.length > 0 && (
+                        permiteReparticiones ? (
+                          <optgroup label="📦 Depósitos">
+                            {otrosDepositos.map(d => (
+                              <option key={d.id || d.id_deposito} value={`dep:${d.id || d.id_deposito}`}>{d.nombre}</option>
+                            ))}
+                          </optgroup>
+                        ) : otrosDepositos.map(d => (
+                          <option key={d.id || d.id_deposito} value={`dep:${d.id || d.id_deposito}`}>{d.nombre}</option>
+                        ))
+                      )}
+                    </select>
+                    {form.destino === `rep:${OTRA_DEPENDENCIA}` && (
+                      <input
+                        type="text"
+                        value={form.dependencia_otra}
+                        onChange={e => setForm({ ...form, dependencia_otra: e.target.value })}
+                        required
+                        placeholder="Nombre de la repartición o área"
+                        style={{ ...selectStyle, marginTop: '8px' }}
+                      />
+                    )}
+                  </div>
+                )
+              })()}
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>Cantidad</label>

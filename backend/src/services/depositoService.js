@@ -211,12 +211,19 @@ async function getStockByDeposito(id, user) {
   return { deposito, stock };
 }
 
-async function moverStock({ id_producto, cantidad, origen_id, destino_id, motivo, user }) {
+async function moverStock({ id_producto, cantidad, origen_id, destino_id, dependencia_destino, motivo, user }) {
   await ensureDepositosSchema();
+  const esTrasladoAReparticion = !destino_id && !!dependencia_destino;
   const origenDep = await get("SELECT * FROM deposito WHERE id_deposito = $1", [origen_id]);
-  const destinoDep = await get("SELECT * FROM deposito WHERE id_deposito = $1", [destino_id]);
-  if (!origenDep || !destinoDep) {
+  const destinoDep = esTrasladoAReparticion
+    ? null
+    : await get("SELECT * FROM deposito WHERE id_deposito = $1", [destino_id]);
+  if (!origenDep || (!esTrasladoAReparticion && !destinoDep)) {
     throw { status: 404, message: "Depósito de origen o destino no encontrado" };
+  }
+
+  if (esTrasladoAReparticion && !isCentroCivicoDep(origenDep)) {
+    throw { status: 400, message: "Los traslados a reparticiones solo pueden realizarse desde el depósito Centro Cívico." };
   }
 
   const role = String(user?.role || "").toLowerCase();
@@ -248,17 +255,28 @@ async function moverStock({ id_producto, cantidad, origen_id, destino_id, motivo
       `UPDATE stock_deposito SET cantidad = cantidad - $1 WHERE id_deposito = $2 AND id_producto = $3`,
       [cantidad, origen_id, id_producto]
     );
-    await client.query(
-      `INSERT INTO stock_deposito (id_deposito, id_producto, cantidad) VALUES ($1, $2, $3)
-       ON CONFLICT (id_deposito, id_producto) DO UPDATE SET cantidad = stock_deposito.cantidad + EXCLUDED.cantidad`,
-      [destino_id, id_producto, cantidad]
-    );
-    const mot = (motivo || `Traslado ${id_producto} ${origen_id}→${destino_id}`);
-    await client.query(
-      `INSERT INTO movimiento_stock (id_producto, tipo, cantidad, motivo, id_usuario, id_deposito, id_deposito_destino)
-       VALUES ($1, 'traslado', $2, $3, $4, $5, $6)`,
-      [id_producto, cantidad, mot, user.sub, origen_id, destino_id]
-    );
+
+    if (esTrasladoAReparticion) {
+      // Traslado a una repartición/dependencia del Centro Cívico: el stock sale del depósito
+      const mot = motivo || `Traslado a ${dependencia_destino}`;
+      await client.query(
+        `INSERT INTO movimiento_stock (id_producto, tipo, cantidad, motivo, id_usuario, id_deposito, dependencia_destino)
+         VALUES ($1, 'traslado', $2, $3, $4, $5, $6)`,
+        [id_producto, cantidad, mot, user.sub, origen_id, dependencia_destino]
+      );
+    } else {
+      await client.query(
+        `INSERT INTO stock_deposito (id_deposito, id_producto, cantidad) VALUES ($1, $2, $3)
+         ON CONFLICT (id_deposito, id_producto) DO UPDATE SET cantidad = stock_deposito.cantidad + EXCLUDED.cantidad`,
+        [destino_id, id_producto, cantidad]
+      );
+      const mot = (motivo || `Traslado ${id_producto} ${origen_id}→${destino_id}`);
+      await client.query(
+        `INSERT INTO movimiento_stock (id_producto, tipo, cantidad, motivo, id_usuario, id_deposito, id_deposito_destino)
+         VALUES ($1, 'traslado', $2, $3, $4, $5, $6)`,
+        [id_producto, cantidad, mot, user.sub, origen_id, destino_id]
+      );
+    }
     await client.query("COMMIT");
     return { ok: true, moved: true };
   } catch (err) {
@@ -281,14 +299,16 @@ async function getTraslados() {
       m.id_deposito AS origen_id,
       d1.nombre AS origen_nombre,
       m.id_deposito_destino AS destino_id,
-      d2.nombre AS destino_nombre,
+      COALESCE(d2.nombre, m.dependencia_destino) AS destino_nombre,
+      m.dependencia_destino,
       u.nombre AS usuario_nombre
     FROM movimiento_stock m
     JOIN producto p ON p.id_producto = m.id_producto
     JOIN deposito d1 ON d1.id_deposito = m.id_deposito
-    JOIN deposito d2 ON d2.id_deposito = m.id_deposito_destino
+    LEFT JOIN deposito d2 ON d2.id_deposito = m.id_deposito_destino
     LEFT JOIN usuario u ON u.id_usuario = m.id_usuario
     WHERE m.tipo = 'traslado'
+      AND (m.id_deposito_destino IS NOT NULL OR m.dependencia_destino IS NOT NULL)
     ORDER BY m.fecha_movimiento DESC
   `);
 }

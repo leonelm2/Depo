@@ -3,40 +3,14 @@ import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../api'
 import PrintButton from './PrintButton'
 import ActionIcon from './ui/ActionIcon'
-import RetirarPedidoAnual from './RetirarPedidoAnual'
 import { printMovimiento } from '../utils/printHelpers'
 import InstitutionSelectorModal from './ui/InstitutionSelectorModal'
 import ProductSelectorModal from './ui/ProductSelectorModal'
 import SelectorTrigger from './ui/SelectorTrigger'
+import { DEPENDENCIAS_CENTRO_CIVICO } from '../utils/dependenciasCentroCivico'
 const ESTADOS_PRODUCTO = ['nuevo', 'usado', 'dañado', 'reparado']
 const CARGOS = ['director/a', 'vicedirector/a', 'secretario/a', 'rector/a', 'maestro/a a cargo']
 const MINISTERIO_LOGO_URL = '/faviconmin.png'
-
-const DEPENDENCIAS_CENTRO_CIVICO = [
-  'Mesa de Entradas y Salidas',
-  'Despacho Ministerial',
-  'Secretaría de Educación',
-  'Subsecretaría de Planeamiento Educativo',
-  'Subsecretaría Administrativa y Financiera',
-  'Dirección de Educación Inicial',
-  'Dirección de Educación Primaria',
-  'Dirección de Educación Secundaria',
-  'Dirección de Educación Técnica y Formación Profesional',
-  'Dirección de Educación Superior',
-  'Dirección de Educación Especial',
-  'Dirección de Educación Privada',
-  'Dirección de Gabinetes Interdisciplinarios',
-  'Dirección de Infraestructura Escolar',
-  'Dirección de Recursos Humanos / Personal',
-  'Dirección de Sistemas e Informática',
-  'Área de Compras y Contrataciones',
-  'Contaduría / Rendición de Cuentas',
-  'Tesorería General',
-  'Asesoría Letrada',
-  'Supervisión Escolar (Sede Centro Cívico)',
-  'Mantenimiento y Servicios Generales',
-  'Otra Dependencia / Área...'
-]
 
 const CARGOS_CENTRO_CIVICO = [
   'Jefe/a de Área / Departamento',
@@ -60,7 +34,6 @@ export default function Movimientos() {
   const [ingresoModalOpen, setIngresoModalOpen] = useState(false)
   const [egresoModalOpen, setEgresoModalOpen] = useState(false)
   const [devolucionModalOpen, setDevolucionModalOpen] = useState(false)
-  const [retirarPedidoModalOpen, setRetirarPedidoModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   // Floating selector modals states
@@ -873,15 +846,6 @@ return (
               onClick={() => { setIngresoModalOpen(true); setMsg({ text: '', type: '' }) }}
             >
               Ingreso
-            </button>
-
-            <button
-              type="button"
-              className="mov-action-btn"
-              style={{ width: 'auto', margin: 0, padding: '10px 18px', fontSize: '0.95rem' }}
-              onClick={() => { setRetirarPedidoModalOpen(true); setMsg({ text: '', type: '' }) }}
-            >
-              Retirar Pedido Anual
             </button>
           </>
         )}
@@ -2055,46 +2019,6 @@ return (
           </div>
         )}
 
-        {/* RETIRAR PEDIDO ANUAL */}
-        {retirarPedidoModalOpen && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0, 0, 0, 0.45)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000,
-              padding: 16
-            }}
-            onClick={e => {
-              if (e.target === e.currentTarget) setRetirarPedidoModalOpen(false)
-            }}
-          >
-            <div style={{ background: '#f9fafb', padding: 24, borderRadius: 10, width: 'min(980px, 100%)', maxHeight: '90vh', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3>Retirar Pedido Anual</h3>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setRetirarPedidoModalOpen(false)}
-                  style={{ margin: 0, padding: '6px 12px' }}
-                >
-                  ✕ Cerrar
-                </button>
-              </div>
-              <RetirarPedidoAnual
-                onSuccess={() => {
-                  setRetirarPedidoModalOpen(false)
-                  loadMovimientos()
-                  loadProductos()
-                }}
-                onCancel={() => setRetirarPedidoModalOpen(false)}
-              />
-            </div>
-          </div>
-        )}
       </>
     )}
 
