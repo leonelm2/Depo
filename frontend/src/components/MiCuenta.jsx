@@ -132,13 +132,27 @@ function getUserAssignment(user, profile) {
   }
 
   // 6. Administrador / Master
-  if (role === 'admin' || role === 'master') {
+  if (role === 'master') {
+    return {
+      subtitle: 'Auditoría y Supervisión Global — Ministerio de Educación',
+      cardTitle: 'Visualización y Auditoría Global',
+      cardIcon: '👁️',
+      items: [
+        { label: 'Nivel de acceso', value: 'Super Administrador (Solo Lectura)' },
+        { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
+        { label: 'Funciones habilitadas', value: 'Visualización integral de todos los módulos, reportes y auditoría' },
+      ],
+      footer: 'Esta cuenta posee acceso completo de visualización a todos los módulos sin facultades de edición o modificación.',
+    }
+  }
+
+  if (role === 'admin') {
     return {
       subtitle: 'Administración Central del Sistema — Ministerio de Educación',
       cardTitle: 'Administración y Gestión Global',
       cardIcon: '⚙️',
       items: [
-        { label: 'Nivel de acceso', value: role === 'master' ? 'Acceso Master Total' : 'Administrador del Sistema' },
+        { label: 'Nivel de acceso', value: 'Administrador del Sistema' },
         { label: 'Dependencia oficial', value: 'Ministerio de Educación de San Juan' },
         { label: 'Funciones habilitadas', value: 'Gestión de usuarios, auditoría, configuración y seguridad' },
       ],

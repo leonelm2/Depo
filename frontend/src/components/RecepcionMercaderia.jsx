@@ -437,11 +437,13 @@ export default function RecepcionMercaderia() {
               </tbody>
             </table>
 
+            {user?.role !== 'master' && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
               <button className="primary" onClick={() => handleConfirmarRecepcionLote(lote)}>
                 Confirmar Recepción del Lote
               </button>
             </div>
+            )}
           </div>
         ))
       )}

@@ -842,10 +842,10 @@ function DepositoPedidos() {
                         <button onClick={() => handleAction(pedido.id, 'rechazar')}>Rechazar</button>
                       </>
                     )}
-                    {canEntregar && pedido.estado !== 'entregado' && pedido.estado !== 'rechazado' && pedido.estado !== 'cancelado' && (
+                    {canEntregar && user?.role !== 'master' && pedido.estado !== 'entregado' && pedido.estado !== 'rechazado' && pedido.estado !== 'cancelado' && (
                       <button onClick={() => handleAction(pedido.id, 'entregar')}>Entregar</button>
                     )}
-                    {canCancel && (
+                    {canCancel && user?.role !== 'master' && (
                       <button type="button" onClick={() => setPedidoACancelar(pedido)}>Cancelar</button>
                     )}
                     {user?.role === 'director_area' && (

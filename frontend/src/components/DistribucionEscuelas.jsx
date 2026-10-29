@@ -871,7 +871,7 @@ export default function DistribucionEscuelas() {
                 <td style={{ textAlign: 'center' }}>{z.productos_pendientes}</td>
                 <td style={{ textAlign: 'center' }}>{z.cantidad_pendiente_total}</td>
                 <td style={{ textAlign: 'right' }}>
-                  <button onClick={() => verDetalleZona(z)}>Armar Egreso Múltiple</button>
+                  {user?.role !== 'master' && <button onClick={() => verDetalleZona(z)}>Armar Egreso Múltiple</button>}
                 </td>
               </tr>
             ))}
@@ -960,9 +960,11 @@ export default function DistribucionEscuelas() {
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <button className="secondary" onClick={() => setDetalleZona(null)} disabled={saving}>Cancelar</button>
-          <button className="primary" onClick={handleConfirmarEgresoMultiple} disabled={saving}>
-            {saving ? 'Registrando...' : 'Confirmar Egreso Múltiple'}
-          </button>
+          {user?.role !== 'master' && (
+            <button className="primary" onClick={handleConfirmarEgresoMultiple} disabled={saving}>
+              {saving ? 'Registrando...' : 'Confirmar Egreso Múltiple'}
+            </button>
+          )}
         </div>
       </section>
     )
@@ -1448,9 +1450,11 @@ export default function DistribucionEscuelas() {
                     <td>{sol.sede_nombre}</td>
                     <td>{new Date(sol.created_at).toLocaleDateString()}</td>
                     <td style={{ textAlign: 'right' }}>
-                      <button className="primary" onClick={() => handleEntregarSede(sol.id)} disabled={savingEnvio}>
-                        Confirmar Entrega
-                      </button>
+                      {user?.role !== 'master' && (
+                        <button className="primary" onClick={() => handleEntregarSede(sol.id)} disabled={savingEnvio}>
+                          Confirmar Entrega
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

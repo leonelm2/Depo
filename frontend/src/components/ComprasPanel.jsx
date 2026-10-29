@@ -861,7 +861,7 @@ export default function ComprasPanel({ section = 'pedidos', onNavigate }) {
               <h3 style={{ margin: 0 }}>
                 📝 Listado Final a Licitar
               </h3>
-              {listadoPendienteAnual.length > 0 && (
+              {listadoPendienteAnual.length > 0 && user?.role !== 'master' && (
                 <button className="primary" onClick={() => setShowConfirmPublicar(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <ActionIcon name="agregar" size={15} /> Crear licitación
                 </button>
@@ -934,7 +934,7 @@ export default function ComprasPanel({ section = 'pedidos', onNavigate }) {
           <section className="card" style={{ padding: 24, minHeight: 'auto', width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ margin: 0 }}>🚨 Refuerzos sin stock</h3>
-              {listadoPendienteRefuerzo.length > 0 && (
+              {listadoPendienteRefuerzo.length > 0 && user?.role !== 'master' && (
                 <button className="primary" onClick={() => setShowConfirmPublicar(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <ActionIcon name="agregar" size={15} /> Crear licitación de refuerzo
                 </button>
@@ -1005,7 +1005,7 @@ export default function ComprasPanel({ section = 'pedidos', onNavigate }) {
           <section className="card" style={{ padding: 18, minHeight: 'calc(100vh - 220px)', width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
               <h3 style={{ margin: 0 }}>Licitaciones para adjudicar y enviar</h3>
-              {selectedLicitacion?.id && (
+              {selectedLicitacion?.id && user?.role !== 'master' && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {selectedLicitacion.estado === 'adjudicada' && (
                     <button className="primary" onClick={handleEnviarADeposito} disabled={saving}>
@@ -1121,11 +1121,13 @@ export default function ComprasPanel({ section = 'pedidos', onNavigate }) {
                       </tbody>
                     </table>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <button onClick={handleGuardarAdjudicacion} disabled={saving}>
-                        {saving ? 'Guardando...' : 'Guardar adjudicacion'}
-                      </button>
-                    </div>
+                    {user?.role !== 'master' && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button onClick={handleGuardarAdjudicacion} disabled={saving}>
+                          {saving ? 'Guardando...' : 'Guardar adjudicacion'}
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
               </>

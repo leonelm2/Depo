@@ -579,6 +579,7 @@ export default function DirectorAreaZonas({ nivelEducativo }) {
       <div className="responsive-split-zones" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '28px', alignItems: 'flex-start' }}>
         
         {/* Columna Izquierda: Formulario de Creación/Edición */}
+        {user?.role !== 'master' && (
         <section style={{ border: '1px solid var(--border)', borderRadius: 16, padding: 28, background: '#fff', boxShadow: 'var(--shadow-premium)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: '1px solid #f1f5f9', paddingBottom: 12 }}>
             <h3 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -614,6 +615,7 @@ export default function DirectorAreaZonas({ nivelEducativo }) {
             </div>
           )}
         </section>
+        )}
 
         {/* Columna Derecha: Listado de Zonas Registradas */}
         <section style={{ border: '1px solid var(--border)', borderRadius: 16, padding: 28, background: '#fff', boxShadow: 'var(--shadow-premium)' }}>
@@ -679,6 +681,7 @@ export default function DirectorAreaZonas({ nivelEducativo }) {
                       </div>
 
                       {/* Botones de acción rápidos */}
+                      {user?.role !== 'master' && (
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                         <button
                           type="button"
@@ -709,6 +712,7 @@ export default function DirectorAreaZonas({ nivelEducativo }) {
                           <ActionIcon name="eliminar" size={15} /> <span className="btn-label-text">Eliminar</span>
                         </button>
                       </div>
+                      )}
                     </div>
 
                     {/* Acordeón de escuelas */}

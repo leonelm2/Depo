@@ -12,6 +12,16 @@ function authenticate(req, res, next) {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     req.user = payload;
+
+    // Rol master es exclusivamente de solo lectura
+    if (String(payload.role || "").toLowerCase() === "master") {
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+        return res.status(403).json({
+          error: "El rol Super Administrador (Master) tiene acceso de solo lectura. No se permiten modificaciones ni operaciones de escritura."
+        });
+      }
+    }
+
     return next();
   } catch (err) {
     return res.status(401).json({ error: "Token inválido" });
@@ -20,7 +30,7 @@ function authenticate(req, res, next) {
 
 function isAdminLikeRole(role) {
   const r = String(role || "").toLowerCase();
-  return r === "admin" || r === "master";
+  return r === "admin";
 }
 
 function authorizeRoles(...roles) {

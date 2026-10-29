@@ -183,6 +183,7 @@ export default function ProductKitsManager() {
             Creá kits por nombre y después asignalos directamente a cada escuela.
           </p>
         </div>
+        {user?.role !== 'master' && (
         <button 
           type="button" 
           onClick={openCreate}
@@ -202,6 +203,7 @@ export default function ProductKitsManager() {
           <ActionIcon name="agregar" size={16} />
           Crear kit
         </button>
+        )}
       </div>
 
       {loading ? (
@@ -219,9 +221,11 @@ export default function ProductKitsManager() {
             <h4 style={{ margin: 0, color: '#1e3a8a', fontSize: '1.1rem' }}>No hay kits configurados</h4>
             <p style={{ margin: '4px 0 0', fontSize: '0.9rem' }}>Creá tu primer kit para asignarlo a las escuelas.</p>
           </div>
-          <button type="button" onClick={openCreate} style={{ width: 'auto' }}>
-            <ActionIcon name="agregar" size={16} /> Crear mi primer kit
-          </button>
+          {user?.role !== 'master' && (
+            <button type="button" onClick={openCreate} style={{ width: 'auto' }}>
+              <ActionIcon name="agregar" size={16} /> Crear mi primer kit
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 20 }}>
@@ -286,6 +290,7 @@ export default function ProductKitsManager() {
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }} onClick={(e) => e.stopPropagation()}>
+                  {user?.role !== 'master' && (
                   <div className="inline-actions" style={{ display: 'flex', gap: 8 }}>
                     <button 
                       type="button" 
@@ -328,6 +333,7 @@ export default function ProductKitsManager() {
                       </button>
                     )}
                   </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => toggleKit(kit.id)}

@@ -27,8 +27,8 @@ export default function Depositos() {
   const isOperadorCivico = user?.role === 'operador_civico'
   const isOperadorDeposito = user?.role === 'operador'
   const esJefeDeposito = user?.role === 'jefe_deposito'
-  const esAdmin = user?.role === 'admin' || user?.role === 'master' || esJefeDeposito
-  const canMove = hasPermission('stock.movement.create') || esAdmin || isOperadorCivico || isOperadorDeposito
+  const esAdmin = (user?.role === 'admin' || esJefeDeposito) && user?.role !== 'master'
+  const canMove = user?.role !== 'master' && (hasPermission('stock.movement.create') || esAdmin || isOperadorCivico || isOperadorDeposito)
 
   const isCivico = useCallback((d) => {
     if (!d) return false

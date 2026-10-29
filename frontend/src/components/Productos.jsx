@@ -37,7 +37,7 @@ export default function Productos() {
     requiere_autorizacion: false
   })
   const [vencimientosProximos, setVencimientosProximos] = useState(new Set())
-  const canDeleteProductos = hasPermission('productos.delete') || user?.role === 'admin' || user?.role === 'master'
+  const canDeleteProductos = user?.role !== 'master' && (hasPermission('productos.delete') || user?.role === 'admin')
 
   const loadCategorias = async () => {
     try {

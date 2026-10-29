@@ -583,16 +583,18 @@ export default function RecepcionLicitacion() {
               <button className="secondary" onClick={() => setDetalle(null)} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <ActionIcon name="cancelar" size={14} /> Cancelar
               </button>
-              {detalle.estado === 'completada' ? null : todoCompleto ? (
-                <button className="primary" onClick={handleCerrarYRemitoGeneral} disabled={saving}
-                  style={{ background: '#16a34a', borderColor: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <ActionIcon name="aprobar" size={16} /> Cerrar Licitación y Generar Remito General
-                </button>
-              ) : (
-                <button className="primary" onClick={handleConfirmarIngreso} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <ActionIcon name="guardar" size={16} />
-                  {saving ? 'Registrando...' : 'Confirmar Ingreso a Stock'}
-                </button>
+              {user?.role !== 'master' && (
+                detalle.estado === 'completada' ? null : todoCompleto ? (
+                  <button className="primary" onClick={handleCerrarYRemitoGeneral} disabled={saving}
+                    style={{ background: '#16a34a', borderColor: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <ActionIcon name="aprobar" size={16} /> Cerrar Licitación y Generar Remito General
+                  </button>
+                ) : (
+                  <button className="primary" onClick={handleConfirmarIngreso} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <ActionIcon name="guardar" size={16} />
+                    {saving ? 'Registrando...' : 'Confirmar Ingreso a Stock'}
+                  </button>
+                )
               )}
             </div>
           </div>

@@ -373,11 +373,12 @@ export default function Usuarios() {
     loadUsers()
   }
 
-  const canChangeRole = hasPermission('users.role.update')
-  const canToggleStatus = hasPermission('users.status.update')
-  const canDeleteUser = hasPermission('users.delete') && (user?.role === 'admin' || user?.role === 'master')
-  const canCreateUsers = hasPermission('users.create') || isDirectorArea
-  const canEditUsers = user?.role === 'admin' || user?.role === 'master' || isDirectorArea
+  const isMaster = user?.role === 'master'
+  const canChangeRole = !isMaster && hasPermission('users.role.update')
+  const canToggleStatus = !isMaster && hasPermission('users.status.update')
+  const canDeleteUser = !isMaster && hasPermission('users.delete') && user?.role === 'admin'
+  const canCreateUsers = !isMaster && (hasPermission('users.create') || isDirectorArea)
+  const canEditUsers = !isMaster && (user?.role === 'admin' || isDirectorArea)
   const canChangeRoleForCurrentUser = canChangeRole && !isDirectorArea
 
   const openEditModal = (targetUser) => {

@@ -169,14 +169,16 @@ export default function AsignarKit() {
                   />
                 </div>
 
-                <button
-                  type="button"
-                  className="sv-btn-historial"
-                  onClick={() => handleGuardarTipoKit(inst.id)}
-                  disabled={savingTipoId === inst.id}
-                >
-                  {savingTipoId === inst.id ? 'Guardando...' : 'Asignar kit'}
-                </button>
+                {user?.role !== 'master' && (
+                  <button
+                    type="button"
+                    className="sv-btn-historial"
+                    onClick={() => handleGuardarTipoKit(inst.id)}
+                    disabled={savingTipoId === inst.id}
+                  >
+                    {savingTipoId === inst.id ? 'Guardando...' : 'Asignar kit'}
+                  </button>
+                )}
               </article>
             ))}
           </div>

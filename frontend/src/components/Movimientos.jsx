@@ -813,7 +813,7 @@ export default function Movimientos() {
 // Baja handlers
 
 
-const canCreate = hasPermission('movimientos.create')
+const canCreate = hasPermission('movimientos.create') && user?.role !== 'master'
 
   // Fotos de los ingresos mostrados en el detalle
   useEffect(() => {
@@ -2538,7 +2538,7 @@ return (
                       <ActionIcon name="imprimir" size={14} />
                       Imprimir
                     </button>
-                    {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'master') && (
+                    {(user?.role === 'admin' || user?.role === 'superadmin') && user?.role !== 'master' && (
                       <button type="button" onClick={() => handleDeleteMovimiento(p.id)} style={{ width: 'auto', margin: 0, padding: '4px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca' }}>
                         <ActionIcon name="basura" size={14} />
                         Eliminar

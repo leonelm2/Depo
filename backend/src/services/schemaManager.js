@@ -14,6 +14,12 @@ async function initDatabaseSchema() {
     // 0. Compatibility Schema & Admin Seed
     try {
       await client.query("ALTER TABLE IF EXISTS producto ADD COLUMN IF NOT EXISTS marca VARCHAR(120)");
+      await client.query("ALTER TABLE IF EXISTS producto ADD COLUMN IF NOT EXISTS codigo_sku VARCHAR(120)");
+      await client.query("ALTER TABLE IF EXISTS producto ADD COLUMN IF NOT EXISTS precio_unitario NUMERIC(12,2) DEFAULT 0");
+      await client.query("ALTER TABLE IF EXISTS producto ADD COLUMN IF NOT EXISTS ubicacion_estante VARCHAR(120)");
+      await client.query("ALTER TABLE IF EXISTS producto ADD COLUMN IF NOT EXISTS descripcion TEXT");
+      await client.query("ALTER TABLE IF EXISTS producto ADD COLUMN IF NOT EXISTS es_perecedero BOOLEAN DEFAULT FALSE");
+      await client.query("UPDATE producto SET codigo_sku = codigo WHERE codigo_sku IS NULL AND codigo IS NOT NULL");
       await client.query("ALTER TABLE IF EXISTS zona ADD COLUMN IF NOT EXISTS nombre VARCHAR(120)");
       await client.query("UPDATE zona SET nombre = name WHERE nombre IS NULL AND name IS NOT NULL");
       await client.query("ALTER TABLE usuario DROP CONSTRAINT IF EXISTS usuario_dni_key");

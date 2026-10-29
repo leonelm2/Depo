@@ -436,13 +436,7 @@ export default function Instituciones({ supervisorMode = false }) {
                         ) : (
                           <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Sin kit</span>
                         )}
-                        <button 
-                          onClick={() => setAssignKitModal({ open: true, instId: inst.id, kit_id: inst.kit_id || '', kit_cantidad: inst.kit_cantidad || '', instNombre: inst.nombre })}
-                          style={{ margin: 0, padding: '4px 8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--dark)' }}
-                          title="Asignar Kit"
-                        >
-                          <ActionIcon name="editar" size={14} />
-                        </button>
+
                       </div>
                     </td>
                   )}

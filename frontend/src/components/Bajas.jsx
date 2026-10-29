@@ -15,7 +15,7 @@ export default function Bajas() {
 
   const isOperadorCivico = user?.role === 'operador_civico'
   const isOperadorDeposito = user?.role === 'operador'
-  const esJefeDeposito = user?.role === 'jefe_deposito' || user?.role === 'admin' || user?.role === 'master'
+  const esJefeDeposito = (user?.role === 'jefe_deposito' || user?.role === 'admin') && user?.role !== 'master'
 
   const isCivico = (d) => {
     if (!d) return false
@@ -63,8 +63,8 @@ export default function Bajas() {
   const [historialBaja, setHistorialBaja] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
 
-  const canCreate = hasPermission('movimientos.create')
-  const canAuthorize = hasPermission('bajas.authorize')
+  const canCreate = hasPermission('movimientos.create') && user?.role !== 'master'
+  const canAuthorize = hasPermission('bajas.authorize') && user?.role !== 'master'
 
   // ─── Loaders ───
   const loadBajas = useCallback(async (opts = {}) => {

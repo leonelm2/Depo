@@ -319,34 +319,36 @@ export default function DirectorAreaPedidosAnuales({ solicitudes, isSent, onUpda
                ℹ️ Al aprobar, la solicitud pasará automáticamente al estado <b>Habilitada para retiro</b> para que la escuela pueda retirar sus insumos en el depósito.
              </div>
              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-                <button 
-                  style={{ flex: 1, background: '#16a34a', color: '#fff', fontWeight: 700 }} 
-                  onClick={async () => {
-                    try {
-                      const res = await apiFetch(`/api/pedidos/${detalle.id}/aprobar-director`, {
-                        token,
-                        method: 'PATCH',
-                        body: JSON.stringify({ decision: 'aceptar' })
-                      })
-                      if (res.ok) {
-                        alert('Solicitud aprobada correctamente. Ha quedado habilitada para retiro.')
-                        setDetalle(null)
-                        if (onUpdated) {
-                          await onUpdated()
+                {user?.role !== 'master' && (
+                  <button 
+                    style={{ flex: 1, background: '#16a34a', color: '#fff', fontWeight: 700 }} 
+                    onClick={async () => {
+                      try {
+                        const res = await apiFetch(`/api/pedidos/${detalle.id}/aprobar-director`, {
+                          token,
+                          method: 'PATCH',
+                          body: JSON.stringify({ decision: 'aceptar' })
+                        })
+                        if (res.ok) {
+                          alert('Solicitud aprobada correctamente. Ha quedado habilitada para retiro.')
+                          setDetalle(null)
+                          if (onUpdated) {
+                            await onUpdated()
+                          } else {
+                            window.location.reload()
+                          }
                         } else {
-                          window.location.reload()
+                          const err = await res.json()
+                          alert(err.error || 'Error al aprobar')
                         }
-                      } else {
-                        const err = await res.json()
-                        alert(err.error || 'Error al aprobar')
+                      } catch (e) {
+                        alert('Error de conexión')
                       }
-                    } catch (e) {
-                      alert('Error de conexión')
-                    }
-                  }}
-                >
-                  ✓ Aprobar y Habilitar para Retiro
-                </button>
+                    }}
+                  >
+                    ✓ Aprobar y Habilitar para Retiro
+                  </button>
+                )}
                 <button className="secondary" onClick={() => setDetalle(null)}>Cerrar</button>
              </div>
           </div>

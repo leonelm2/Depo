@@ -142,7 +142,7 @@ export default function DirectorAreaResumenAnual({ solicitudes, submissionStatus
                 Fecha: {new Date(sentAt).toLocaleString('es-AR')}
               </div>
             </div>
-          ) : (
+          ) : user?.role === 'master' ? null : (
             <button 
               className="primary" 
               onClick={handleSendClick} 

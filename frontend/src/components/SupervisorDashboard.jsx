@@ -253,7 +253,7 @@ export default function SupervisorDashboard() {
                             </button>
                           </div>
                         </div>
-                      ) : (
+                      ) : user?.role === 'master' ? null : (
                         <div className="inline-actions">
                           <button onClick={() => handleAprobar(ticket.id)} title="Aprobar reemplazo completo" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             <ActionIcon name="aprobar" size={14} />

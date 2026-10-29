@@ -32,7 +32,27 @@ export function AuthProvider({ children }) {
 
   const hasPermission = useCallback(
     (perm) => {
-      if (user?.role === 'master') return true
+      if (user?.role === 'master') {
+        if (!perm) return false
+        const normalized = String(perm).toLowerCase()
+        if (
+          normalized.endsWith('.create') ||
+          normalized.endsWith('.edit') ||
+          normalized.endsWith('.delete') ||
+          normalized.endsWith('.update') ||
+          normalized.endsWith('.manage') ||
+          normalized.endsWith('.authorize') ||
+          normalized.endsWith('.asignar') ||
+          normalized.endsWith('.enviar')
+        ) {
+          return false
+        }
+        return (
+          normalized.endsWith('.view') ||
+          normalized.endsWith('.read') ||
+          permissions.includes(perm)
+        )
+      }
       return permissions.includes(perm)
     },
     [permissions, user]
@@ -92,6 +112,7 @@ export function AuthProvider({ children }) {
         masterDirectorAreaId,
         setMasterDirectorAreaId,
         withMasterDirector,
+        isReadOnly: user?.role === 'master',
       }}
     >
       {children}

@@ -593,8 +593,8 @@ export default function SolicitudesRetiro({ embedded = false }) {
           ) : (
             <SolicitudesTable
               solicitudes={solicitudes}
-              onEntregar={handleEntregar}
-              onAccept={handleAccept}
+              onEntregar={user?.role === 'master' ? null : handleEntregar}
+              onAccept={user?.role === 'master' ? null : handleAccept}
               processingId={processingId}
               onPrintComprobante={printSolicitud}
             />

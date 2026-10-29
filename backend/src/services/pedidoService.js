@@ -995,7 +995,7 @@ async function updateEstadoPedido(id, data, user) {
   const transicionSupervisor = solicitaAclaracion || estadoObjetivoDb === "aprobado" || estadoObjetivoDb === "rechazado";
 
   if (transicionSupervisor) {
-    const isSupervisorFlow = user.role === "supervisor" || user.role === "master";
+    const isSupervisorFlow = user.role === "supervisor";
     if (!isSupervisorFlow) throw { status: 403, message: "Solo un supervisor puede aprobar o rechazar pedidos" };
 
     if (user.role === "supervisor" && !(await supervisorHasAssignedInstitution(user.sub, pedido.id_institucion))) {
@@ -1047,7 +1047,7 @@ async function updateEstadoPedido(id, data, user) {
       return { ok: true, estado: "pendiente", respuesta_supervisor_tipo: "aclaracion" };
     }
 
-    const isDirectApprovalRole = user.role === "admin" || user.role === "master" || user.role === "director_area";
+    const isDirectApprovalRole = user.role === "admin" || user.role === "director_area";
     const nuevoEstado = (estadoObjetivoDb === "aprobado" && esPedidoAnual && !isDirectApprovalRole) ? "pendiente_director" : estadoObjetivoDb;
 
     if (nuevoEstado === "aprobado") {
