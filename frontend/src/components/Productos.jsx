@@ -515,72 +515,79 @@ export default function Productos() {
             </tr>
           </thead>
         <tbody>
-          {productosVista.map(p => (
-            <tr key={p.id}>
-              <td>
-                <span style={{ fontWeight: 600, color: 'var(--dark)' }}>{p.codigo_sku || `#${p.id}`}</span>
-              </td>
-              <td>
-                {p.nombre}
-                {p.requiere_autorizacion && (
-                  <span style={{ marginLeft: 6, background: '#fffbeb', color: '#92400e', border: '1px solid #fcd34d', padding: '2px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600 }}>
-                    🔒 Cápsula
-                  </span>
-                )}
-              </td>
-              <td>{p.marca || '-'}</td>
-              <td>{p.categoria_nombre || '-'}</td>
-              <td>{p.ubicacion_estante || '-'}</td>
-              <td><strong>{getProductoStock(p)}</strong> <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{p.unidad_medida || 'un'}</span></td>
-              <td>
-                {(() => {
-                  const stock = getProductoStock(p)
-                  const minimo = p.stock_minimo ?? 0
-                  const venceProximo = vencimientosProximos?.has(Number(p.id))
-                  if (stock <= 0) {
-                    return (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db',
-                        borderRadius: 4, padding: '2px 8px', fontWeight: 600, fontSize: 11
-                      }}>
-                        Sin stock
-                      </span>
-                    )
-                  }
-                  if (minimo > 0 && stock <= minimo) {
-                    return (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5',
-                        borderRadius: 4, padding: '2px 8px', fontWeight: 600, fontSize: 11
-                      }}>
-                        Stock bajo
-                      </span>
-                    )
-                  }
-                  if (venceProximo) {
-                    return (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        background: '#fffbeb', color: '#92400e', border: '1px solid #fcd34d',
-                        borderRadius: 4, padding: '2px 8px', fontWeight: 600, fontSize: 11
-                      }}>
-                        Próximo a vencer
-                      </span>
-                    )
-                  }
-                  return (
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      background: '#ecfdf5', color: '#065f46', border: '1px solid #6ee7b7',
-                      borderRadius: 4, padding: '2px 8px', fontWeight: 600, fontSize: 11
-                    }}>
-                      OK
+          {productosVista.map(p => {
+            const stock = getProductoStock(p)
+            const minimo = p.stock_minimo ?? 0
+            const venceProximo = vencimientosProximos?.has(Number(p.id))
+
+            let stockColor = '#16a34a' // verde (stock suficiente)
+            let stockBadge = {
+              bg: '#ecfdf5',
+              color: '#16a34a',
+              border: '#86efac',
+              label: 'OK'
+            }
+
+            if (stock <= 0) {
+              stockColor = '#dc2626' // rojo (sin stock)
+              stockBadge = {
+                bg: '#fef2f2',
+                color: '#dc2626',
+                border: '#fca5a5',
+                label: 'Sin stock'
+              }
+            } else if (minimo > 0 && stock <= minimo) {
+              stockColor = '#ea580c' // naranja (stock bajo)
+              stockBadge = {
+                bg: '#fff7ed',
+                color: '#ea580c',
+                border: '#fed7aa',
+                label: 'Stock bajo'
+              }
+            } else if (venceProximo) {
+              stockBadge = {
+                bg: '#fffbeb',
+                color: '#92400e',
+                border: '#fcd34d',
+                label: 'Próximo a vencer'
+              }
+            }
+
+            return (
+              <tr key={p.id}>
+                <td>
+                  <span style={{ fontWeight: 600, color: 'var(--dark)' }}>{p.codigo_sku || `#${p.id}`}</span>
+                </td>
+                <td>
+                  {p.nombre}
+                  {p.requiere_autorizacion && (
+                    <span style={{ marginLeft: 6, background: '#fffbeb', color: '#92400e', border: '1px solid #fcd34d', padding: '2px 6px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600 }}>
+                      🔒 Cápsula
                     </span>
-                  )
-                })()}
-              </td>
+                  )}
+                </td>
+                <td>{p.marca || '-'}</td>
+                <td>{p.categoria_nombre || '-'}</td>
+                <td>{p.ubicacion_estante || '-'}</td>
+                <td>
+                  <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: stockColor, letterSpacing: '-0.02em', lineHeight: 1 }}>
+                      {stock}
+                    </span>
+                    <span style={{ color: 'var(--muted)', fontSize: '0.82rem', fontWeight: 500 }}>
+                      {p.unidad_medida || 'un'}
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    background: stockBadge.bg, color: stockBadge.color, border: `1px solid ${stockBadge.border}`,
+                    borderRadius: 4, padding: '2px 8px', fontWeight: 600, fontSize: 11
+                  }}>
+                    {stockBadge.label}
+                  </span>
+                </td>
               
               <td>
                 <div className="inline-actions" style={{ display: 'flex', gap: 6 }}>

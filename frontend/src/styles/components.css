@@ -644,7 +644,8 @@ button.secondary:hover .action-icon {
   }
 }
 
-.filter-sort-trigger {
+.filter-sort-trigger,
+button.filter-sort-trigger {
   width: auto;
   min-width: 0;
   margin: 0;
@@ -656,22 +657,66 @@ button.secondary:hover .action-icon {
   color: var(--dark);
   box-shadow: var(--shadow-xs);
   font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
 }
 
-.filter-sort-trigger:hover {
-  border-color: var(--orange);
-  background: var(--orange-light);
-  color: var(--orange);
-  transform: none;
-  box-shadow: none;
+.filter-sort-trigger:hover,
+button.filter-sort-trigger:hover {
+  background: linear-gradient(160deg, #f97316 0%, #dc4e0a 100%) !important;
+  border-color: rgba(220, 78, 10, 0.70) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px -2px rgba(234, 88, 12, 0.40) !important;
+  transform: translateY(-1px);
 }
 
-.filter-sort-trigger:hover::after { background: transparent; }
+.filter-sort-trigger:hover span,
+button.filter-sort-trigger:hover span,
+.filter-sort-trigger:hover .filter-sort-icon,
+button.filter-sort-trigger:hover .filter-sort-icon {
+  color: #ffffff !important;
+}
 
-.filter-sort-trigger.is-active {
+.filter-sort-trigger:hover .filter-sort-icon svg,
+button.filter-sort-trigger:hover .filter-sort-icon svg {
+  stroke: #ffffff !important;
+}
+
+.filter-sort-trigger:hover .filter-sort-count,
+button.filter-sort-trigger:hover .filter-sort-count {
+  background: #ffffff !important;
+  color: var(--orange) !important;
+}
+
+.filter-sort-trigger:hover::after,
+button.filter-sort-trigger:hover::after {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.filter-sort-trigger.is-active,
+button.filter-sort-trigger.is-active {
   border-color: var(--orange);
   color: var(--orange);
   background: var(--orange-light);
+  font-weight: 700;
+}
+
+.filter-sort-trigger.is-active:hover,
+button.filter-sort-trigger.is-active:hover {
+  background: linear-gradient(160deg, #f97316 0%, #dc4e0a 100%) !important;
+  border-color: rgba(220, 78, 10, 0.70) !important;
+  color: #ffffff !important;
+}
+
+.filter-sort-trigger.is-active:hover span,
+button.filter-sort-trigger.is-active:hover span {
+  color: #ffffff !important;
+}
+
+.filter-sort-trigger.is-active:hover .filter-sort-icon svg,
+button.filter-sort-trigger.is-active:hover .filter-sort-icon svg {
+  stroke: #ffffff !important;
 }
 
 .filter-sort-icon {
