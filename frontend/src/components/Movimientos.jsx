@@ -835,17 +835,17 @@ return (
               type="button"
               className="mov-action-btn"
               style={{ width: 'auto', margin: 0, padding: '10px 18px', fontSize: '0.95rem' }}
-              onClick={() => { setEgresoModalOpen(true); setMsg({ text: '', type: '' }) }}
+              onClick={() => { setIngresoModalOpen(true); setMsg({ text: '', type: '' }) }}
             >
-              Egreso
+              Ingreso
             </button>
             <button
               type="button"
               className="mov-action-btn"
               style={{ width: 'auto', margin: 0, padding: '10px 18px', fontSize: '0.95rem' }}
-              onClick={() => { setIngresoModalOpen(true); setMsg({ text: '', type: '' }) }}
+              onClick={() => { setEgresoModalOpen(true); setMsg({ text: '', type: '' }) }}
             >
-              Ingreso
+              Egreso
             </button>
           </>
         )}
