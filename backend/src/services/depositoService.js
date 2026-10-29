@@ -333,7 +333,7 @@ async function getTraslados() {
   `);
 }
 
-async function registrarIngreso({ id, id_producto, cantidad, id_proveedor, motivo, fecha_vencimiento, user }) {
+async function registrarIngreso({ id, id_producto, cantidad, id_proveedor, motivo, fecha_vencimiento, imagen, user }) {
   await ensureDepositosSchema();
   const productoIdNum = parseInt(id_producto, 10);
   const cantidadNum = parseInt(cantidad, 10);
@@ -365,10 +365,19 @@ async function registrarIngreso({ id, id_producto, cantidad, id_proveedor, motiv
   }
 
   // Insertar movimiento
-  await run(`
+  const movRes = await pool.query(`
     INSERT INTO movimiento_stock (id_producto, cantidad, tipo, id_proveedor, motivo, id_usuario, id_deposito, fecha_vencimiento)
     VALUES ($1, $2, 'ingreso', $3, $4, $5, $6, $7)
+    RETURNING id_movimiento
   `, [productoIdNum, cantidadNum, proveedorIdNum, motivo || "Ingreso a depósito", user.sub, depositoIdNum, fecha_vencimiento || null]);
+
+  // Foto opcional del ingreso (no obligatoria)
+  if (imagen && typeof imagen.datos === "string" && imagen.datos.startsWith("data:image/")) {
+    await pool.query(`
+      INSERT INTO movimiento_imagen (id_movimiento, nombre, mime_type, datos)
+      VALUES ($1, $2, $3, $4)
+    `, [movRes.rows[0].id_movimiento, imagen.nombre || "ingreso.jpg", imagen.mime_type || "image/jpeg", imagen.datos]);
+  }
 
   // Actualizar stock en depósito
   await pool.query(`

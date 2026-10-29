@@ -84,7 +84,7 @@ async function getTraslados(req, res) {
 async function registrarIngreso(req, res) {
   try {
     const { id } = req.params;
-    const { id_producto, cantidad, id_proveedor, motivo, fecha_vencimiento } = req.body;
+    const { id_producto, cantidad, id_proveedor, motivo, fecha_vencimiento, imagen } = req.body;
 
     if (!id_producto || !cantidad) {
       return res.status(400).json({ error: "Producto y cantidad requeridos" });
@@ -97,6 +97,7 @@ async function registrarIngreso(req, res) {
       id_proveedor,
       motivo,
       fecha_vencimiento,
+      imagen,
       user: req.user
     });
     return res.json(result);

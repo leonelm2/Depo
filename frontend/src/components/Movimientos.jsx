@@ -24,6 +24,32 @@ const CARGOS_CENTRO_CIVICO = [
   'Otro'
 ]
 
+// Reduce la foto a JPEG (máx. 1280px) para no superar el límite de tamaño del request
+function comprimirImagen(file, maxLado = 1280, calidad = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen'))
+    reader.onload = (ev) => {
+      const img = new Image()
+      img.onerror = () => reject(new Error('El archivo seleccionado no es una imagen válida'))
+      img.onload = () => {
+        const escala = Math.min(1, maxLado / Math.max(img.width, img.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.width * escala)
+        canvas.height = Math.round(img.height * escala)
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+        resolve({
+          nombre: file.name.replace(/\.[^.]+$/, '') + '.jpg',
+          mime_type: 'image/jpeg',
+          datos: canvas.toDataURL('image/jpeg', calidad)
+        })
+      }
+      img.src = ev.target.result
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
 export default function Movimientos() {
   const { token, hasPermission, user } = useAuth()
   const [movimientos, setMovimientos] = useState([])
@@ -80,6 +106,8 @@ export default function Movimientos() {
 
   // Ingreso state
   const [ingresoMotivo, setIngresoMotivo] = useState('')
+  const [ingresoFoto, setIngresoFoto] = useState(null) // opcional
+  const [detalleImagenes, setDetalleImagenes] = useState([])
   const [loteIngreso, setLoteIngreso] = useState([])
   const [ingresoItem, setIngresoItem] = useState({ productoId: '', cantidad: '', estado: 'nuevo', fechaVencimiento: '', proveedorId: '' })
   const [proveedores, setProveedores] = useState([])
@@ -623,6 +651,7 @@ export default function Movimientos() {
     }
 
     setIsLoading(true)
+    let fotoPendiente = ingresoFoto
     try {
     for (const item of loteIngreso) {
       const isTransfer = String(item.proveedor_id).startsWith('dep-')
@@ -657,7 +686,8 @@ export default function Movimientos() {
             cantidad: item.cantidad,
             motivo: ingresoMotivo.trim() || null,
             fecha_vencimiento: item.fecha_vencimiento,
-            id_proveedor: provId
+            id_proveedor: provId,
+            ...(fotoPendiente ? { imagen: fotoPendiente } : {})
           })
         })
         if (!res.ok) {
@@ -665,9 +695,11 @@ export default function Movimientos() {
           setMsg({ text: data.details || data.error || 'No se pudo registrar ingreso', type: 'error' })
           return
         }
+        fotoPendiente = null // la foto se adjunta solo al primer ingreso del lote
       }
     }
     setIngresoMotivo('')
+    setIngresoFoto(null)
     setLoteIngreso([])
     setIngresoDeposito('')
     setIngresoModalOpen(false)
@@ -783,6 +815,22 @@ export default function Movimientos() {
 
 const canCreate = hasPermission('movimientos.create')
 
+  // Fotos de los ingresos mostrados en el detalle
+  useEffect(() => {
+    setDetalleImagenes([])
+    if (!detalleModalOpen || !detalleData?.productos) return
+    const ingresos = detalleData.productos.filter(p => p.tipo === 'ingreso' && p.id)
+    if (ingresos.length === 0) return
+    let cancelado = false
+    Promise.all(ingresos.map(p =>
+      apiFetch(`/api/movimientos/${p.id}`, { token })
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => d?.movimiento?.imagenes || [])
+        .catch(() => [])
+    )).then(listas => { if (!cancelado) setDetalleImagenes(listas.flat()) })
+    return () => { cancelado = true }
+  }, [detalleModalOpen, detalleData, token])
+
 const printRef = useRef(null)
 
 const handlePrintMovimiento = (movimientoOrGroup) => {
@@ -835,7 +883,7 @@ return (
               type="button"
               className="mov-action-btn"
               style={{ width: 'auto', margin: 0, padding: '10px 18px', fontSize: '0.95rem' }}
-              onClick={() => { setIngresoModalOpen(true); setMsg({ text: '', type: '' }) }}
+              onClick={() => { setIngresoModalOpen(true); setIngresoFoto(null); setMsg({ text: '', type: '' }) }}
             >
               Ingreso
             </button>
@@ -1777,6 +1825,38 @@ return (
                     style={{ width: '100%', padding: '9px 14px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: '0.875rem', minHeight: 40 }}
                   />
                 </div>
+
+                {/* Foto (opcional) */}
+                <div style={{ marginTop: 12 }}>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Foto del ingreso (Opcional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      try {
+                        setIngresoFoto(await comprimirImagen(file))
+                      } catch (err) {
+                        setIngresoFoto(null)
+                        setMsg({ text: err.message, type: 'error' })
+                      }
+                      e.target.value = ''
+                    }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px dashed #cbd5e1', fontSize: '0.875rem', background: '#fff' }}
+                  />
+                  {ingresoFoto && (
+                    <div style={{ position: 'relative', width: 72, height: 72, marginTop: 10, borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                      <img src={ingresoFoto.datos} alt="Foto del ingreso" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        type="button"
+                        aria-label="Quitar foto"
+                        onClick={() => setIngresoFoto(null)}
+                        style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(255,0,0,0.7)', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                      >×</button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Footer */}
@@ -2431,6 +2511,22 @@ return (
               <div><strong>Fecha Salida del Camión:</strong><div>{formatFechaCorta(detalleData.fecha_salida_camion)}</div></div>
             )}
           </div>
+          {detalleImagenes.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <strong>Foto del ingreso:</strong>
+              <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+                {detalleImagenes.map((img, i) => (
+                  <img
+                    key={i}
+                    src={img.datos}
+                    alt={img.nombre || 'Foto del ingreso'}
+                    onClick={() => setFotoModalUrl(img.datos)}
+                    style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0', cursor: 'zoom-in' }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           <div>
             <h4 style={{ marginTop: 0 }}>Productos</h4>
             <ul>
